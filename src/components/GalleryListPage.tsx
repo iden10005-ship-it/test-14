@@ -25,6 +25,7 @@ interface GalleryListPageProps {
   onAddPost: (post: GalleryPost) => void;
   onUpdatePost: (post: GalleryPost) => void;
   onDeletePost: (postId: string) => void;
+  onUploadImage?: (dataUrl: string, nameHint?: string) => Promise<string>;
   onBackHome: () => void;
   onSelectPost: (postId: string) => void;
 }
@@ -44,6 +45,7 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
   onAddPost,
   onUpdatePost,
   onDeletePost,
+  onUploadImage,
   onBackHome,
   onSelectPost,
 }) => {
@@ -268,6 +270,7 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
         <GalleryPostModal
           isOpen={modalOpen}
           editingPost={editingPost}
+          onUploadImage={onUploadImage}
           onClose={() => {
             setModalOpen(false);
             setEditingPost(null);

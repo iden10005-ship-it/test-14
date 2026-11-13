@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ContactSection } from '@/src/components/ContactSection';
 import { FaqSection } from '@/src/components/FaqSection';
 import { Footer } from '@/src/components/Footer';
@@ -17,14 +17,18 @@ import { ReviewsSection } from '@/src/components/ReviewsSection';
 import { ServiceDetailPage } from '@/src/components/ServiceDetailPage';
 import { ServicesSection } from '@/src/components/ServicesSection';
 import { AdminLoginModal } from '@/src/components/admin/AdminLoginModal';
-import { AdminToolbar } from '@/src/components/admin/AdminToolbar';
+import { AdminToolbar, type CodeSyncStatus } from '@/src/components/admin/AdminToolbar';
 import {
   ImageEditorModal,
   type ImageEditTarget,
 } from '@/src/components/admin/ImageEditorModal';
 import { InquiriesModal } from '@/src/components/admin/InquiriesModal';
 import { SiteSettingsModal } from '@/src/components/admin/SiteSettingsModal';
-import { CLEARWORKS_IMAGES, INITIAL_SITE_DATA } from '@/src/data/clearworksData';
+import {
+  CLEARWORKS_IMAGES,
+  DEFAULT_SITE_DATA,
+  INITIAL_SITE_DATA,
+} from '@/src/data/clearworksData';
 import type {
   CompanyInfo,
   GalleryPost,
@@ -41,38 +45,7 @@ import { applySeoForRoute } from '@/src/utils/seo';
 const SITE_DATA_STORAGE_KEY = 'clearworks_site_data_v1';
 const INQUIRIES_STORAGE_KEY = 'clearworks_inquiries_v1';
 const ADMIN_SESSION_KEY = 'clearworks_admin_session_v1';
-
-function loadInitialSiteData(): SiteData {
-  if (typeof window === 'undefined') return INITIAL_SITE_DATA;
-  try {
-    const raw = localStorage.getItem(SITE_DATA_STORAGE_KEY);
-    if (!raw) return INITIAL_SITE_DATA;
-    const parsed = JSON.parse(raw) as Partial<SiteData>;
-    return {
-      ...INITIAL_SITE_DATA,
-      ...parsed,
-      company: { ...INITIAL_SITE_DATA.company, ...(parsed.company ?? {}) },
-      hero: { ...INITIAL_SITE_DATA.hero, ...(parsed.hero ?? {}) },
-      services: { ...INITIAL_SITE_DATA.services, ...(parsed.services ?? {}) },
-      process: { ...INITIAL_SITE_DATA.process, ...(parsed.process ?? {}) },
-      gallery: { ...INITIAL_SITE_DATA.gallery, ...(parsed.gallery ?? {}) },
-      pricing: { ...INITIAL_SITE_DATA.pricing, ...(parsed.pricing ?? {}) },
-      reviews: { ...INITIAL_SITE_DATA.reviews, ...(parsed.reviews ?? {}) },
-      faq: { ...INITIAL_SITE_DATA.faq, ...(parsed.faq ?? {}) },
-      regions: {
-        ...INITIAL_SITE_DATA.regions,
-        ...(parsed.regions ?? {}),
-        details: {
-          ...INITIAL_SITE_DATA.regions.details,
-          ...(parsed.regions?.details ?? {}),
-        },
-      },
-      contactForm: { ...INITIAL_SITE_DATA.contactForm, ...(parsed.contactForm ?? {}) },
-    };
-  } catch {
-    return INITIAL_SITE_DATA;
-  }
-}
+const ADMIN_PIN_SESSION_KEY = 'clearworks_admin_pin_v1';
 
 function loadInitialInquiries(): InquiryItem[] {
   if (typeof window === 'undefined') return [];
@@ -82,6 +55,50 @@ function loadInitialInquiries(): InquiryItem[] {
   } catch {
     return [];
   }
+}
+
+function parseTimeMs(iso?: string): number {
+  if (!iso) return 0;
+  const t = Date.parse(iso);
+  return Number.isFinite(t) ? t : 0;
+}
+
+function readStoredSiteData(): SiteData | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(SITE_DATA_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<SiteData>;
+    if (!parsed || !parsed.company || !parsed.hero || !parsed.services) {
+      return null;
+    }
+    return {
+      ...INITIAL_SITE_DATA,
+      ...parsed,
+    } as SiteData;
+  } catch {
+    return null;
+  }
+}
+
+function persistLocalSiteData(data: SiteData): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(SITE_DATA_STORAGE_KEY, JSON.stringify(data));
+  } catch {
+    // Ignore storage quota errors
+  }
+}
+
+function loadInitialSiteData(): SiteData {
+  const stored = readStoredSiteData();
+  if (!stored) return INITIAL_SITE_DATA;
+  const storedTime = parseTimeMs(stored.updatedAt);
+  const initTime = parseTimeMs(INITIAL_SITE_DATA.updatedAt);
+  if (storedTime > 0 && storedTime >= initTime) {
+    return stored;
+  }
+  return INITIAL_SITE_DATA;
 }
 
 function isAdminHash(): boolean {
@@ -134,27 +151,212 @@ export default function App() {
   const [inquiries, setInquiries] = useState<InquiryItem[]>(() => loadInitialInquiries());
   const [route, setRoute] = useState<PageRoute>(() => parseHashRoute());
 
-  // Strict Visitor vs Admin Mode
   const [isAdminMode, setIsAdminMode] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     return sessionStorage.getItem(ADMIN_SESSION_KEY) === 'true';
   });
   const [isEditMode, setIsEditMode] = useState<boolean>(true);
+  const [canWriteCode, setCanWriteCode] = useState<boolean>(false);
+  const [codeSyncStatus, setCodeSyncStatus] = useState<CodeSyncStatus>('checking');
   const [loginModalOpen, setLoginModalOpen] = useState<boolean>(() => isAdminHash());
   const [settingsModalOpen, setSettingsModalOpen] = useState<boolean>(false);
   const [inquiriesModalOpen, setInquiriesModalOpen] = useState<boolean>(false);
   const [imageEditTarget, setImageEditTarget] = useState<ImageEditTarget | null>(null);
 
+  const verifiedPinRef = useRef<string>(
+    (typeof window !== 'undefined' && sessionStorage.getItem(ADMIN_PIN_SESSION_KEY)) ||
+      INITIAL_SITE_DATA.adminPin
+  );
+  const hasUserEditedRef = useRef<boolean>(false);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Active editing only allowed when authenticated in Admin Mode AND Edit Toggle is ON
   const activeEditMode = isAdminMode && isEditMode;
 
+  // Check if backend codebase persistence server is running (AI Studio Build / local dev)
   useEffect(() => {
-    try {
-      localStorage.setItem(SITE_DATA_STORAGE_KEY, JSON.stringify(siteData));
-    } catch {
-      // Ignore storage quota errors
+    let active = true;
+    async function initCodebaseSync() {
+      try {
+        const capRes = await fetch('/api/admin/capabilities', { cache: 'no-store' });
+        if (!capRes.ok) throw new Error('No codebase API');
+        const cap = (await capRes.json()) as { canWriteCode?: boolean };
+        if (!active) return;
+
+        if (cap.canWriteCode) {
+          setCanWriteCode(true);
+          setCodeSyncStatus('saved');
+
+          const dataRes = await fetch('/api/admin/site-data', { cache: 'no-store' });
+          if (dataRes.ok && active) {
+            const diskData = (await dataRes.json()) as SiteData;
+            const localData = readStoredSiteData();
+            const diskTime = parseTimeMs(diskData.updatedAt);
+            const localTime = parseTimeMs(localData?.updatedAt);
+
+            if (localData && localTime > diskTime) {
+              // Preserve newer browser edits if disk snapshot was reset/older, and sync back to disk
+              hasUserEditedRef.current = false;
+              setSiteData(localData);
+
+              const isSessionAdmin = sessionStorage.getItem(ADMIN_SESSION_KEY) === 'true';
+              const storedPin = sessionStorage.getItem(ADMIN_PIN_SESSION_KEY);
+              if (isSessionAdmin && (storedPin === diskData.adminPin || storedPin === localData.adminPin)) {
+                try {
+                  const resync = await fetch('/api/admin/save-site-data', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'x-admin-pin': diskData.adminPin,
+                    },
+                    body: JSON.stringify(localData),
+                  });
+                  if (resync.ok && active) {
+                    verifiedPinRef.current = localData.adminPin;
+                    sessionStorage.setItem(ADMIN_PIN_SESSION_KEY, localData.adminPin);
+                    setCodeSyncStatus('saved');
+                  }
+                } catch {
+                  // Keep localData on screen even if background resync fails
+                }
+              } else {
+                verifiedPinRef.current = diskData.adminPin;
+              }
+            } else {
+              hasUserEditedRef.current = false;
+              setSiteData(diskData);
+              persistLocalSiteData(diskData);
+
+              const storedPin = sessionStorage.getItem(ADMIN_PIN_SESSION_KEY);
+              if (!storedPin) {
+                verifiedPinRef.current = diskData.adminPin;
+              } else if (storedPin !== diskData.adminPin) {
+                sessionStorage.removeItem(ADMIN_SESSION_KEY);
+                sessionStorage.removeItem(ADMIN_PIN_SESSION_KEY);
+                verifiedPinRef.current = diskData.adminPin;
+                setIsAdminMode(false);
+              }
+            }
+          }
+          return;
+        }
+      } catch {
+        // Static build (e.g., Vercel) without local write server
+      }
+
+      if (!active) return;
+      setCanWriteCode(false);
+      setCodeSyncStatus('readonly');
     }
-  }, [siteData]);
+
+    initCodebaseSync();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const saveSiteDataToCodebase = useCallback(
+    async (dataToSave: SiteData): Promise<{ ok: boolean; error?: string }> => {
+      if (!isAdminMode) {
+        return { ok: false, error: '관리자 모드에서만 저장할 수 있습니다.' };
+      }
+      persistLocalSiteData(dataToSave);
+
+      if (!canWriteCode) {
+        return { ok: true };
+      }
+
+      setCodeSyncStatus('saving');
+      try {
+        const res = await fetch('/api/admin/save-site-data', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-admin-pin': verifiedPinRef.current,
+          },
+          body: JSON.stringify(dataToSave),
+        });
+        if (!res.ok) {
+          const errBody = (await res.json().catch(() => ({}))) as { error?: string };
+          setCodeSyncStatus('error');
+          return {
+            ok: false,
+            error: errBody.error || `저장에 실패했습니다. (HTTP ${res.status})`,
+          };
+        }
+        verifiedPinRef.current = dataToSave.adminPin;
+        try {
+          sessionStorage.setItem(ADMIN_PIN_SESSION_KEY, dataToSave.adminPin);
+        } catch {
+          // Ignore
+        }
+        setCodeSyncStatus('saved');
+        return { ok: true };
+      } catch {
+        setCodeSyncStatus('error');
+        return { ok: false, error: '서버와 통신하는 중 네트워크 오류가 발생했습니다.' };
+      }
+    },
+    [canWriteCode, isAdminMode]
+  );
+
+  // Wrapper so only intentional user/admin edits mark dirty and trigger codebase save
+  const updateSiteData: React.Dispatch<React.SetStateAction<SiteData>> = useCallback((updater) => {
+    hasUserEditedRef.current = true;
+    setSiteData((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      const stamped: SiteData = {
+        ...next,
+        updatedAt: new Date().toISOString(),
+      };
+      persistLocalSiteData(stamped);
+      return stamped;
+    });
+  }, []);
+
+  const handleSaveSettings = useCallback(
+    async (nextData: SiteData): Promise<{ ok: boolean; error?: string }> => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = null;
+      }
+      hasUserEditedRef.current = false;
+      const stamped: SiteData = {
+        ...nextData,
+        updatedAt: new Date().toISOString(),
+      };
+      persistLocalSiteData(stamped);
+      setSiteData(stamped);
+      return saveSiteDataToCodebase(stamped);
+    },
+    [saveSiteDataToCodebase]
+  );
+
+  // Auto-save edits directly into codebase JSON when in Admin Mode
+  useEffect(() => {
+    if (!hasUserEditedRef.current) return;
+
+    if (canWriteCode && isAdminMode) {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+      autoSaveTimerRef.current = setTimeout(() => {
+        autoSaveTimerRef.current = null;
+        saveSiteDataToCodebase(siteData);
+      }, 400);
+      return () => {
+        if (autoSaveTimerRef.current) {
+          clearTimeout(autoSaveTimerRef.current);
+          autoSaveTimerRef.current = null;
+        }
+      };
+    }
+
+    // Fallback preview storage on read-only static hosts
+    if (!canWriteCode && isAdminMode) {
+      persistLocalSiteData(siteData);
+    }
+  }, [siteData, canWriteCode, isAdminMode, saveSiteDataToCodebase]);
 
   useEffect(() => {
     try {
@@ -184,6 +386,25 @@ export default function App() {
   useEffect(() => {
     applySeoForRoute(route, siteData);
   }, [route, siteData]);
+
+  const uploadImageToCodebase = async (dataUrl: string, nameHint?: string): Promise<string> => {
+    if (!canWriteCode || !isAdminMode) return dataUrl;
+    try {
+      const res = await fetch('/api/admin/upload-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-pin': verifiedPinRef.current,
+        },
+        body: JSON.stringify({ dataUrl, nameHint }),
+      });
+      if (!res.ok) return dataUrl;
+      const json = (await res.json()) as { url?: string };
+      return json.url || dataUrl;
+    } catch {
+      return dataUrl;
+    }
+  };
 
   const navigateTo = (next: PageRoute) => {
     setRoute(next);
@@ -216,12 +437,14 @@ export default function App() {
   };
 
   const handleAdminLoginSuccess = () => {
+    verifiedPinRef.current = siteData.adminPin;
     setIsAdminMode(true);
     setIsEditMode(true);
     try {
       sessionStorage.setItem(ADMIN_SESSION_KEY, 'true');
+      sessionStorage.setItem(ADMIN_PIN_SESSION_KEY, siteData.adminPin);
     } catch {
-      // Ignore sessionStorage failure
+      // Ignore
     }
     clearAdminHash();
   };
@@ -233,6 +456,7 @@ export default function App() {
     setImageEditTarget(null);
     try {
       sessionStorage.removeItem(ADMIN_SESSION_KEY);
+      sessionStorage.removeItem(ADMIN_PIN_SESSION_KEY);
     } catch {
       // Ignore
     }
@@ -251,21 +475,21 @@ export default function App() {
 
   // Updaters
   const updateCompany = (field: keyof CompanyInfo, value: string) => {
-    setSiteData((prev) => ({
+    updateSiteData((prev) => ({
       ...prev,
       company: { ...prev.company, [field]: value },
     }));
   };
 
   const updateHero = (field: keyof HeroData, value: string) => {
-    setSiteData((prev) => ({
+    updateSiteData((prev) => ({
       ...prev,
       hero: { ...prev.hero, [field]: value },
     }));
   };
 
   const updateHeroStat = (statId: string, field: 'value' | 'label', value: string) => {
-    setSiteData((prev) => ({
+    updateSiteData((prev) => ({
       ...prev,
       hero: {
         ...prev.hero,
@@ -279,7 +503,7 @@ export default function App() {
     field: 'title' | 'description' | 'badge',
     val: string
   ) => {
-    setSiteData((prev) => ({
+    updateSiteData((prev) => ({
       ...prev,
       services: {
         ...prev.services,
@@ -289,7 +513,7 @@ export default function App() {
   };
 
   const updateFullService = (updated: ServiceItem) => {
-    setSiteData((prev) => ({
+    updateSiteData((prev) => ({
       ...prev,
       services: {
         ...prev.services,
@@ -322,14 +546,14 @@ export default function App() {
         ],
       },
     };
-    setSiteData((prev) => ({
+    updateSiteData((prev) => ({
       ...prev,
       services: { ...prev.services, items: [...prev.services.items, newItem] },
     }));
   };
 
   const deleteService = (id: string) => {
-    setSiteData((prev) => ({
+    updateSiteData((prev) => ({
       ...prev,
       services: {
         ...prev.services,
@@ -339,7 +563,7 @@ export default function App() {
   };
 
   const updateProcessStep = (stepNum: number, field: 'title' | 'description', val: string) => {
-    setSiteData((prev) => ({
+    updateSiteData((prev) => ({
       ...prev,
       process: {
         ...prev.process,
@@ -355,7 +579,7 @@ export default function App() {
     field: 'title' | 'excerpt' | 'coverImage',
     val: string
   ) => {
-    setSiteData((prev) => ({
+    updateSiteData((prev) => ({
       ...prev,
       gallery: {
         ...prev.gallery,
@@ -371,7 +595,7 @@ export default function App() {
   };
 
   const addGalleryPost = (post: GalleryPost) => {
-    setSiteData((prev) => ({
+    updateSiteData((prev) => ({
       ...prev,
       gallery: {
         ...prev.gallery,
@@ -381,7 +605,7 @@ export default function App() {
   };
 
   const updateGalleryPost = (updated: GalleryPost) => {
-    setSiteData((prev) => ({
+    updateSiteData((prev) => ({
       ...prev,
       gallery: {
         ...prev.gallery,
@@ -391,7 +615,7 @@ export default function App() {
   };
 
   const deleteGalleryPost = (postId: string) => {
-    setSiteData((prev) => ({
+    updateSiteData((prev) => ({
       ...prev,
       gallery: {
         ...prev.gallery,
@@ -401,7 +625,7 @@ export default function App() {
   };
 
   const updatePricingRow = (id: string, field: 'category' | 'standard' | 'price', val: string) => {
-    setSiteData((prev) => ({
+    updateSiteData((prev) => ({
       ...prev,
       pricing: {
         ...prev.pricing,
@@ -411,7 +635,7 @@ export default function App() {
   };
 
   const addPricingRow = () => {
-    setSiteData((prev) => ({
+    updateSiteData((prev) => ({
       ...prev,
       pricing: {
         ...prev.pricing,
@@ -429,7 +653,7 @@ export default function App() {
   };
 
   const deletePricingRow = (id: string) => {
-    setSiteData((prev) => ({
+    updateSiteData((prev) => ({
       ...prev,
       pricing: {
         ...prev.pricing,
@@ -439,7 +663,7 @@ export default function App() {
   };
 
   const updateReview = (id: string, field: 'content' | 'author' | 'tag', val: string) => {
-    setSiteData((prev) => ({
+    updateSiteData((prev) => ({
       ...prev,
       reviews: {
         ...prev.reviews,
@@ -449,7 +673,7 @@ export default function App() {
   };
 
   const addReview = () => {
-    setSiteData((prev) => ({
+    updateSiteData((prev) => ({
       ...prev,
       reviews: {
         ...prev.reviews,
@@ -468,7 +692,7 @@ export default function App() {
   };
 
   const deleteReview = (id: string) => {
-    setSiteData((prev) => ({
+    updateSiteData((prev) => ({
       ...prev,
       reviews: {
         ...prev.reviews,
@@ -478,7 +702,7 @@ export default function App() {
   };
 
   const updateFaq = (id: string, field: 'question' | 'answer', val: string) => {
-    setSiteData((prev) => ({
+    updateSiteData((prev) => ({
       ...prev,
       faq: {
         ...prev.faq,
@@ -488,7 +712,7 @@ export default function App() {
   };
 
   const addFaq = () => {
-    setSiteData((prev) => ({
+    updateSiteData((prev) => ({
       ...prev,
       faq: {
         ...prev.faq,
@@ -505,7 +729,7 @@ export default function App() {
   };
 
   const deleteFaq = (id: string) => {
-    setSiteData((prev) => ({
+    updateSiteData((prev) => ({
       ...prev,
       faq: {
         ...prev.faq,
@@ -515,7 +739,7 @@ export default function App() {
   };
 
   const addRegion = (name: string) => {
-    setSiteData((prev) => {
+    updateSiteData((prev) => {
       if (prev.regions.list.includes(name)) return prev;
       return {
         ...prev,
@@ -528,7 +752,7 @@ export default function App() {
   };
 
   const removeRegion = (index: number) => {
-    setSiteData((prev) => ({
+    updateSiteData((prev) => ({
       ...prev,
       regions: {
         ...prev.regions,
@@ -538,7 +762,7 @@ export default function App() {
   };
 
   const updateRegionDetail = (regionName: string, detail: RegionDetail) => {
-    setSiteData((prev) => ({
+    updateSiteData((prev) => ({
       ...prev,
       regions: {
         ...prev.regions,
@@ -568,6 +792,8 @@ export default function App() {
         <AdminToolbar
           isEditMode={isEditMode}
           inquiryCount={inquiries.length}
+          codeSyncStatus={codeSyncStatus}
+          onSaveNow={() => saveSiteDataToCodebase(siteData)}
           onToggleEditMode={() => setIsEditMode((prev) => !prev)}
           onOpenSettings={() => setSettingsModalOpen(true)}
           onOpenInquiries={() => setInquiriesModalOpen(true)}
@@ -608,13 +834,13 @@ export default function App() {
               services={siteData.services.items}
               isEditMode={activeEditMode}
               onUpdateTitle={(val) =>
-                setSiteData((prev) => ({
+                updateSiteData((prev) => ({
                   ...prev,
                   services: { ...prev.services, sectionTitle: val },
                 }))
               }
               onUpdateSubtitle={(val) =>
-                setSiteData((prev) => ({
+                updateSiteData((prev) => ({
                   ...prev,
                   services: { ...prev.services, sectionSubtitle: val },
                 }))
@@ -630,13 +856,13 @@ export default function App() {
               steps={siteData.process.steps}
               isEditMode={activeEditMode}
               onUpdateTitle={(val) =>
-                setSiteData((prev) => ({
+                updateSiteData((prev) => ({
                   ...prev,
                   process: { ...prev.process, sectionTitle: val },
                 }))
               }
               onUpdateSubtitle={(val) =>
-                setSiteData((prev) => ({
+                updateSiteData((prev) => ({
                   ...prev,
                   process: { ...prev.process, sectionSubtitle: val },
                 }))
@@ -649,13 +875,13 @@ export default function App() {
               posts={siteData.gallery.posts}
               isEditMode={activeEditMode}
               onUpdateTitle={(val) =>
-                setSiteData((prev) => ({
+                updateSiteData((prev) => ({
                   ...prev,
                   gallery: { ...prev.gallery, sectionTitle: val },
                 }))
               }
               onUpdateSubtitle={(val) =>
-                setSiteData((prev) => ({
+                updateSiteData((prev) => ({
                   ...prev,
                   gallery: { ...prev.gallery, sectionSubtitle: val },
                 }))
@@ -672,19 +898,19 @@ export default function App() {
               rows={siteData.pricing.rows}
               isEditMode={activeEditMode}
               onUpdateTitle={(val) =>
-                setSiteData((prev) => ({
+                updateSiteData((prev) => ({
                   ...prev,
                   pricing: { ...prev.pricing, sectionTitle: val },
                 }))
               }
               onUpdateSubtitle={(val) =>
-                setSiteData((prev) => ({
+                updateSiteData((prev) => ({
                   ...prev,
                   pricing: { ...prev.pricing, sectionSubtitle: val },
                 }))
               }
               onUpdateFooterNote={(val) =>
-                setSiteData((prev) => ({
+                updateSiteData((prev) => ({
                   ...prev,
                   pricing: { ...prev.pricing, footerNote: val },
                 }))
@@ -700,13 +926,13 @@ export default function App() {
               reviews={siteData.reviews.items}
               isEditMode={activeEditMode}
               onUpdateTitle={(val) =>
-                setSiteData((prev) => ({
+                updateSiteData((prev) => ({
                   ...prev,
                   reviews: { ...prev.reviews, sectionTitle: val },
                 }))
               }
               onUpdateSubtitle={(val) =>
-                setSiteData((prev) => ({
+                updateSiteData((prev) => ({
                   ...prev,
                   reviews: { ...prev.reviews, sectionSubtitle: val },
                 }))
@@ -721,13 +947,13 @@ export default function App() {
               items={siteData.faq.items}
               isEditMode={activeEditMode}
               onUpdateTitle={(val) =>
-                setSiteData((prev) => ({
+                updateSiteData((prev) => ({
                   ...prev,
                   faq: { ...prev.faq, sectionTitle: val },
                 }))
               }
               onUpdateSubtitle={(val) =>
-                setSiteData((prev) => ({
+                updateSiteData((prev) => ({
                   ...prev,
                   faq: { ...prev.faq, sectionSubtitle: val },
                 }))
@@ -742,13 +968,13 @@ export default function App() {
               regions={siteData.regions.list}
               isEditMode={activeEditMode}
               onUpdateTitle={(val) =>
-                setSiteData((prev) => ({
+                updateSiteData((prev) => ({
                   ...prev,
                   regions: { ...prev.regions, sectionTitle: val },
                 }))
               }
               onUpdateSubtitle={(val) =>
-                setSiteData((prev) => ({
+                updateSiteData((prev) => ({
                   ...prev,
                   regions: { ...prev.regions, sectionSubtitle: val },
                 }))
@@ -764,19 +990,19 @@ export default function App() {
               company={siteData.company}
               isEditMode={activeEditMode}
               onUpdateTitle={(val) =>
-                setSiteData((prev) => ({
+                updateSiteData((prev) => ({
                   ...prev,
                   contactForm: { ...prev.contactForm, sectionTitle: val },
                 }))
               }
               onUpdateSubtitle={(val) =>
-                setSiteData((prev) => ({
+                updateSiteData((prev) => ({
                   ...prev,
                   contactForm: { ...prev.contactForm, sectionSubtitle: val },
                 }))
               }
               onUpdateSuccessMessage={(val) =>
-                setSiteData((prev) => ({
+                updateSiteData((prev) => ({
                   ...prev,
                   contactForm: { ...prev.contactForm, successMessage: val },
                 }))
@@ -839,6 +1065,7 @@ export default function App() {
             onAddPost={addGalleryPost}
             onUpdatePost={updateGalleryPost}
             onDeletePost={deleteGalleryPost}
+            onUploadImage={uploadImageToCodebase}
             onBackHome={() => navigateTo({ type: 'home' })}
             onSelectPost={(postId) => navigateTo({ type: 'gallery_detail', postId })}
           />
@@ -852,6 +1079,7 @@ export default function App() {
             isEditMode={activeEditMode}
             onUpdatePost={updateGalleryPost}
             onEditImage={setImageEditTarget}
+            onUploadImage={uploadImageToCodebase}
             onBackToList={() => navigateTo({ type: 'gallery_list' })}
             onSelectPost={(postId) => navigateTo({ type: 'gallery_detail', postId })}
             onSubmitInquiry={handleInquirySubmit}
@@ -873,7 +1101,6 @@ export default function App() {
         onOpenQuote={() => scrollToSection('contact')}
       />
 
-      {/* Admin Modals (Login modal available for admin sign-in; editing modals strictly gated by isAdminMode) */}
       <AdminLoginModal
         isOpen={loginModalOpen}
         expectedPin={siteData.adminPin}
@@ -888,6 +1115,7 @@ export default function App() {
         <>
           <ImageEditorModal
             target={imageEditTarget}
+            onUploadImage={uploadImageToCodebase}
             onClose={() => setImageEditTarget(null)}
           />
           <InquiriesModal
@@ -908,9 +1136,49 @@ export default function App() {
           <SiteSettingsModal
             isOpen={settingsModalOpen}
             siteData={siteData}
+            currentRoute={route}
+            canWriteCode={canWriteCode}
+            onUploadImage={uploadImageToCodebase}
+            onSaveSettings={handleSaveSettings}
+            onGenerateSitemap={async (baseUrl, includeMatrix) => {
+              if (!canWriteCode || !isAdminMode) {
+                return { ok: false, error: '배포 환경에서는 다운로드를 이용해 주세요.' };
+              }
+              try {
+                const res = await fetch('/api/admin/generate-sitemap', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'x-admin-pin': verifiedPinRef.current,
+                  },
+                  body: JSON.stringify({ baseUrl, includeMatrix }),
+                });
+                const json = (await res.json()) as {
+                  ok?: boolean;
+                  count?: number;
+                  baseUrl?: string;
+                  error?: string;
+                };
+                if (!res.ok || !json.ok) {
+                  return { ok: false, error: json.error || '생성 실패' };
+                }
+                if (json.baseUrl) {
+                  hasUserEditedRef.current = false;
+                  setSiteData((prev) => ({ ...prev, siteUrl: json.baseUrl }));
+                }
+                return { ok: true, count: json.count };
+              } catch {
+                return { ok: false, error: '네트워크 오류가 발생했습니다.' };
+              }
+            }}
             onClose={() => setSettingsModalOpen(false)}
-            onUpdateSiteData={setSiteData}
-            onResetDefaults={() => setSiteData(INITIAL_SITE_DATA)}
+            onUpdateSiteData={updateSiteData}
+            onResetDefaults={() => {
+              void handleSaveSettings({
+                ...DEFAULT_SITE_DATA,
+                updatedAt: new Date().toISOString(),
+              });
+            }}
           />
         </>
       )}

@@ -25,6 +25,7 @@ interface GalleryDetailPageProps {
   isEditMode: boolean;
   onUpdatePost: (post: GalleryPost) => void;
   onEditImage: (target: ImageEditTarget) => void;
+  onUploadImage?: (dataUrl: string, nameHint?: string) => Promise<string>;
   onBackToList: () => void;
   onSelectPost: (postId: string) => void;
   onSubmitInquiry: (payload: InquiryPayload) => void;
@@ -37,6 +38,7 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
   isEditMode,
   onUpdatePost,
   onEditImage,
+  onUploadImage,
   onBackToList,
   onSelectPost,
   onSubmitInquiry,
@@ -395,6 +397,7 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
         <GalleryPostModal
           isOpen={modalOpen}
           editingPost={post}
+          onUploadImage={onUploadImage}
           onClose={() => setModalOpen(false)}
           onSave={onUpdatePost}
         />

@@ -150,8 +150,25 @@ export type PageRoute =
   | { type: 'gallery_list' }
   | { type: 'gallery_detail'; postId: string };
 
+export interface PageSeoMeta {
+  title?: string;
+  description?: string;
+  keywords?: string;
+  ogTitle?: string;
+  ogDescription?: string;
+  ogImage?: string;
+}
+
+export interface SeoSettings {
+  defaultOgImage?: string;
+  pages: Record<string, PageSeoMeta>;
+}
+
 export interface SiteData {
   adminPin: string;
+  siteUrl?: string;
+  updatedAt?: string;
+  seo?: SeoSettings;
   company: CompanyInfo;
   hero: HeroData;
   services: {

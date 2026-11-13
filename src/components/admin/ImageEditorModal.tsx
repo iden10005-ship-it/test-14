@@ -10,6 +10,7 @@ export interface ImageEditTarget {
 
 interface ImageEditorModalProps {
   target: ImageEditTarget | null;
+  onUploadImage?: (dataUrl: string, nameHint?: string) => Promise<string>;
   onClose: () => void;
 }
 
@@ -41,7 +42,11 @@ function resizeImageFile(file: File, maxWidth = 1400): Promise<string> {
   });
 }
 
-export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ target, onClose }) => {
+export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
+  target,
+  onUploadImage,
+  onClose,
+}) => {
   const [urlInput, setUrlInput] = useState('');
   const [error, setError] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -62,7 +67,10 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ target, onCl
     setError('');
     try {
       const dataUrl = await resizeImageFile(file);
-      setUrlInput(dataUrl);
+      const savedUrl = onUploadImage
+        ? await onUploadImage(dataUrl, file.name.replace(/\.[^.]+$/, ''))
+        : dataUrl;
+      setUrlInput(savedUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : '이미지 처리 중 오류가 발생했습니다.');
     } finally {

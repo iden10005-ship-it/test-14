@@ -6,6 +6,7 @@ import type { GalleryPost } from '@/src/types/clearworks';
 interface GalleryPostModalProps {
   isOpen: boolean;
   editingPost: GalleryPost | null;
+  onUploadImage?: (dataUrl: string, nameHint?: string) => Promise<string>;
   onClose: () => void;
   onSave: (post: GalleryPost) => void;
 }
@@ -13,6 +14,7 @@ interface GalleryPostModalProps {
 export const GalleryPostModal: React.FC<GalleryPostModalProps> = ({
   isOpen,
   editingPost,
+  onUploadImage,
   onClose,
   onSave,
 }) => {
@@ -71,7 +73,7 @@ export const GalleryPostModal: React.FC<GalleryPostModalProps> = ({
     reader.onload = () => {
       if (typeof reader.result !== 'string') return;
       const img = new Image();
-      img.onload = () => {
+      img.onload = async () => {
         const maxWidth = 1400;
         const scale = img.width > maxWidth ? maxWidth / img.width : 1;
         const width = Math.round(img.width * scale);
@@ -80,12 +82,19 @@ export const GalleryPostModal: React.FC<GalleryPostModalProps> = ({
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          setter(reader.result as string);
-          return;
+        const dataUrl = ctx
+          ? (() => {
+              ctx.drawImage(img, 0, 0, width, height);
+              return canvas.toDataURL('image/jpeg', 0.85);
+            })()
+          : (reader.result as string);
+
+        if (onUploadImage) {
+          const uploadedUrl = await onUploadImage(dataUrl, file.name.replace(/\.[^.]+$/, ''));
+          setter(uploadedUrl);
+        } else {
+          setter(dataUrl);
         }
-        ctx.drawImage(img, 0, 0, width, height);
-        setter(canvas.toDataURL('image/jpeg', 0.85));
       };
       img.src = reader.result;
     };
