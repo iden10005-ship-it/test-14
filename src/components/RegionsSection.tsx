@@ -1,13 +1,9 @@
 import React, { useState } from 'react';
 import {
-  Check,
   CheckCircle,
   Compass,
-  Copy,
-  ExternalLink,
   MapPin,
   Plus,
-  Search,
   Sparkles,
   X,
 } from 'lucide-react';
@@ -43,11 +39,7 @@ export const RegionsSection: React.FC<RegionsSectionProps> = ({
   onViewRegion,
 }) => {
   const [expanded, setExpanded] = useState(false);
-  const [viewMode, setViewMode] = useState<'chips' | 'urls'>('chips');
-  const [searchQuery, setSearchQuery] = useState('');
   const [newRegionName, setNewRegionName] = useState('');
-  const [copiedRegion, setCopiedRegion] = useState<string | null>(null);
-  const [copiedAll, setCopiedAll] = useState(false);
 
   const seoulCount = regions.filter((r) => SEOUL_DISTRICTS.includes(r)).length || 25;
   const incheonList = regions.filter((r) => r.startsWith('인천'));
@@ -58,18 +50,6 @@ export const RegionsSection: React.FC<RegionsSectionProps> = ({
   ];
   const incheonFeatured =
     incheonList.length > 0 ? incheonList : ['인천 연수구', '인천 서구', '인천 부평구'];
-
-  const buildRegionUrl = (regionName: string) => {
-    const origin =
-      typeof window !== 'undefined' ? window.location.origin : 'https://www.clearworks.kr';
-    const pathname = typeof window !== 'undefined' ? window.location.pathname : '/';
-    const base = `${origin}${pathname.endsWith('/') ? pathname : `${pathname}/`}`;
-    return `${base}#/region/${encodeURIComponent(regionName)}`;
-  };
-
-  const filteredRegions = regions.filter((r) =>
-    r.toLowerCase().includes(searchQuery.toLowerCase().trim())
-  );
 
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -254,30 +234,6 @@ export const RegionsSection: React.FC<RegionsSectionProps> = ({
               </div>
 
               <div className="flex items-center gap-2">
-                <div className="flex bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-bold">
-                  <button
-                    type="button"
-                    onClick={() => setViewMode('chips')}
-                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                      viewMode === 'chips'
-                        ? 'bg-white text-blue-600 shadow-2xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    지역 태그
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setViewMode('urls')}
-                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                      viewMode === 'urls'
-                        ? 'bg-blue-600 text-white shadow-2xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    고유 URL 목록
-                  </button>
-                </div>
                 <button
                   type="button"
                   onClick={() => setExpanded(false)}
@@ -288,9 +244,7 @@ export const RegionsSection: React.FC<RegionsSectionProps> = ({
               </div>
             </div>
 
-            {viewMode === 'chips' ? (
-              <>
-                <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2">
                   {regions.map((region, idx) => (
                     <span
                       key={`${region}-${idx}`}
@@ -340,102 +294,6 @@ export const RegionsSection: React.FC<RegionsSectionProps> = ({
                     </button>
                   </form>
                 )}
-              </>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
-                  <div className="relative flex-1">
-                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="지역 검색 (예: 강남구, 분당, 송도, 마포...)"
-                      className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const allUrls = regions
-                        .map((r) => `[${r}] ${buildRegionUrl(r)}`)
-                        .join('\n');
-                      navigator.clipboard.writeText(allUrls);
-                      setCopiedAll(true);
-                      setTimeout(() => setCopiedAll(false), 2000);
-                    }}
-                    className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shrink-0 cursor-pointer"
-                  >
-                    {copiedAll ? (
-                      <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    ) : (
-                      <Copy className="w-3.5 h-3.5" />
-                    )}
-                    <span>{copiedAll ? '전체 URL 복사 완료!' : '전체 지역 URL 일괄 복사'}</span>
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-[420px] overflow-y-auto pr-1">
-                  {filteredRegions.map((region) => {
-                    const hashPath = `/#/region/${region}`;
-                    const fullUrl = buildRegionUrl(region);
-                    const isCopied = copiedRegion === region;
-                    return (
-                      <div
-                        key={region}
-                        className="p-3 rounded-2xl bg-slate-50 border border-slate-200/90 hover:border-blue-400 transition-all flex flex-col justify-between gap-2"
-                      >
-                        <div>
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="font-bold text-slate-900 text-xs flex items-center gap-1">
-                              <MapPin className="w-3 h-3 text-blue-600 shrink-0" />
-                              <span>{region}</span>
-                            </span>
-                            <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                              전용페이지
-                            </span>
-                          </div>
-                          <div className="bg-white px-2 py-1 rounded-lg border border-slate-200 text-[11px] font-mono text-slate-600 truncate select-all">
-                            {hashPath}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-1.5 pt-1 border-t border-slate-200/60">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              navigator.clipboard.writeText(fullUrl);
-                              setCopiedRegion(region);
-                              setTimeout(() => setCopiedRegion(null), 2000);
-                            }}
-                            className={`flex-1 py-1 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                              isCopied
-                                ? 'bg-emerald-600 text-white'
-                                : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
-                            }`}
-                          >
-                            {isCopied ? (
-                              <Check className="w-3 h-3" />
-                            ) : (
-                              <Copy className="w-3 h-3" />
-                            )}
-                            <span>{isCopied ? '복사됨!' : 'URL 복사'}</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => onViewRegion(region)}
-                            className="py-1 px-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
-                          >
-                            <span>이동</span>
-                            <ExternalLink className="w-3 h-3" />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>
