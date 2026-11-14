@@ -891,7 +891,15 @@ export default function App() {
           isEditMode={isEditMode}
           inquiryCount={inquiries.length}
           codeSyncStatus={codeSyncStatus}
-          onSaveNow={() => void saveSiteDataToCodebase(latestSiteDataRef.current)}
+          onSaveNow={() => {
+            const stamped: SiteData = {
+              ...latestSiteDataRef.current,
+              updatedAt: new Date().toISOString(),
+            };
+            latestSiteDataRef.current = stamped;
+            setSiteData(stamped);
+            void saveSiteDataToCodebase(stamped);
+          }}
           onToggleEditMode={() => setIsEditMode((prev) => !prev)}
           onOpenSettings={() => setSettingsModalOpen(true)}
           onOpenInquiries={() => setInquiriesModalOpen(true)}

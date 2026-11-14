@@ -51,7 +51,7 @@
     "items": [
       {
         "id": "srv-1",
-        "title": "아파트 외창·베란다 유리",
+        "title": "아파트창문청소·외창청소",
         "description": "안팎 유리와 창틀, 샷시 레일까지 물때 없이 마무리합니다.",
         "iconName": "Home",
         "badge": "가장 많이 찾는 서비스",
@@ -88,7 +88,7 @@
       },
       {
         "id": "srv-2",
-        "title": "상가·사무실 유리",
+        "title": "매장·사무실 유리창청소",
         "description": "영업 시간을 피해 일정을 잡고, 출입문과 통유리까지 함께 청소합니다.",
         "iconName": "Store",
         "badge": "정기관리 추천",
@@ -120,7 +120,7 @@
       },
       {
         "id": "srv-3",
-        "title": "빌딩 외벽·고층 작업",
+        "title": "빌딩 외벽·고층 유리창청소",
         "description": "안전 장비와 보험을 갖춘 인력이 건물 구조에 맞춰 작업합니다.",
         "iconName": "Building2",
         "badge": "로프/스카이 전문",
@@ -152,7 +152,7 @@
       },
       {
         "id": "srv-4",
-        "title": "입주·이사청소 유리",
+        "title": "간판청소·어닝청소 고압세척",
         "description": "입주 전 찌든 때와 공사 후 오염을 제거해 새집처럼 맑게 만듭니다.",
         "iconName": "Sparkles",
         "detail": {
@@ -175,7 +175,7 @@
       },
       {
         "id": "srv-5",
-        "title": "썬팅·스티커 제거",
+        "title": "시트지제거·필름제거",
         "description": "접착 자국이 남지 않도록 유리 손상 없이 제거합니다.",
         "iconName": "Layers",
         "detail": {
@@ -198,7 +198,7 @@
       },
       {
         "id": "srv-6",
-        "title": "유리 발수 코팅",
+        "title": "기타 특수청소",
         "description": "빗물과 먼지가 덜 달라붙어 청소 주기를 늘려줍니다.",
         "iconName": "ShieldCheck",
         "badge": "지속력 극대화",
@@ -953,5 +953,5 @@
     "sectionSubtitle": "남겨주시면 영업시간 내에 연락드립니다.",
     "successMessage": "신청이 접수되었습니다. 영업시간 내에 신속히 연락드리겠습니다."
   },
-  "updatedAt": "2026-11-14T11:56:00.000Z"
+  "updatedAt": "2026-11-14T12:27:30.000Z"
 }
