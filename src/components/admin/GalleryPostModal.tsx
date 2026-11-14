@@ -175,6 +175,7 @@ export const GalleryPostModal: React.FC<GalleryPostModalProps> = ({
                 <option value="빌딩">빌딩</option>
                 <option value="간판,어닝청소">간판·어닝청소</option>
                 <option value="시트지제거">시트지제거</option>
+                <option value="기타">기타</option>
               </select>
             </div>
             <div>

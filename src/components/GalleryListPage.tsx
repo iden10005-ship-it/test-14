@@ -38,6 +38,7 @@ const CATEGORIES = [
   { id: '빌딩', label: '빌딩', icon: Building2 },
   { id: '간판,어닝청소', label: '간판·어닝청소', icon: Wrench },
   { id: '시트지제거', label: '시트지제거', icon: Layers },
+  { id: '기타', label: '기타', icon: null },
 ] as const;
 
 export const GalleryListPage: React.FC<GalleryListPageProps> = ({
@@ -68,6 +69,25 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
         cat.includes('썬팅') ||
         cat.includes('스티커') ||
         cat.includes('필름')
+      );
+    }
+    if (selected === '기타') {
+      return (
+        cat.includes('기타') ||
+        cat.includes('특수') ||
+        (!cat.includes('아파트') &&
+          !cat.includes('주택') &&
+          !cat.includes('상가') &&
+          !cat.includes('매장') &&
+          !cat.includes('점포') &&
+          !cat.includes('빌딩') &&
+          !cat.includes('외벽') &&
+          !cat.includes('간판') &&
+          !cat.includes('어닝') &&
+          !cat.includes('시트지') &&
+          !cat.includes('썬팅') &&
+          !cat.includes('스티커') &&
+          !cat.includes('필름'))
       );
     }
     return cat.includes(selected.toLowerCase());
@@ -142,7 +162,7 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
                     : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
                 }`}
               >
-                <Icon className="w-4 h-4" />
+                {Icon && <Icon className="w-4 h-4" />}
                 <span>{cat.label}</span>
               </button>
             );
