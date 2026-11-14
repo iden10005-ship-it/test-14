@@ -80,21 +80,6 @@ export interface CaseItem {
   description: string;
 }
 
-export interface BlogPost {
-  id: string;
-  title: string;
-  category: string;
-  excerpt: string;
-  content: string;
-  coverImage: string;
-  author: string;
-  publishedAt: string;
-  readTimeMinutes: number;
-  tags: string[];
-  seoKeywords?: string;
-  relatedServiceId?: string;
-}
-
 export interface GalleryPost {
   id: string;
   title: string;
@@ -163,9 +148,7 @@ export type PageRoute =
   | { type: 'region'; regionName: string }
   | { type: 'matrix'; regionName: string; serviceId: string }
   | { type: 'gallery_list' }
-  | { type: 'gallery_detail'; postId: string }
-  | { type: 'blog_list' }
-  | { type: 'blog_detail'; postId: string };
+  | { type: 'gallery_detail'; postId: string };
 
 export interface PageSeoMeta {
   title?: string;
@@ -202,11 +185,6 @@ export interface SiteData {
     sectionTitle: string;
     sectionSubtitle: string;
     posts: GalleryPost[];
-  };
-  blog?: {
-    sectionTitle: string;
-    sectionSubtitle: string;
-    posts: BlogPost[];
   };
   pricing: {
     sectionTitle: string;

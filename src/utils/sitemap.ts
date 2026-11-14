@@ -102,23 +102,6 @@ export function buildSitemapEntries(
     });
   }
 
-  // 4b. Blog list & individual industry tip / project update posts
-  pushEntry({
-    loc: `${baseUrl}/#/blog`,
-    lastmod: defaultLastmod,
-    changefreq: 'weekly',
-    priority: '0.8',
-  });
-
-  for (const blogPost of siteData.blog?.posts ?? []) {
-    pushEntry({
-      loc: `${baseUrl}/#/blog/${encodeURIComponent(blogPost.id)}`,
-      lastmod: formatPostLastmod(blogPost.publishedAt, defaultLastmod),
-      changefreq: 'monthly',
-      priority: '0.8',
-    });
-  }
-
   // 5. Regional SEO landing pages
   for (const region of siteData.regions.list) {
     pushEntry({
