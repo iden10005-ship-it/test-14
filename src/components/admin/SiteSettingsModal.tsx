@@ -142,6 +142,11 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
   const [activeTab, setActiveTab] = useState<ModalTab>('general');
 
   const [draftCompany, setDraftCompany] = useState<SiteData['company']>(siteData.company);
+  const [draftHeroTitle, setDraftHeroTitle] = useState<string>(siteData.hero.title);
+  const [draftStats, setDraftStats] = useState<SiteData['hero']['stats']>(siteData.hero.stats);
+  const [draftServicesTitle, setDraftServicesTitle] = useState<string>(
+    siteData.services.sectionTitle
+  );
   const [draftPin, setDraftPin] = useState<string>(siteData.adminPin);
   const [draftSiteUrl, setDraftSiteUrl] = useState<string>(siteData.siteUrl ?? '');
   const [draftSeo, setDraftSeo] = useState<SeoSettings>(
@@ -193,6 +198,9 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
   useEffect(() => {
     if (isOpen && !wasOpenRef.current) {
       setDraftCompany(siteData.company);
+      setDraftHeroTitle(siteData.hero.title);
+      setDraftStats(siteData.hero.stats.map((s) => ({ ...s })));
+      setDraftServicesTitle(siteData.services.sectionTitle);
       setDraftPin(siteData.adminPin);
       setDraftSiteUrl(siteData.siteUrl ?? '');
       setDraftSeo({
@@ -238,11 +246,29 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
     () => ({
       ...siteData,
       company: draftCompany,
+      hero: {
+        ...siteData.hero,
+        title: draftHeroTitle,
+        stats: draftStats,
+      },
+      services: {
+        ...siteData.services,
+        sectionTitle: draftServicesTitle,
+      },
       adminPin: draftPin.trim() || siteData.adminPin,
       siteUrl: draftSiteUrl.trim() || undefined,
       seo: cleanSeoSettings(draftSeo),
     }),
-    [siteData, draftCompany, draftPin, draftSiteUrl, draftSeo]
+    [
+      siteData,
+      draftCompany,
+      draftHeroTitle,
+      draftStats,
+      draftServicesTitle,
+      draftPin,
+      draftSiteUrl,
+      draftSeo,
+    ]
   );
 
   const sitemapUrlCount = useMemo(
@@ -447,6 +473,19 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
         operatingHours: draftCompany.operatingHours.trim(),
         address: draftCompany.address.trim(),
       },
+      hero: {
+        ...siteData.hero,
+        title: draftHeroTitle.trim() || siteData.hero.title,
+        stats: draftStats.map((stat) => ({
+          ...stat,
+          value: stat.value.trim() || stat.value,
+          label: stat.label.trim() || stat.label,
+        })),
+      },
+      services: {
+        ...siteData.services,
+        sectionTitle: draftServicesTitle.trim() || siteData.services.sectionTitle,
+      },
       adminPin: trimmedPin,
       siteUrl: draftSiteUrl.trim() ? normalizeBaseUrl(draftSiteUrl.trim()) : undefined,
       seo: cleanedSeo,
@@ -465,6 +504,9 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
     }
 
     setDraftCompany(nextData.company);
+    setDraftHeroTitle(nextData.hero.title);
+    setDraftStats(nextData.hero.stats.map((s) => ({ ...s })));
+    setDraftServicesTitle(nextData.services.sectionTitle);
     setDraftPin(nextData.adminPin);
     setDraftSiteUrl(nextData.siteUrl ?? '');
     setDraftSeo(nextData.seo ?? { defaultOgImage: '', pages: {} });
@@ -721,6 +763,98 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
                       onChange={(e) => updateDraftCompany('address', e.target.value)}
                       className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
                     />
+                  </div>
+                </div>
+
+                {/* Main Hero Stats & Key Section Headings */}
+                <div className="pt-4 border-t border-slate-100 space-y-3">
+                  <div>
+                    <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
+                      메인 핵심 지표 · 섹션 문구 (누적 시공 · 경력 등)
+                    </h4>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      메인 상단 통계 카드와 서비스 섹션 제목을 여기서도 바로 수정해 코드에 저장할 수 있습니다.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {draftStats.map((stat, idx) => (
+                      <div
+                        key={stat.id}
+                        className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1.5"
+                      >
+                        <span className="block text-[10px] font-extrabold text-slate-400">
+                          지표 카드 {idx + 1}
+                        </span>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="text"
+                            value={stat.value}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setDraftStats((prev) =>
+                                prev.map((s) => (s.id === stat.id ? { ...s, value: val } : s))
+                              );
+                              setIsDirty(true);
+                              setSaveMessage('');
+                              setSaveError('');
+                            }}
+                            placeholder="수치 (예: 2,500건+)"
+                            className="w-full px-2.5 py-1.5 text-xs font-bold bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                          <input
+                            type="text"
+                            value={stat.label}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setDraftStats((prev) =>
+                                prev.map((s) => (s.id === stat.id ? { ...s, label: val } : s))
+                              );
+                              setIsDirty(true);
+                              setSaveMessage('');
+                              setSaveError('');
+                            }}
+                            placeholder="라벨 (예: 누적 시공)"
+                            className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        메인 히어로 제목
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={draftHeroTitle}
+                        onChange={(e) => {
+                          setDraftHeroTitle(e.target.value);
+                          setIsDirty(true);
+                          setSaveMessage('');
+                          setSaveError('');
+                        }}
+                        className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white resize-y"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        서비스 섹션 제목 (OUR SERVICES)
+                      </label>
+                      <input
+                        type="text"
+                        value={draftServicesTitle}
+                        onChange={(e) => {
+                          setDraftServicesTitle(e.target.value);
+                          setIsDirty(true);
+                          setSaveMessage('');
+                          setSaveError('');
+                        }}
+                        className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
+                      />
+                    </div>
                   </div>
                 </div>
 

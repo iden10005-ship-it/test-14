@@ -171,7 +171,15 @@ export default function App() {
       INITIAL_SITE_DATA.adminPin
   );
   const hasUserEditedRef = useRef<boolean>(false);
+  const hasPendingDiskSyncRef = useRef<boolean>(false);
+  const latestSiteDataRef = useRef<SiteData>(siteData);
+  const canWriteCodeRef = useRef<boolean>(false);
+  const isAdminModeRef = useRef<boolean>(isAdminMode);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  latestSiteDataRef.current = siteData;
+  canWriteCodeRef.current = canWriteCode;
+  isAdminModeRef.current = isAdminMode;
 
   // Active editing only allowed when authenticated in Admin Mode AND Edit Toggle is ON
   const activeEditMode = isAdminMode && isEditMode;
@@ -187,8 +195,8 @@ export default function App() {
         if (!active) return;
 
         if (cap.canWriteCode) {
+          canWriteCodeRef.current = true;
           setCanWriteCode(true);
-          setCodeSyncStatus('saved');
 
           const dataRes = await fetch('/api/admin/site-data', { cache: 'no-store' });
           if (dataRes.ok && active) {
@@ -197,14 +205,23 @@ export default function App() {
             const diskTime = parseTimeMs(diskData.updatedAt);
             const localTime = parseTimeMs(localData?.updatedAt);
 
-            if (localData && localTime > diskTime) {
+            if (
+              localData &&
+              localTime > diskTime &&
+              JSON.stringify(localData) !== JSON.stringify(diskData)
+            ) {
               // Preserve newer browser edits if disk snapshot was reset/older, and sync back to disk
               hasUserEditedRef.current = false;
+              hasPendingDiskSyncRef.current = true;
+              latestSiteDataRef.current = localData;
               setSiteData(localData);
 
               const isSessionAdmin = sessionStorage.getItem(ADMIN_SESSION_KEY) === 'true';
               const storedPin = sessionStorage.getItem(ADMIN_PIN_SESSION_KEY);
-              if (isSessionAdmin && (storedPin === diskData.adminPin || storedPin === localData.adminPin)) {
+              if (
+                isSessionAdmin &&
+                (storedPin === diskData.adminPin || storedPin === localData.adminPin)
+              ) {
                 try {
                   const resync = await fetch('/api/admin/save-site-data', {
                     method: 'POST',
@@ -217,18 +234,29 @@ export default function App() {
                   if (resync.ok && active) {
                     verifiedPinRef.current = localData.adminPin;
                     sessionStorage.setItem(ADMIN_PIN_SESSION_KEY, localData.adminPin);
+                    hasPendingDiskSyncRef.current = false;
                     setCodeSyncStatus('saved');
+                  } else if (active) {
+                    verifiedPinRef.current = diskData.adminPin;
+                    setCodeSyncStatus('unsynced');
                   }
                 } catch {
-                  // Keep localData on screen even if background resync fails
+                  if (active) {
+                    verifiedPinRef.current = diskData.adminPin;
+                    setCodeSyncStatus('unsynced');
+                  }
                 }
               } else {
                 verifiedPinRef.current = diskData.adminPin;
+                setCodeSyncStatus('unsynced');
               }
             } else {
               hasUserEditedRef.current = false;
+              hasPendingDiskSyncRef.current = false;
+              latestSiteDataRef.current = diskData;
               setSiteData(diskData);
               persistLocalSiteData(diskData);
+              setCodeSyncStatus('saved');
 
               const storedPin = sessionStorage.getItem(ADMIN_PIN_SESSION_KEY);
               if (!storedPin) {
@@ -237,9 +265,12 @@ export default function App() {
                 sessionStorage.removeItem(ADMIN_SESSION_KEY);
                 sessionStorage.removeItem(ADMIN_PIN_SESSION_KEY);
                 verifiedPinRef.current = diskData.adminPin;
+                isAdminModeRef.current = false;
                 setIsAdminMode(false);
               }
             }
+          } else if (active) {
+            setCodeSyncStatus('error');
           }
           return;
         }
@@ -248,6 +279,7 @@ export default function App() {
       }
 
       if (!active) return;
+      canWriteCodeRef.current = false;
       setCanWriteCode(false);
       setCodeSyncStatus('readonly');
     }
@@ -259,28 +291,35 @@ export default function App() {
   }, []);
 
   const saveSiteDataToCodebase = useCallback(
-    async (dataToSave: SiteData): Promise<{ ok: boolean; error?: string }> => {
-      if (!isAdminMode) {
+    async (
+      dataToSave: SiteData,
+      options?: { pinOverride?: string; forceAdmin?: boolean }
+    ): Promise<{ ok: boolean; error?: string }> => {
+      const effectiveAdmin = options?.forceAdmin ?? isAdminModeRef.current;
+      if (!effectiveAdmin) {
         return { ok: false, error: '관리자 모드에서만 저장할 수 있습니다.' };
       }
+      latestSiteDataRef.current = dataToSave;
       persistLocalSiteData(dataToSave);
 
-      if (!canWriteCode) {
+      if (!canWriteCodeRef.current && !canWriteCode) {
         return { ok: true };
       }
 
+      const pinHeader = options?.pinOverride ?? verifiedPinRef.current;
       setCodeSyncStatus('saving');
       try {
         const res = await fetch('/api/admin/save-site-data', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-admin-pin': verifiedPinRef.current,
+            'x-admin-pin': pinHeader,
           },
           body: JSON.stringify(dataToSave),
         });
         if (!res.ok) {
           const errBody = (await res.json().catch(() => ({}))) as { error?: string };
+          hasPendingDiskSyncRef.current = true;
           setCodeSyncStatus('error');
           return {
             ok: false,
@@ -288,6 +327,8 @@ export default function App() {
           };
         }
         verifiedPinRef.current = dataToSave.adminPin;
+        hasPendingDiskSyncRef.current = false;
+        hasUserEditedRef.current = false;
         try {
           sessionStorage.setItem(ADMIN_PIN_SESSION_KEY, dataToSave.adminPin);
         } catch {
@@ -296,22 +337,25 @@ export default function App() {
         setCodeSyncStatus('saved');
         return { ok: true };
       } catch {
+        hasPendingDiskSyncRef.current = true;
         setCodeSyncStatus('error');
         return { ok: false, error: '서버와 통신하는 중 네트워크 오류가 발생했습니다.' };
       }
     },
-    [canWriteCode, isAdminMode]
+    [canWriteCode]
   );
 
   // Wrapper so only intentional user/admin edits mark dirty and trigger codebase save
   const updateSiteData: React.Dispatch<React.SetStateAction<SiteData>> = useCallback((updater) => {
     hasUserEditedRef.current = true;
+    hasPendingDiskSyncRef.current = true;
     setSiteData((prev) => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
       const stamped: SiteData = {
         ...next,
         updatedAt: new Date().toISOString(),
       };
+      latestSiteDataRef.current = stamped;
       persistLocalSiteData(stamped);
       return stamped;
     });
@@ -328,6 +372,7 @@ export default function App() {
         ...nextData,
         updatedAt: new Date().toISOString(),
       };
+      latestSiteDataRef.current = stamped;
       persistLocalSiteData(stamped);
       setSiteData(stamped);
       return saveSiteDataToCodebase(stamped);
@@ -343,10 +388,11 @@ export default function App() {
       if (autoSaveTimerRef.current) {
         clearTimeout(autoSaveTimerRef.current);
       }
+      setCodeSyncStatus('saving');
       autoSaveTimerRef.current = setTimeout(() => {
         autoSaveTimerRef.current = null;
-        saveSiteDataToCodebase(siteData);
-      }, 400);
+        void saveSiteDataToCodebase(latestSiteDataRef.current);
+      }, 150);
       return () => {
         if (autoSaveTimerRef.current) {
           clearTimeout(autoSaveTimerRef.current);
@@ -360,6 +406,46 @@ export default function App() {
       persistLocalSiteData(siteData);
     }
   }, [siteData, canWriteCode, isAdminMode, saveSiteDataToCodebase]);
+
+  // Flush any pending edits to codebase immediately when tab is hidden or closing
+  useEffect(() => {
+    const flushPendingToDisk = () => {
+      if (!canWriteCodeRef.current || !isAdminModeRef.current) return;
+      if (!hasPendingDiskSyncRef.current && !hasUserEditedRef.current && !autoSaveTimerRef.current) {
+        return;
+      }
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = null;
+      }
+      try {
+        void fetch('/api/admin/save-site-data', {
+          method: 'POST',
+          keepalive: true,
+          headers: {
+            'Content-Type': 'application/json',
+            'x-admin-pin': verifiedPinRef.current,
+          },
+          body: JSON.stringify(latestSiteDataRef.current),
+        });
+      } catch {
+        // Ignore keepalive network issues on unload
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        flushPendingToDisk();
+      }
+    };
+
+    window.addEventListener('pagehide', flushPendingToDisk);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.removeEventListener('pagehide', flushPendingToDisk);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   useEffect(() => {
     try {
@@ -440,16 +526,25 @@ export default function App() {
   };
 
   const handleAdminLoginSuccess = () => {
-    verifiedPinRef.current = siteData.adminPin;
+    const currentData = latestSiteDataRef.current;
+    verifiedPinRef.current = currentData.adminPin;
+    isAdminModeRef.current = true;
     setIsAdminMode(true);
     setIsEditMode(true);
     try {
       sessionStorage.setItem(ADMIN_SESSION_KEY, 'true');
-      sessionStorage.setItem(ADMIN_PIN_SESSION_KEY, siteData.adminPin);
+      sessionStorage.setItem(ADMIN_PIN_SESSION_KEY, currentData.adminPin);
     } catch {
       // Ignore
     }
     clearAdminHash();
+
+    if (canWriteCodeRef.current && (hasPendingDiskSyncRef.current || hasUserEditedRef.current)) {
+      void saveSiteDataToCodebase(currentData, {
+        pinOverride: currentData.adminPin,
+        forceAdmin: true,
+      });
+    }
   };
 
   const handleLogoutAdmin = () => {
@@ -796,7 +891,7 @@ export default function App() {
           isEditMode={isEditMode}
           inquiryCount={inquiries.length}
           codeSyncStatus={codeSyncStatus}
-          onSaveNow={() => saveSiteDataToCodebase(siteData)}
+          onSaveNow={() => void saveSiteDataToCodebase(latestSiteDataRef.current)}
           onToggleEditMode={() => setIsEditMode((prev) => !prev)}
           onOpenSettings={() => setSettingsModalOpen(true)}
           onOpenInquiries={() => setInquiriesModalOpen(true)}

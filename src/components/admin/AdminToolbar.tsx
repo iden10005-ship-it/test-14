@@ -11,7 +11,7 @@ import {
   Shield,
 } from 'lucide-react';
 
-export type CodeSyncStatus = 'checking' | 'saved' | 'saving' | 'readonly' | 'error';
+export type CodeSyncStatus = 'checking' | 'saved' | 'saving' | 'unsynced' | 'readonly' | 'error';
 
 interface AdminToolbarProps {
   isEditMode: boolean;
@@ -55,15 +55,32 @@ export const AdminToolbar: React.FC<AdminToolbarProps> = ({
               <span>실제 코드 반영 완료</span>
             </span>
           )}
+          {codeSyncStatus === 'unsynced' && (
+            <button
+              type="button"
+              onClick={onSaveNow}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-[11px] font-bold cursor-pointer transition-colors"
+              title="브라우저에 남은 수정사항을 실제 코드에 저장합니다"
+            >
+              <span>코드 반영 대기중 (클릭 저장)</span>
+            </button>
+          )}
           {codeSyncStatus === 'readonly' && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 text-[11px] font-bold">
-              <span>배포 미리보기 모드</span>
+            <span
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 text-[11px] font-bold"
+              title="GitHub Pages/Vercel에서는 브라우저에만 임시 저장됩니다. 실제 코드 반영은 AI Studio 개발 화면에서 수정 후 Push하세요."
+            >
+              <span>배포 미리보기 (브라우저 임시저장)</span>
             </span>
           )}
           {codeSyncStatus === 'error' && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-500/20 text-red-300 text-[11px] font-bold">
-              <span>코드 저장 오류</span>
-            </span>
+            <button
+              type="button"
+              onClick={onSaveNow}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-500/20 hover:bg-red-500/30 text-red-300 text-[11px] font-bold cursor-pointer"
+            >
+              <span>코드 저장 오류 (재시도)</span>
+            </button>
           )}
 
           <span className="text-slate-600 hidden lg:inline">|</span>
