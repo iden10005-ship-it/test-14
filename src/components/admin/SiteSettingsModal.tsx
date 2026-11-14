@@ -3,11 +3,14 @@ import {
   AlertCircle,
   Check,
   CheckCircle2,
+  Copy,
   Download,
   ExternalLink,
   Eye,
+  FileCode2,
   Globe,
   Image as ImageIcon,
+  LayoutList,
   Loader2,
   Lock,
   Monitor,
@@ -52,7 +55,8 @@ export interface SuggestKeywordsResult {
   error?: string;
 }
 
-type ModalTab = 'general' | 'seo' | 'preview';
+type ModalTab = 'general' | 'content' | 'seo' | 'preview';
+type ContentCategory = 'hero' | 'services' | 'sections' | 'trust';
 type SeoCategory = 'core' | 'service' | 'region' | 'matrix' | 'gallery';
 
 interface SiteSettingsModalProps {
@@ -140,12 +144,37 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
   onResetDefaults,
 }) => {
   const [activeTab, setActiveTab] = useState<ModalTab>('general');
+  const [contentCategory, setContentCategory] = useState<ContentCategory>('hero');
 
   const [draftCompany, setDraftCompany] = useState<SiteData['company']>(siteData.company);
-  const [draftHeroTitle, setDraftHeroTitle] = useState<string>(siteData.hero.title);
-  const [draftStats, setDraftStats] = useState<SiteData['hero']['stats']>(siteData.hero.stats);
-  const [draftServicesTitle, setDraftServicesTitle] = useState<string>(
-    siteData.services.sectionTitle
+  const [draftHero, setDraftHero] = useState<SiteData['hero']>(siteData.hero);
+  const [draftServices, setDraftServices] = useState<SiteData['services']>(siteData.services);
+  const [draftProcess, setDraftProcess] = useState<SiteData['process']>(siteData.process);
+  const [draftPricing, setDraftPricing] = useState<SiteData['pricing']>(siteData.pricing);
+  const [draftRegionsMeta, setDraftRegionsMeta] = useState<{
+    sectionTitle: string;
+    sectionSubtitle: string;
+  }>({
+    sectionTitle: siteData.regions.sectionTitle,
+    sectionSubtitle: siteData.regions.sectionSubtitle,
+  });
+  const [draftGalleryMeta, setDraftGalleryMeta] = useState<{
+    sectionTitle: string;
+    sectionSubtitle: string;
+  }>({
+    sectionTitle: siteData.gallery.sectionTitle,
+    sectionSubtitle: siteData.gallery.sectionSubtitle,
+  });
+  const [draftReviewsMeta, setDraftReviewsMeta] = useState<{
+    sectionTitle: string;
+    sectionSubtitle: string;
+  }>({
+    sectionTitle: siteData.reviews.sectionTitle,
+    sectionSubtitle: siteData.reviews.sectionSubtitle,
+  });
+  const [draftFaq, setDraftFaq] = useState<SiteData['faq']>(siteData.faq);
+  const [draftContactForm, setDraftContactForm] = useState<SiteData['contactForm']>(
+    siteData.contactForm
   );
   const [draftPin, setDraftPin] = useState<string>(siteData.adminPin);
   const [draftSiteUrl, setDraftSiteUrl] = useState<string>(siteData.siteUrl ?? '');
@@ -186,6 +215,7 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
   const [saveError, setSaveError] = useState('');
+  const [copiedCodeJson, setCopiedCodeJson] = useState(false);
 
   const [importError, setImportError] = useState('');
   const [confirmReset, setConfirmReset] = useState(false);
@@ -198,9 +228,42 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
   useEffect(() => {
     if (isOpen && !wasOpenRef.current) {
       setDraftCompany(siteData.company);
-      setDraftHeroTitle(siteData.hero.title);
-      setDraftStats(siteData.hero.stats.map((s) => ({ ...s })));
-      setDraftServicesTitle(siteData.services.sectionTitle);
+      setDraftHero({
+        ...siteData.hero,
+        stats: siteData.hero.stats.map((s) => ({ ...s })),
+      });
+      setDraftServices({
+        ...siteData.services,
+        items: siteData.services.items.map((item) => ({
+          ...item,
+          detail: { ...item.detail },
+        })),
+      });
+      setDraftProcess({
+        ...siteData.process,
+        steps: siteData.process.steps.map((st) => ({ ...st })),
+      });
+      setDraftPricing({
+        ...siteData.pricing,
+        rows: siteData.pricing.rows.map((r) => ({ ...r })),
+      });
+      setDraftRegionsMeta({
+        sectionTitle: siteData.regions.sectionTitle,
+        sectionSubtitle: siteData.regions.sectionSubtitle,
+      });
+      setDraftGalleryMeta({
+        sectionTitle: siteData.gallery.sectionTitle,
+        sectionSubtitle: siteData.gallery.sectionSubtitle,
+      });
+      setDraftReviewsMeta({
+        sectionTitle: siteData.reviews.sectionTitle,
+        sectionSubtitle: siteData.reviews.sectionSubtitle,
+      });
+      setDraftFaq({
+        ...siteData.faq,
+        items: siteData.faq.items.map((f) => ({ ...f })),
+      });
+      setDraftContactForm({ ...siteData.contactForm });
       setDraftPin(siteData.adminPin);
       setDraftSiteUrl(siteData.siteUrl ?? '');
       setDraftSeo({
@@ -210,6 +273,7 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
       setIsDirty(false);
       setSaveMessage('');
       setSaveError('');
+      setCopiedCodeJson(false);
       setImportError('');
       setConfirmReset(false);
       setKeywordSuggestions([]);
@@ -246,15 +310,27 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
     () => ({
       ...siteData,
       company: draftCompany,
-      hero: {
-        ...siteData.hero,
-        title: draftHeroTitle,
-        stats: draftStats,
+      hero: draftHero,
+      services: draftServices,
+      process: draftProcess,
+      pricing: draftPricing,
+      regions: {
+        ...siteData.regions,
+        sectionTitle: draftRegionsMeta.sectionTitle,
+        sectionSubtitle: draftRegionsMeta.sectionSubtitle,
       },
-      services: {
-        ...siteData.services,
-        sectionTitle: draftServicesTitle,
+      gallery: {
+        ...siteData.gallery,
+        sectionTitle: draftGalleryMeta.sectionTitle,
+        sectionSubtitle: draftGalleryMeta.sectionSubtitle,
       },
+      reviews: {
+        ...siteData.reviews,
+        sectionTitle: draftReviewsMeta.sectionTitle,
+        sectionSubtitle: draftReviewsMeta.sectionSubtitle,
+      },
+      faq: draftFaq,
+      contactForm: draftContactForm,
       adminPin: draftPin.trim() || siteData.adminPin,
       siteUrl: draftSiteUrl.trim() || undefined,
       seo: cleanSeoSettings(draftSeo),
@@ -262,9 +338,15 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
     [
       siteData,
       draftCompany,
-      draftHeroTitle,
-      draftStats,
-      draftServicesTitle,
+      draftHero,
+      draftServices,
+      draftProcess,
+      draftPricing,
+      draftRegionsMeta,
+      draftGalleryMeta,
+      draftReviewsMeta,
+      draftFaq,
+      draftContactForm,
       draftPin,
       draftSiteUrl,
       draftSeo,
@@ -474,18 +556,40 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
         address: draftCompany.address.trim(),
       },
       hero: {
-        ...siteData.hero,
-        title: draftHeroTitle.trim() || siteData.hero.title,
-        stats: draftStats.map((stat) => ({
+        ...draftHero,
+        title: draftHero.title.trim() || siteData.hero.title,
+        stats: draftHero.stats.map((stat) => ({
           ...stat,
           value: stat.value.trim() || stat.value,
           label: stat.label.trim() || stat.label,
         })),
       },
       services: {
-        ...siteData.services,
-        sectionTitle: draftServicesTitle.trim() || siteData.services.sectionTitle,
+        ...draftServices,
+        sectionTitle: draftServices.sectionTitle.trim() || siteData.services.sectionTitle,
       },
+      process: draftProcess,
+      pricing: draftPricing,
+      regions: {
+        ...siteData.regions,
+        sectionTitle: draftRegionsMeta.sectionTitle.trim() || siteData.regions.sectionTitle,
+        sectionSubtitle:
+          draftRegionsMeta.sectionSubtitle.trim() || siteData.regions.sectionSubtitle,
+      },
+      gallery: {
+        ...siteData.gallery,
+        sectionTitle: draftGalleryMeta.sectionTitle.trim() || siteData.gallery.sectionTitle,
+        sectionSubtitle:
+          draftGalleryMeta.sectionSubtitle.trim() || siteData.gallery.sectionSubtitle,
+      },
+      reviews: {
+        ...siteData.reviews,
+        sectionTitle: draftReviewsMeta.sectionTitle.trim() || siteData.reviews.sectionTitle,
+        sectionSubtitle:
+          draftReviewsMeta.sectionSubtitle.trim() || siteData.reviews.sectionSubtitle,
+      },
+      faq: draftFaq,
+      contactForm: draftContactForm,
       adminPin: trimmedPin,
       siteUrl: draftSiteUrl.trim() ? normalizeBaseUrl(draftSiteUrl.trim()) : undefined,
       seo: cleanedSeo,
@@ -504,9 +608,42 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
     }
 
     setDraftCompany(nextData.company);
-    setDraftHeroTitle(nextData.hero.title);
-    setDraftStats(nextData.hero.stats.map((s) => ({ ...s })));
-    setDraftServicesTitle(nextData.services.sectionTitle);
+    setDraftHero({
+      ...nextData.hero,
+      stats: nextData.hero.stats.map((s) => ({ ...s })),
+    });
+    setDraftServices({
+      ...nextData.services,
+      items: nextData.services.items.map((item) => ({
+        ...item,
+        detail: { ...item.detail },
+      })),
+    });
+    setDraftProcess({
+      ...nextData.process,
+      steps: nextData.process.steps.map((st) => ({ ...st })),
+    });
+    setDraftPricing({
+      ...nextData.pricing,
+      rows: nextData.pricing.rows.map((r) => ({ ...r })),
+    });
+    setDraftRegionsMeta({
+      sectionTitle: nextData.regions.sectionTitle,
+      sectionSubtitle: nextData.regions.sectionSubtitle,
+    });
+    setDraftGalleryMeta({
+      sectionTitle: nextData.gallery.sectionTitle,
+      sectionSubtitle: nextData.gallery.sectionSubtitle,
+    });
+    setDraftReviewsMeta({
+      sectionTitle: nextData.reviews.sectionTitle,
+      sectionSubtitle: nextData.reviews.sectionSubtitle,
+    });
+    setDraftFaq({
+      ...nextData.faq,
+      items: nextData.faq.items.map((f) => ({ ...f })),
+    });
+    setDraftContactForm({ ...nextData.contactForm });
     setDraftPin(nextData.adminPin);
     setDraftSiteUrl(nextData.siteUrl ?? '');
     setDraftSeo(nextData.seo ?? { defaultOgImage: '', pages: {} });
@@ -519,7 +656,7 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
 
     setSaveMessage(
       canWriteCode
-        ? '설정 및 페이지별 SEO 정보가 코드에 반영되어 저장되었습니다.'
+        ? '설정이 프리뷰 서버에 저장되었습니다. (GitHub 동기화는 아래 코드 복사를 참고하세요)'
         : '설정 및 페이지별 SEO 정보가 저장되었습니다.'
     );
   };
@@ -626,6 +763,18 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
           >
             <Settings className="w-3.5 h-3.5" />
             <span>기본 정보 · 백업</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('content')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors ${
+              activeTab === 'content'
+                ? 'bg-indigo-600 text-white shadow-xs'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            <LayoutList className="w-3.5 h-3.5" />
+            <span>콘텐츠 · 섹션 관리</span>
           </button>
           <button
             type="button"
@@ -768,17 +917,26 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
 
                 {/* Main Hero Stats & Key Section Headings */}
                 <div className="pt-4 border-t border-slate-100 space-y-3">
-                  <div>
-                    <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
-                      메인 핵심 지표 · 섹션 문구 (누적 시공 · 경력 등)
-                    </h4>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
-                      메인 상단 통계 카드와 서비스 섹션 제목을 여기서도 바로 수정해 코드에 저장할 수 있습니다.
-                    </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
+                        메인 핵심 지표 · 섹션 문구 (누적 시공 · 경력 등)
+                      </h4>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        더 많은 섹션·서비스 카드 문구는 상단 &lsquo;콘텐츠 · 섹션 관리&rsquo; 탭에서 카테고리별로 수정하세요.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('content')}
+                      className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[11px] font-bold shrink-0 cursor-pointer transition-colors"
+                    >
+                      전체 콘텐츠 관리 →
+                    </button>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {draftStats.map((stat, idx) => (
+                    {draftHero.stats.map((stat, idx) => (
                       <div
                         key={stat.id}
                         className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1.5"
@@ -792,9 +950,12 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
                             value={stat.value}
                             onChange={(e) => {
                               const val = e.target.value;
-                              setDraftStats((prev) =>
-                                prev.map((s) => (s.id === stat.id ? { ...s, value: val } : s))
-                              );
+                              setDraftHero((prev) => ({
+                                ...prev,
+                                stats: prev.stats.map((s) =>
+                                  s.id === stat.id ? { ...s, value: val } : s
+                                ),
+                              }));
                               setIsDirty(true);
                               setSaveMessage('');
                               setSaveError('');
@@ -807,9 +968,12 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
                             value={stat.label}
                             onChange={(e) => {
                               const val = e.target.value;
-                              setDraftStats((prev) =>
-                                prev.map((s) => (s.id === stat.id ? { ...s, label: val } : s))
-                              );
+                              setDraftHero((prev) => ({
+                                ...prev,
+                                stats: prev.stats.map((s) =>
+                                  s.id === stat.id ? { ...s, label: val } : s
+                                ),
+                              }));
                               setIsDirty(true);
                               setSaveMessage('');
                               setSaveError('');
@@ -829,9 +993,9 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
                       </label>
                       <textarea
                         rows={2}
-                        value={draftHeroTitle}
+                        value={draftHero.title}
                         onChange={(e) => {
-                          setDraftHeroTitle(e.target.value);
+                          setDraftHero((prev) => ({ ...prev, title: e.target.value }));
                           setIsDirty(true);
                           setSaveMessage('');
                           setSaveError('');
@@ -845,9 +1009,9 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
                       </label>
                       <input
                         type="text"
-                        value={draftServicesTitle}
+                        value={draftServices.sectionTitle}
                         onChange={(e) => {
-                          setDraftServicesTitle(e.target.value);
+                          setDraftServices((prev) => ({ ...prev, sectionTitle: e.target.value }));
                           setIsDirty(true);
                           setSaveMessage('');
                           setSaveError('');
@@ -1029,12 +1193,59 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
                 )}
               </div>
 
-              {/* Backup & Reset */}
+              {/* Backup, GitHub Sync Helper & Reset */}
               <div className="pt-4 border-t border-slate-100 space-y-3">
                 <h4 className="text-xs font-extrabold text-slate-900">
-                  데이터 백업 · 복원 · 초기화
+                  데이터 백업 · GitHub 동기화 안내 · 초기화
                 </h4>
+
+                <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 space-y-2 text-[11px] text-amber-950 leading-relaxed">
+                  <p className="font-extrabold flex items-center gap-1.5 text-amber-900">
+                    <FileCode2 className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span>GitHub 동기화 버튼에 &ldquo;변경된 코드 없음&rdquo;이 뜰 때</span>
+                  </p>
+                  <p>
+                    미리보기 화면(바로 편집·사이트 설정)에서 바꾼 내용은 현재 미리보기 서버에는 즉시 저장되지만,{' '}
+                    <strong>AI Studio의 GitHub 동기화는 에디터/채팅에서 수정한 파일만 변경 내역으로 감지</strong>합니다.
+                    GitHub까지 반영하려면 수정 후{' '}
+                    <strong>채팅창에 &ldquo;방금 수정한 내용 GitHub 동기화되게 반영해줘&rdquo;</strong>라고 요청하시거나,
+                    아래 <strong>코드(JSON) 복사</strong> 버튼으로{' '}
+                    <code className="px-1 py-0.5 rounded bg-amber-100 font-mono">
+                      src/data/siteContent.json
+                    </code>{' '}
+                    파일에 붙여넣어 주세요.
+                  </p>
+                </div>
+
                 <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const jsonText = `${JSON.stringify(
+                        { ...draftPreviewData, updatedAt: new Date().toISOString() },
+                        null,
+                        2
+                      )}\n`;
+                      navigator.clipboard.writeText(jsonText);
+                      setCopiedCodeJson(true);
+                      setTimeout(() => setCopiedCodeJson(false), 2500);
+                    }}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors ${
+                      copiedCodeJson
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                    }`}
+                  >
+                    {copiedCodeJson ? (
+                      <Check className="w-3.5 h-3.5" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5" />
+                    )}
+                    <span>
+                      {copiedCodeJson ? 'siteContent.json 복사 완료!' : 'siteContent.json 코드 복사'}
+                    </span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={handleExportJson}
@@ -1093,6 +1304,673 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
                 {importError && <p className="text-xs text-red-600">{importError}</p>}
               </div>
             </>
+          ) : activeTab === 'content' ? (
+            /* CONTENT & SECTIONS MANAGEMENT TAB */
+            <div className="space-y-4">
+              {/* Sub-category Pills */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                <div className="flex flex-wrap gap-1.5">
+                  {(
+                    [
+                      { id: 'hero', label: '히어로 · 배너' },
+                      { id: 'services', label: `서비스 카드 (${draftServices.items.length})` },
+                      { id: 'sections', label: '절차 · 요금 · 지역' },
+                      { id: 'trust', label: '갤러리 · 후기 · FAQ · 문의' },
+                    ] as const
+                  ).map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setContentCategory(cat.id)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-colors ${
+                        contentCategory === cat.id
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => handleSaveChanges(false)}
+                  className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1 cursor-pointer disabled:opacity-60"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>{saving ? '저장 중...' : '수정하기'}</span>
+                </button>
+              </div>
+
+              {saveError && (
+                <p className="text-xs font-semibold text-red-600 flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{saveError}</span>
+                </p>
+              )}
+              {!saveError && saveMessage && (
+                <p className="text-xs font-semibold text-emerald-700 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>{saveMessage}</span>
+                </p>
+              )}
+
+              {contentCategory === 'hero' && (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        상단 배지 문구
+                      </label>
+                      <input
+                        type="text"
+                        value={draftHero.badgeText}
+                        onChange={(e) => {
+                          setDraftHero((prev) => ({ ...prev, badgeText: e.target.value }));
+                          setIsDirty(true);
+                        }}
+                        className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        전/후 슬라이더 안내 문구
+                      </label>
+                      <input
+                        type="text"
+                        value={draftHero.beforeAfterNotice}
+                        onChange={(e) => {
+                          setDraftHero((prev) => ({
+                            ...prev,
+                            beforeAfterNotice: e.target.value,
+                          }));
+                          setIsDirty(true);
+                        }}
+                        className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      메인 히어로 제목 (줄바꿈 가능)
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={draftHero.title}
+                      onChange={(e) => {
+                        setDraftHero((prev) => ({ ...prev, title: e.target.value }));
+                        setIsDirty(true);
+                      }}
+                      className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white resize-y"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      메인 히어로 부제목
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={draftHero.subtitle}
+                      onChange={(e) => {
+                        setDraftHero((prev) => ({ ...prev, subtitle: e.target.value }));
+                        setIsDirty(true);
+                      }}
+                      className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white resize-y"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        전화 버튼 문구
+                      </label>
+                      <input
+                        type="text"
+                        value={draftHero.callButtonText}
+                        onChange={(e) => {
+                          setDraftHero((prev) => ({ ...prev, callButtonText: e.target.value }));
+                          setIsDirty(true);
+                        }}
+                        className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        카톡 버튼 문구
+                      </label>
+                      <input
+                        type="text"
+                        value={draftHero.kakaoButtonText}
+                        onChange={(e) => {
+                          setDraftHero((prev) => ({ ...prev, kakaoButtonText: e.target.value }));
+                          setIsDirty(true);
+                        }}
+                        className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        청소 전 라벨
+                      </label>
+                      <input
+                        type="text"
+                        value={draftHero.beforeLabel}
+                        onChange={(e) => {
+                          setDraftHero((prev) => ({ ...prev, beforeLabel: e.target.value }));
+                          setIsDirty(true);
+                        }}
+                        className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        청소 후 라벨
+                      </label>
+                      <input
+                        type="text"
+                        value={draftHero.afterLabel}
+                        onChange={(e) => {
+                          setDraftHero((prev) => ({ ...prev, afterLabel: e.target.value }));
+                          setIsDirty(true);
+                        }}
+                        className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {contentCategory === 'services' && (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-200">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        서비스 섹션 제목
+                      </label>
+                      <input
+                        type="text"
+                        value={draftServices.sectionTitle}
+                        onChange={(e) => {
+                          setDraftServices((prev) => ({ ...prev, sectionTitle: e.target.value }));
+                          setIsDirty(true);
+                        }}
+                        className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        서비스 섹션 부제목
+                      </label>
+                      <input
+                        type="text"
+                        value={draftServices.sectionSubtitle}
+                        onChange={(e) => {
+                          setDraftServices((prev) => ({
+                            ...prev,
+                            sectionSubtitle: e.target.value,
+                          }));
+                          setIsDirty(true);
+                        }}
+                        className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    {draftServices.items.map((srv, idx) => (
+                      <div
+                        key={srv.id}
+                        className="p-3.5 rounded-2xl bg-white border border-slate-200 space-y-2.5"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-extrabold text-indigo-700">
+                            서비스 카드 #{idx + 1}
+                          </span>
+                          <span className="text-[10px] font-mono text-slate-400">
+                            ID: {srv.id}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                              카드 제목
+                            </label>
+                            <input
+                              type="text"
+                              value={srv.title}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setDraftServices((prev) => ({
+                                  ...prev,
+                                  items: prev.items.map((item) =>
+                                    item.id === srv.id ? { ...item, title: val } : item
+                                  ),
+                                }));
+                                setIsDirty(true);
+                              }}
+                              className="w-full px-2.5 py-1.5 text-xs font-bold bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                              우측 상단 배지
+                            </label>
+                            <input
+                              type="text"
+                              value={srv.badge ?? ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setDraftServices((prev) => ({
+                                  ...prev,
+                                  items: prev.items.map((item) =>
+                                    item.id === srv.id ? { ...item, badge: val } : item
+                                  ),
+                                }));
+                                setIsDirty(true);
+                              }}
+                              placeholder="비워두면 배지 숨김"
+                              className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                            카드 설명 문구
+                          </label>
+                          <textarea
+                            rows={2}
+                            value={srv.description}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setDraftServices((prev) => ({
+                                ...prev,
+                                items: prev.items.map((item) =>
+                                  item.id === srv.id ? { ...item, description: val } : item
+                                ),
+                              }));
+                              setIsDirty(true);
+                            }}
+                            className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white resize-y"
+                          />
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                              소요 시간 안내
+                            </label>
+                            <input
+                              type="text"
+                              value={srv.detail.duration}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setDraftServices((prev) => ({
+                                  ...prev,
+                                  items: prev.items.map((item) =>
+                                    item.id === srv.id
+                                      ? { ...item, detail: { ...item.detail, duration: val } }
+                                      : item
+                                  ),
+                                }));
+                                setIsDirty(true);
+                              }}
+                              className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                              예상 비용 안내
+                            </label>
+                            <input
+                              type="text"
+                              value={srv.detail.priceGuide}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setDraftServices((prev) => ({
+                                  ...prev,
+                                  items: prev.items.map((item) =>
+                                    item.id === srv.id
+                                      ? { ...item, detail: { ...item.detail, priceGuide: val } }
+                                      : item
+                                  ),
+                                }));
+                                setIsDirty(true);
+                              }}
+                              className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {contentCategory === 'sections' && (
+                <div className="space-y-4">
+                  {/* Process Section */}
+                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
+                    <h5 className="text-xs font-extrabold text-slate-900">작업 진행 절차 (PROCESS)</h5>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <input
+                        type="text"
+                        value={draftProcess.sectionTitle}
+                        onChange={(e) => {
+                          setDraftProcess((prev) => ({ ...prev, sectionTitle: e.target.value }));
+                          setIsDirty(true);
+                        }}
+                        placeholder="섹션 제목"
+                        className="w-full px-2.5 py-1.5 text-xs font-bold bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                      <input
+                        type="text"
+                        value={draftProcess.sectionSubtitle}
+                        onChange={(e) => {
+                          setDraftProcess((prev) => ({
+                            ...prev,
+                            sectionSubtitle: e.target.value,
+                          }));
+                          setIsDirty(true);
+                        }}
+                        placeholder="섹션 부제목"
+                        className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {draftProcess.steps.map((st) => (
+                        <div
+                          key={st.step}
+                          className="p-2.5 rounded-xl bg-white border border-slate-200 space-y-1.5"
+                        >
+                          <span className="block text-[10px] font-extrabold text-indigo-600">
+                            STEP 0{st.step}
+                          </span>
+                          <input
+                            type="text"
+                            value={st.title}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setDraftProcess((prev) => ({
+                                ...prev,
+                                steps: prev.steps.map((s) =>
+                                  s.step === st.step ? { ...s, title: val } : s
+                                ),
+                              }));
+                              setIsDirty(true);
+                            }}
+                            className="w-full px-2 py-1 text-xs font-bold bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                          <textarea
+                            rows={2}
+                            value={st.description}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setDraftProcess((prev) => ({
+                                ...prev,
+                                steps: prev.steps.map((s) =>
+                                  s.step === st.step ? { ...s, description: val } : s
+                                ),
+                              }));
+                              setIsDirty(true);
+                            }}
+                            className="w-full px-2 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Pricing Section */}
+                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
+                    <h5 className="text-xs font-extrabold text-slate-900">요금 안내 (PRICING)</h5>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <input
+                        type="text"
+                        value={draftPricing.sectionTitle}
+                        onChange={(e) => {
+                          setDraftPricing((prev) => ({ ...prev, sectionTitle: e.target.value }));
+                          setIsDirty(true);
+                        }}
+                        placeholder="섹션 제목"
+                        className="w-full px-2.5 py-1.5 text-xs font-bold bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                      <input
+                        type="text"
+                        value={draftPricing.sectionSubtitle}
+                        onChange={(e) => {
+                          setDraftPricing((prev) => ({
+                            ...prev,
+                            sectionSubtitle: e.target.value,
+                          }));
+                          setIsDirty(true);
+                        }}
+                        placeholder="섹션 부제목"
+                        className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <input
+                      type="text"
+                      value={draftPricing.footerNote}
+                      onChange={(e) => {
+                        setDraftPricing((prev) => ({ ...prev, footerNote: e.target.value }));
+                        setIsDirty(true);
+                      }}
+                      placeholder="표 하단 유의사항 문구"
+                      className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+
+                  {/* Regions Section */}
+                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
+                    <h5 className="text-xs font-extrabold text-slate-900">서비스 지역 안내</h5>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <input
+                        type="text"
+                        value={draftRegionsMeta.sectionTitle}
+                        onChange={(e) => {
+                          setDraftRegionsMeta((prev) => ({ ...prev, sectionTitle: e.target.value }));
+                          setIsDirty(true);
+                        }}
+                        placeholder="지역 섹션 제목"
+                        className="w-full px-2.5 py-1.5 text-xs font-bold bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                      <input
+                        type="text"
+                        value={draftRegionsMeta.sectionSubtitle}
+                        onChange={(e) => {
+                          setDraftRegionsMeta((prev) => ({
+                            ...prev,
+                            sectionSubtitle: e.target.value,
+                          }));
+                          setIsDirty(true);
+                        }}
+                        placeholder="지역 섹션 부제목"
+                        className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {contentCategory === 'trust' && (
+                <div className="space-y-4">
+                  {/* Gallery & Reviews Titles */}
+                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                    <h5 className="text-xs font-extrabold text-slate-900">
+                      작업 갤러리 · 고객 후기 문구
+                    </h5>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <input
+                        type="text"
+                        value={draftGalleryMeta.sectionTitle}
+                        onChange={(e) => {
+                          setDraftGalleryMeta((prev) => ({ ...prev, sectionTitle: e.target.value }));
+                          setIsDirty(true);
+                        }}
+                        placeholder="갤러리 제목"
+                        className="w-full px-2.5 py-1.5 text-xs font-bold bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                      <input
+                        type="text"
+                        value={draftGalleryMeta.sectionSubtitle}
+                        onChange={(e) => {
+                          setDraftGalleryMeta((prev) => ({
+                            ...prev,
+                            sectionSubtitle: e.target.value,
+                          }));
+                          setIsDirty(true);
+                        }}
+                        placeholder="갤러리 부제목"
+                        className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                      <input
+                        type="text"
+                        value={draftReviewsMeta.sectionTitle}
+                        onChange={(e) => {
+                          setDraftReviewsMeta((prev) => ({ ...prev, sectionTitle: e.target.value }));
+                          setIsDirty(true);
+                        }}
+                        placeholder="고객 후기 제목"
+                        className="w-full px-2.5 py-1.5 text-xs font-bold bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                      <input
+                        type="text"
+                        value={draftReviewsMeta.sectionSubtitle}
+                        onChange={(e) => {
+                          setDraftReviewsMeta((prev) => ({
+                            ...prev,
+                            sectionSubtitle: e.target.value,
+                          }));
+                          setIsDirty(true);
+                        }}
+                        placeholder="고객 후기 부제목"
+                        className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* FAQ Items */}
+                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
+                    <h5 className="text-xs font-extrabold text-slate-900">
+                      자주 묻는 질문 (FAQ)
+                    </h5>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <input
+                        type="text"
+                        value={draftFaq.sectionTitle}
+                        onChange={(e) => {
+                          setDraftFaq((prev) => ({ ...prev, sectionTitle: e.target.value }));
+                          setIsDirty(true);
+                        }}
+                        placeholder="FAQ 섹션 제목"
+                        className="w-full px-2.5 py-1.5 text-xs font-bold bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                      <input
+                        type="text"
+                        value={draftFaq.sectionSubtitle}
+                        onChange={(e) => {
+                          setDraftFaq((prev) => ({ ...prev, sectionSubtitle: e.target.value }));
+                          setIsDirty(true);
+                        }}
+                        placeholder="FAQ 섹션 부제목"
+                        className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                      {draftFaq.items.map((item, idx) => (
+                        <div
+                          key={item.id}
+                          className="p-2.5 rounded-xl bg-white border border-slate-200 space-y-1.5"
+                        >
+                          <span className="block text-[10px] font-extrabold text-slate-400">
+                            Q{idx + 1}
+                          </span>
+                          <input
+                            type="text"
+                            value={item.question}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setDraftFaq((prev) => ({
+                                ...prev,
+                                items: prev.items.map((f) =>
+                                  f.id === item.id ? { ...f, question: val } : f
+                                ),
+                              }));
+                              setIsDirty(true);
+                            }}
+                            className="w-full px-2 py-1 text-xs font-bold bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                          <textarea
+                            rows={2}
+                            value={item.answer}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setDraftFaq((prev) => ({
+                                ...prev,
+                                items: prev.items.map((f) =>
+                                  f.id === item.id ? { ...f, answer: val } : f
+                                ),
+                              }));
+                              setIsDirty(true);
+                            }}
+                            className="w-full px-2 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Contact Form */}
+                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
+                    <h5 className="text-xs font-extrabold text-slate-900">견적 문의 폼 문구</h5>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <input
+                        type="text"
+                        value={draftContactForm.sectionTitle}
+                        onChange={(e) => {
+                          setDraftContactForm((prev) => ({
+                            ...prev,
+                            sectionTitle: e.target.value,
+                          }));
+                          setIsDirty(true);
+                        }}
+                        placeholder="문의 폼 제목"
+                        className="w-full px-2.5 py-1.5 text-xs font-bold bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                      <input
+                        type="text"
+                        value={draftContactForm.sectionSubtitle}
+                        onChange={(e) => {
+                          setDraftContactForm((prev) => ({
+                            ...prev,
+                            sectionSubtitle: e.target.value,
+                          }));
+                          setIsDirty(true);
+                        }}
+                        placeholder="문의 폼 부제목"
+                        className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <input
+                      type="text"
+                      value={draftContactForm.successMessage}
+                      onChange={(e) => {
+                        setDraftContactForm((prev) => ({
+                          ...prev,
+                          successMessage: e.target.value,
+                        }));
+                        setIsDirty(true);
+                      }}
+                      placeholder="접수 완료 안내 문구"
+                      className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
           ) : activeTab === 'seo' ? (
             /* SEO SETTINGS TAB */
             <div className="space-y-5">
