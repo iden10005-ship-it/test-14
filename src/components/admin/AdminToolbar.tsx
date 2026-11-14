@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  BookOpen,
   CheckCircle2,
   Eye,
   Inbox,
@@ -16,9 +17,11 @@ export type CodeSyncStatus = 'checking' | 'saved' | 'saving' | 'readonly' | 'err
 interface AdminToolbarProps {
   isEditMode: boolean;
   inquiryCount: number;
+  blogCount?: number;
   codeSyncStatus: CodeSyncStatus;
   onSaveNow: () => void;
   onToggleEditMode: () => void;
+  onOpenBlogManager: () => void;
   onOpenSettings: () => void;
   onOpenInquiries: () => void;
   onExitAdmin: () => void;
@@ -27,9 +30,11 @@ interface AdminToolbarProps {
 export const AdminToolbar: React.FC<AdminToolbarProps> = ({
   isEditMode,
   inquiryCount,
+  blogCount = 0,
   codeSyncStatus,
   onSaveNow,
   onToggleEditMode,
+  onOpenBlogManager,
   onOpenSettings,
   onOpenInquiries,
   onExitAdmin,
@@ -107,6 +112,19 @@ export const AdminToolbar: React.FC<AdminToolbarProps> = ({
                 <span>바로 편집 켜기</span>
               </>
             )}
+          </button>
+
+          <button
+            type="button"
+            onClick={onOpenBlogManager}
+            className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap"
+            title="업계 팁 및 프로젝트 소식 블로그 작성·관리"
+          >
+            <BookOpen className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Blog</span>
+            <span className="px-1.5 py-0.2 rounded bg-slate-700 text-slate-200 text-[10px] tabular-nums">
+              {blogCount}
+            </span>
           </button>
 
           <button

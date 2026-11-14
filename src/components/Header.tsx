@@ -24,6 +24,7 @@ interface HeaderProps {
   onNavigateHome: () => void;
   onNavigateService: (serviceId: string) => void;
   onNavigateGalleryList: () => void;
+  onNavigateBlogList: () => void;
   onScrollToSection: (sectionId: string) => void;
 }
 
@@ -39,6 +40,7 @@ export const Header: React.FC<HeaderProps> = ({
   onNavigateHome,
   onNavigateService,
   onNavigateGalleryList,
+  onNavigateBlogList,
   onScrollToSection,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -256,6 +258,25 @@ export const Header: React.FC<HeaderProps> = ({
 
             <button
               type="button"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                if (currentPage.type === 'home') {
+                  handleSectionLink('blog');
+                } else {
+                  onNavigateBlogList();
+                }
+              }}
+              className={`px-3 py-2 text-sm font-bold rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                currentPage.type === 'blog_list' || currentPage.type === 'blog_detail'
+                  ? 'text-blue-600 bg-blue-50/70'
+                  : 'text-slate-700 hover:text-blue-600 hover:bg-slate-50'
+              }`}
+            >
+              블로그
+            </button>
+
+            <button
+              type="button"
               onClick={() => handleSectionLink('price')}
               className="px-3 py-2 text-sm font-bold text-slate-700 hover:text-blue-600 hover:bg-slate-50 rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer"
             >
@@ -383,6 +404,16 @@ export const Header: React.FC<HeaderProps> = ({
                 className="w-full text-left px-3.5 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 rounded-xl"
               >
                 작업갤러리 (현장일지)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onNavigateBlogList();
+                }}
+                className="w-full text-left px-3.5 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 rounded-xl"
+              >
+                블로그 (관리 가이드 · 소식)
               </button>
               <button
                 type="button"

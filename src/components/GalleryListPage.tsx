@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { GalleryPostModal } from '@/src/components/admin/GalleryPostModal';
 import type { GalleryPost } from '@/src/types/clearworks';
+import { resolveAssetUrl } from '@/src/utils/assetUrl';
 
 interface GalleryListPageProps {
   posts: GalleryPost[];
@@ -174,7 +175,7 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
                 <div>
                   <div className="relative aspect-[16/10] bg-slate-900 overflow-hidden">
                     <img
-                      src={post.coverImage || post.afterImage}
+                      src={resolveAssetUrl(post.coverImage || post.afterImage)}
                       alt={post.title}
                       referrerPolicy="no-referrer"
                       loading="lazy"

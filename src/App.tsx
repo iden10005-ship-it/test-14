@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { BlogDetailPage } from '@/src/components/BlogDetailPage';
+import { BlogListPage } from '@/src/components/BlogListPage';
+import { BlogSection } from '@/src/components/BlogSection';
 import { ContactSection } from '@/src/components/ContactSection';
 import { FaqSection } from '@/src/components/FaqSection';
 import { Footer } from '@/src/components/Footer';
@@ -18,6 +21,8 @@ import { ServiceDetailPage } from '@/src/components/ServiceDetailPage';
 import { ServicesSection } from '@/src/components/ServicesSection';
 import { AdminLoginModal } from '@/src/components/admin/AdminLoginModal';
 import { AdminToolbar, type CodeSyncStatus } from '@/src/components/admin/AdminToolbar';
+import { BlogManagerModal } from '@/src/components/admin/BlogManagerModal';
+import { BlogPostModal } from '@/src/components/admin/BlogPostModal';
 import {
   ImageEditorModal,
   type ImageEditTarget,
@@ -29,10 +34,12 @@ import {
 } from '@/src/components/admin/SiteSettingsModal';
 import {
   CLEARWORKS_IMAGES,
+  DEFAULT_BLOG_DATA,
   DEFAULT_SITE_DATA,
   INITIAL_SITE_DATA,
 } from '@/src/data/clearworksData';
 import type {
+  BlogPost,
   CompanyInfo,
   GalleryPost,
   HeroData,
@@ -129,6 +136,10 @@ function parseHashRoute(): PageRoute {
     if (parts[1]) return { type: 'gallery_detail', postId: parts[1] };
     return { type: 'gallery_list' };
   }
+  if (parts[0] === 'blog') {
+    if (parts[1]) return { type: 'blog_detail', postId: parts[1] };
+    return { type: 'blog_list' };
+  }
   return { type: 'home' };
 }
 
@@ -146,6 +157,10 @@ function buildHashForRoute(route: PageRoute): string {
       return '#/gallery';
     case 'gallery_detail':
       return `#/gallery/${encodeURIComponent(route.postId)}`;
+    case 'blog_list':
+      return '#/blog';
+    case 'blog_detail':
+      return `#/blog/${encodeURIComponent(route.postId)}`;
   }
 }
 
@@ -164,6 +179,9 @@ export default function App() {
   const [loginModalOpen, setLoginModalOpen] = useState<boolean>(() => isAdminHash());
   const [settingsModalOpen, setSettingsModalOpen] = useState<boolean>(false);
   const [inquiriesModalOpen, setInquiriesModalOpen] = useState<boolean>(false);
+  const [blogManagerModalOpen, setBlogManagerModalOpen] = useState<boolean>(false);
+  const [blogPostModalOpen, setBlogPostModalOpen] = useState<boolean>(false);
+  const [editingBlogPost, setEditingBlogPost] = useState<BlogPost | null>(null);
   const [imageEditTarget, setImageEditTarget] = useState<ImageEditTarget | null>(null);
 
   const verifiedPinRef = useRef<string>(
@@ -627,6 +645,62 @@ export default function App() {
     }));
   };
 
+  const updateBlogPostField = (
+    postId: string,
+    field: 'title' | 'excerpt' | 'coverImage',
+    val: string
+  ) => {
+    updateSiteData((prev) => {
+      const currentBlog = prev.blog ?? DEFAULT_BLOG_DATA;
+      return {
+        ...prev,
+        blog: {
+          ...currentBlog,
+          posts: currentBlog.posts.map((p) => (p.id === postId ? { ...p, [field]: val } : p)),
+        },
+      };
+    });
+  };
+
+  const addBlogPost = (post: BlogPost) => {
+    updateSiteData((prev) => {
+      const currentBlog = prev.blog ?? DEFAULT_BLOG_DATA;
+      return {
+        ...prev,
+        blog: {
+          ...currentBlog,
+          posts: [post, ...currentBlog.posts],
+        },
+      };
+    });
+  };
+
+  const updateBlogPost = (updated: BlogPost) => {
+    updateSiteData((prev) => {
+      const currentBlog = prev.blog ?? DEFAULT_BLOG_DATA;
+      return {
+        ...prev,
+        blog: {
+          ...currentBlog,
+          posts: currentBlog.posts.map((p) => (p.id === updated.id ? updated : p)),
+        },
+      };
+    });
+  };
+
+  const deleteBlogPost = (postId: string) => {
+    updateSiteData((prev) => {
+      const currentBlog = prev.blog ?? DEFAULT_BLOG_DATA;
+      return {
+        ...prev,
+        blog: {
+          ...currentBlog,
+          posts: currentBlog.posts.filter((p) => p.id !== postId),
+        },
+      };
+    });
+  };
+
   const updatePricingRow = (id: string, field: 'category' | 'standard' | 'price', val: string) => {
     updateSiteData((prev) => ({
       ...prev,
@@ -789,15 +863,23 @@ export default function App() {
         siteData.gallery.posts[0]
       : siteData.gallery.posts[0];
 
+  const blogData = siteData.blog ?? DEFAULT_BLOG_DATA;
+  const activeBlogPost =
+    route.type === 'blog_detail'
+      ? blogData.posts.find((p) => p.id === route.postId) ?? blogData.posts[0]
+      : blogData.posts[0];
+
   return (
     <div className="min-h-screen flex flex-col font-sans selection:bg-blue-500 selection:text-white bg-white">
       {isAdminMode && (
         <AdminToolbar
           isEditMode={isEditMode}
           inquiryCount={inquiries.length}
+          blogCount={blogData.posts.length}
           codeSyncStatus={codeSyncStatus}
           onSaveNow={() => saveSiteDataToCodebase(siteData)}
           onToggleEditMode={() => setIsEditMode((prev) => !prev)}
+          onOpenBlogManager={() => setBlogManagerModalOpen(true)}
           onOpenSettings={() => setSettingsModalOpen(true)}
           onOpenInquiries={() => setInquiriesModalOpen(true)}
           onExitAdmin={handleLogoutAdmin}
@@ -816,6 +898,7 @@ export default function App() {
         onNavigateHome={() => navigateTo({ type: 'home' })}
         onNavigateService={(serviceId) => navigateTo({ type: 'service', serviceId })}
         onNavigateGalleryList={() => navigateTo({ type: 'gallery_list' })}
+        onNavigateBlogList={() => navigateTo({ type: 'blog_list' })}
         onScrollToSection={scrollToSection}
       />
 
@@ -893,6 +976,37 @@ export default function App() {
               onEditImage={setImageEditTarget}
               onViewGalleryList={() => navigateTo({ type: 'gallery_list' })}
               onSelectPost={(postId) => navigateTo({ type: 'gallery_detail', postId })}
+            />
+            <BlogSection
+              sectionTitle={blogData.sectionTitle}
+              sectionSubtitle={blogData.sectionSubtitle}
+              posts={blogData.posts}
+              isEditMode={activeEditMode}
+              onUpdateTitle={(val) =>
+                updateSiteData((prev) => {
+                  const currentBlog = prev.blog ?? DEFAULT_BLOG_DATA;
+                  return { ...prev, blog: { ...currentBlog, sectionTitle: val } };
+                })
+              }
+              onUpdateSubtitle={(val) =>
+                updateSiteData((prev) => {
+                  const currentBlog = prev.blog ?? DEFAULT_BLOG_DATA;
+                  return { ...prev, blog: { ...currentBlog, sectionSubtitle: val } };
+                })
+              }
+              onUpdatePostField={updateBlogPostField}
+              onOpenNewPostModal={() => {
+                setEditingBlogPost(null);
+                setBlogPostModalOpen(true);
+              }}
+              onEditPost={(post) => {
+                setEditingBlogPost(post);
+                setBlogPostModalOpen(true);
+              }}
+              onDeletePost={deleteBlogPost}
+              onEditImage={setImageEditTarget}
+              onViewBlogList={() => navigateTo({ type: 'blog_list' })}
+              onSelectPost={(postId) => navigateTo({ type: 'blog_detail', postId })}
             />
             <PricingSection
               sectionTitle={siteData.pricing.sectionTitle}
@@ -1088,6 +1202,38 @@ export default function App() {
             onSubmitInquiry={handleInquirySubmit}
           />
         )}
+
+        {route.type === 'blog_list' && (
+          <BlogListPage
+            posts={blogData.posts}
+            services={siteData.services.items}
+            companyName={siteData.company.name}
+            isEditMode={activeEditMode}
+            onAddPost={addBlogPost}
+            onUpdatePost={updateBlogPost}
+            onDeletePost={deleteBlogPost}
+            onUploadImage={uploadImageToCodebase}
+            onBackHome={() => navigateTo({ type: 'home' })}
+            onSelectPost={(postId) => navigateTo({ type: 'blog_detail', postId })}
+          />
+        )}
+
+        {route.type === 'blog_detail' && activeBlogPost && (
+          <BlogDetailPage
+            post={activeBlogPost}
+            allPosts={blogData.posts}
+            services={siteData.services.items}
+            company={siteData.company}
+            isEditMode={activeEditMode}
+            onUpdatePost={updateBlogPost}
+            onEditImage={setImageEditTarget}
+            onUploadImage={uploadImageToCodebase}
+            onBackToList={() => navigateTo({ type: 'blog_list' })}
+            onSelectPost={(postId) => navigateTo({ type: 'blog_detail', postId })}
+            onSelectService={(serviceId) => navigateTo({ type: 'service', serviceId })}
+            onSubmitInquiry={handleInquirySubmit}
+          />
+        )}
       </main>
 
       <Footer
@@ -1135,6 +1281,35 @@ export default function App() {
               )
             }
             onDelete={(id) => setInquiries((prev) => prev.filter((item) => item.id !== id))}
+          />
+          <BlogManagerModal
+            isOpen={blogManagerModalOpen}
+            posts={blogData.posts}
+            services={siteData.services.items}
+            onUploadImage={uploadImageToCodebase}
+            onAddPost={addBlogPost}
+            onUpdatePost={updateBlogPost}
+            onDeletePost={deleteBlogPost}
+            onViewPost={(postId) => navigateTo({ type: 'blog_detail', postId })}
+            onViewBlogSection={() => scrollToSection('blog')}
+            onClose={() => setBlogManagerModalOpen(false)}
+          />
+          <BlogPostModal
+            isOpen={blogPostModalOpen}
+            editingPost={editingBlogPost}
+            services={siteData.services.items}
+            onUploadImage={uploadImageToCodebase}
+            onClose={() => {
+              setBlogPostModalOpen(false);
+              setEditingBlogPost(null);
+            }}
+            onSave={(savedPost) => {
+              if (editingBlogPost) {
+                updateBlogPost(savedPost);
+              } else {
+                addBlogPost(savedPost);
+              }
+            }}
           />
           <SiteSettingsModal
             isOpen={settingsModalOpen}

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { MoveHorizontal, Sparkles } from 'lucide-react';
+import { resolveAssetUrl } from '@/src/utils/assetUrl';
 
 interface BeforeAfterSliderProps {
   beforeImage: string;
@@ -101,7 +102,7 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
         </div>
       ) : (
         <img
-          src={afterImage}
+          src={resolveAssetUrl(afterImage)}
           alt="청소 후 깨끗하고 투명해진 유리창"
           referrerPolicy="no-referrer"
           onError={() => setAfterError(true)}
@@ -128,7 +129,7 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
           </div>
         ) : (
           <img
-            src={beforeImage}
+            src={resolveAssetUrl(beforeImage)}
             alt="청소 전 물때와 먼지가 쌓인 유리창"
             referrerPolicy="no-referrer"
             onError={() => setBeforeError(true)}

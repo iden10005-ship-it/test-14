@@ -18,6 +18,10 @@ export function getSeoPageKey(route: PageRoute): string {
       return 'gallery_list';
     case 'gallery_detail':
       return `gallery_detail:${route.postId}`;
+    case 'blog_list':
+      return 'blog_list';
+    case 'blog_detail':
+      return `blog_detail:${route.postId}`;
   }
 }
 
@@ -37,7 +41,7 @@ export function getDefaultSeoForRoute(
   route: PageRoute,
   siteData: SiteData = INITIAL_SITE_DATA
 ): ResolvedSeoMeta {
-  const { company, hero, services, regions, gallery } = siteData;
+  const { company, hero, services, regions, gallery, blog } = siteData;
   const regionText = company.region.replace(/·/g, ' ');
   const pageKey = getSeoPageKey(route);
 
@@ -139,6 +143,54 @@ export function getDefaultSeoForRoute(
         description: post.excerpt,
         datePublished: post.date.replace(/\./g, '-'),
         author: {
+          '@type': 'Organization',
+          name: company.name,
+        },
+      };
+    }
+  } else if (route.type === 'blog_list') {
+    title = `유리창·외벽 관리 노하우 & 현장 소식 블로그 | ${company.name}`;
+    description = `${company.name} 전문 시공팀이 전하는 유리창 물때 관리 팁, 외벽 유지보수 가이드, 최신 프로젝트 업데이트를 확인하세요.`;
+    keywords = `유리창청소 팁, 외벽청소 가이드, 발수코팅 관리, 상가 유리 관리, ${company.name} 블로그`;
+    routeHash = '#/blog';
+    jsonLd = {
+      '@context': 'https://schema.org',
+      '@type': 'Blog',
+      name: `${company.name} 인사이트 블로그`,
+      description,
+      publisher: {
+        '@type': 'Organization',
+        name: company.name,
+      },
+    };
+  } else if (route.type === 'blog_detail') {
+    const blogPosts = blog?.posts ?? [];
+    const post = blogPosts.find((p) => p.id === route.postId) ?? blogPosts[0];
+    if (post) {
+      title = `${post.title} | ${company.name} 블로그`;
+      description = post.excerpt;
+      keywords =
+        post.seoKeywords?.trim() ||
+        [...post.tags, post.category, company.name].join(', ');
+      ogImage =
+        post.coverImage ||
+        siteData.seo?.defaultOgImage?.trim() ||
+        hero.afterImage ||
+        '';
+      routeHash = `#/blog/${post.id}`;
+      jsonLd = {
+        '@context': 'https://schema.org',
+        '@type': 'BlogPosting',
+        headline: post.title,
+        description: post.excerpt,
+        keywords,
+        articleSection: post.category,
+        datePublished: post.publishedAt.replace(/\./g, '-'),
+        author: {
+          '@type': 'Person',
+          name: post.author,
+        },
+        publisher: {
           '@type': 'Organization',
           name: company.name,
         },

@@ -25,6 +25,7 @@ import {
   X,
 } from 'lucide-react';
 import type { PageRoute, PageSeoMeta, SeoSettings, SiteData } from '@/src/types/clearworks';
+import { resolveAssetUrl } from '@/src/utils/assetUrl';
 import { getDefaultSeoForRoute, getSeoPageKey } from '@/src/utils/seo';
 import {
   buildSitemapEntries,
@@ -1864,7 +1865,7 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
                         <div className="aspect-[1.91/1] bg-slate-100 relative overflow-hidden">
                           {resolvedOgImage ? (
                             <img
-                              src={resolvedOgImage}
+                              src={resolveAssetUrl(resolvedOgImage)}
                               alt="카카오톡 링크 미리보기 이미지"
                               className="w-full h-full object-cover"
                             />

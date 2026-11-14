@@ -17,6 +17,7 @@ import { EditableText } from '@/src/components/admin/EditableText';
 import { GalleryPostModal } from '@/src/components/admin/GalleryPostModal';
 import type { ImageEditTarget } from '@/src/components/admin/ImageEditorModal';
 import type { CompanyInfo, GalleryPost, InquiryPayload } from '@/src/types/clearworks';
+import { resolveAssetUrl } from '@/src/utils/assetUrl';
 
 interface GalleryDetailPageProps {
   post: GalleryPost;
@@ -369,7 +370,7 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
                   <div>
                     <div className="aspect-[16/10] bg-slate-900 overflow-hidden">
                       <img
-                        src={rel.coverImage || rel.afterImage}
+                        src={resolveAssetUrl(rel.coverImage || rel.afterImage)}
                         alt={rel.title}
                         referrerPolicy="no-referrer"
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"

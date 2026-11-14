@@ -3,6 +3,7 @@ import { ArrowRight, Calendar, Image as ImageIcon, MapPin, Sparkles } from 'luci
 import { EditableText } from '@/src/components/admin/EditableText';
 import type { ImageEditTarget } from '@/src/components/admin/ImageEditorModal';
 import type { GalleryPost } from '@/src/types/clearworks';
+import { resolveAssetUrl } from '@/src/utils/assetUrl';
 
 interface GallerySectionProps {
   sectionTitle: string;
@@ -93,7 +94,7 @@ export const GallerySection: React.FC<GallerySectionProps> = ({
               <div>
                 <div className="relative aspect-[16/10] bg-slate-900 overflow-hidden">
                   <img
-                    src={post.coverImage || post.afterImage}
+                    src={resolveAssetUrl(post.coverImage || post.afterImage)}
                     alt={post.title}
                     referrerPolicy="no-referrer"
                     loading="lazy"
