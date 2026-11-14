@@ -5,15 +5,21 @@ import {
   CheckCircle2,
   Download,
   ExternalLink,
+  Eye,
   Globe,
   Image as ImageIcon,
+  Loader2,
   Lock,
+  Monitor,
+  Plus,
   RefreshCw,
   RotateCcw,
   Save,
   Search,
   Settings,
   Share2,
+  Smartphone,
+  Sparkles,
   Tag,
   Upload,
   X,
@@ -32,7 +38,20 @@ interface SaveResult {
   error?: string;
 }
 
-type ModalTab = 'general' | 'seo';
+export interface SeoKeywordSuggestion {
+  keyword: string;
+  intent: string;
+  reason: string;
+}
+
+export interface SuggestKeywordsResult {
+  ok: boolean;
+  source?: string;
+  suggestions?: SeoKeywordSuggestion[];
+  error?: string;
+}
+
+type ModalTab = 'general' | 'seo' | 'preview';
 type SeoCategory = 'core' | 'service' | 'region' | 'matrix' | 'gallery';
 
 interface SiteSettingsModalProps {
@@ -41,6 +60,15 @@ interface SiteSettingsModalProps {
   currentRoute?: PageRoute;
   canWriteCode?: boolean;
   onUploadImage?: (dataUrl: string, nameHint?: string) => Promise<string>;
+  onSuggestSeoKeywords?: (payload: {
+    pageKey: string;
+    pageLabel: string;
+    title: string;
+    description: string;
+    existingKeywords: string;
+    companyName: string;
+    region: string;
+  }) => Promise<SuggestKeywordsResult>;
   onSaveSettings: (nextData: SiteData) => Promise<SaveResult>;
   onGenerateSitemap?: (
     baseUrl: string,
@@ -103,6 +131,7 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
   currentRoute,
   canWriteCode = false,
   onUploadImage,
+  onSuggestSeoKeywords,
   onSaveSettings,
   onGenerateSitemap,
   onClose,
@@ -140,6 +169,13 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
   );
   const [uploadingOgImage, setUploadingOgImage] = useState<'global' | 'page' | null>(null);
 
+  // Keyword suggestions & preview states
+  const [suggestingKeywords, setSuggestingKeywords] = useState(false);
+  const [keywordSuggestions, setKeywordSuggestions] = useState<SeoKeywordSuggestion[]>([]);
+  const [keywordSuggestionSource, setKeywordSuggestionSource] = useState<string>('');
+  const [keywordSuggestionError, setKeywordSuggestionError] = useState<string>('');
+  const [googlePreviewDevice, setGooglePreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
+
   const [isDirty, setIsDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
@@ -167,6 +203,9 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
       setSaveError('');
       setImportError('');
       setConfirmReset(false);
+      setKeywordSuggestions([]);
+      setKeywordSuggestionError('');
+      setKeywordSuggestionSource('');
 
       // Sync active SEO selector to current route when opening
       if (currentRoute) {
@@ -532,7 +571,7 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
         </div>
 
         {/* Top Tab Navigation */}
-        <div className="flex items-center gap-1.5 py-3 border-b border-slate-100 mb-4 shrink-0">
+        <div className="flex flex-wrap items-center gap-1.5 py-3 border-b border-slate-100 mb-4 shrink-0">
           <button
             type="button"
             onClick={() => setActiveTab('general')}
@@ -567,6 +606,18 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
                 {customPageEntries.length}
               </span>
             )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('preview')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors ${
+              activeTab === 'preview'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            <Eye className="w-3.5 h-3.5" />
+            <span>SEO 미리보기</span>
           </button>
         </div>
 
@@ -907,7 +958,7 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
                 {importError && <p className="text-xs text-red-600">{importError}</p>}
               </div>
             </>
-          ) : (
+          ) : activeTab === 'seo' ? (
             /* SEO SETTINGS TAB */
             <div className="space-y-5">
               {/* Global Default OG Image */}
@@ -1197,11 +1248,57 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
                 </div>
 
                 {/* Meta Keywords */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                    <Tag className="w-3.5 h-3.5 text-blue-600" />
-                    <span>메타 키워드 (Meta Keywords · 쉼표로 구분)</span>
-                  </label>
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                      <Tag className="w-3.5 h-3.5 text-blue-600" />
+                      <span>메타 키워드 (Meta Keywords · 쉼표로 구분)</span>
+                    </label>
+                    <button
+                      type="button"
+                      disabled={suggestingKeywords}
+                      onClick={async () => {
+                        setSuggestingKeywords(true);
+                        setKeywordSuggestionError('');
+                        try {
+                          if (onSuggestSeoKeywords) {
+                            const res = await onSuggestSeoKeywords({
+                              pageKey: selectedPageKey,
+                              pageLabel: getPageKeyDisplayLabel(selectedPageKey),
+                              title: resolvedTitle,
+                              description: resolvedDescription,
+                              existingKeywords: resolvedKeywords,
+                              companyName: draftCompany.name,
+                              region: draftCompany.region,
+                            });
+                            if (!res.ok) {
+                              setKeywordSuggestionError(
+                                res.error || '추천 키워드를 생성하지 못했습니다.'
+                              );
+                            } else {
+                              setKeywordSuggestions(res.suggestions ?? []);
+                              setKeywordSuggestionSource(res.source || '');
+                            }
+                          }
+                        } catch {
+                          setKeywordSuggestionError('키워드 추천 요청 중 오류가 발생했습니다.');
+                        } finally {
+                          setSuggestingKeywords(false);
+                        }
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-[11px] font-bold flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-60 transition-all"
+                    >
+                      {suggestingKeywords ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Sparkles className="w-3.5 h-3.5" />
+                      )}
+                      <span>
+                        {suggestingKeywords ? '검색 키워드 분석 중...' : 'AI 추천 키워드 제안'}
+                      </span>
+                    </button>
+                  </div>
+
                   <input
                     type="text"
                     value={currentOverride.keywords ?? ''}
@@ -1209,9 +1306,10 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
                     placeholder={selectedDefaults.keywords}
                     className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
                   />
+
                   {parsedKeywords.length > 0 && (
                     <div className="flex flex-wrap gap-1 pt-0.5">
-                      {parsedKeywords.slice(0, 12).map((kw, idx) => (
+                      {parsedKeywords.slice(0, 14).map((kw, idx) => (
                         <span
                           key={`${kw}-${idx}`}
                           className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-semibold"
@@ -1219,11 +1317,126 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
                           #{kw}
                         </span>
                       ))}
-                      {parsedKeywords.length > 12 && (
+                      {parsedKeywords.length > 14 && (
                         <span className="text-[10px] text-slate-400 self-center">
-                          +{parsedKeywords.length - 12}개
+                          +{parsedKeywords.length - 14}개
                         </span>
                       )}
+                    </div>
+                  )}
+
+                  {keywordSuggestionError && (
+                    <p className="text-[11px] font-semibold text-red-600 bg-red-50 border border-red-200 rounded-xl p-2.5 flex items-center gap-1.5">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{keywordSuggestionError}</span>
+                    </p>
+                  )}
+
+                  {keywordSuggestions.length > 0 && (
+                    <div className="p-3 rounded-2xl bg-blue-50/70 border border-blue-200/80 space-y-2.5">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                          <span className="text-xs font-extrabold text-slate-900">
+                            구글·네이버 경쟁력 추천 키워드
+                          </span>
+                          {keywordSuggestionSource === 'gemini' && (
+                            <span className="px-1.5 py-0.5 rounded bg-blue-600 text-white text-[10px] font-bold">
+                              AI 분석
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const currentList = (currentOverride.keywords ?? resolvedKeywords)
+                                .split(',')
+                                .map((k) => k.trim())
+                                .filter(Boolean);
+                              const merged = [...currentList];
+                              for (const item of keywordSuggestions) {
+                                if (!merged.includes(item.keyword)) {
+                                  merged.push(item.keyword);
+                                }
+                              }
+                              updatePageSeoField('keywords', merged.join(', '));
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold cursor-pointer transition-colors"
+                          >
+                            전체 추가
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const nextList = keywordSuggestions.map((item) => item.keyword);
+                              updatePageSeoField('keywords', nextList.join(', '));
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-bold cursor-pointer transition-colors"
+                          >
+                            추천으로 교체
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        {keywordSuggestions.map((item) => {
+                          const currentList = (currentOverride.keywords ?? resolvedKeywords)
+                            .split(',')
+                            .map((k) => k.trim())
+                            .filter(Boolean);
+                          const isApplied = currentList.includes(item.keyword);
+
+                          return (
+                            <button
+                              key={item.keyword}
+                              type="button"
+                              onClick={() => {
+                                if (isApplied) {
+                                  const filtered = currentList.filter((k) => k !== item.keyword);
+                                  updatePageSeoField('keywords', filtered.join(', '));
+                                } else {
+                                  const next = currentList.includes(item.keyword)
+                                    ? currentList
+                                    : [...currentList, item.keyword];
+                                  updatePageSeoField('keywords', next.join(', '));
+                                }
+                              }}
+                              className={`text-left p-2 rounded-xl border transition-all cursor-pointer ${
+                                isApplied
+                                  ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
+                                  : 'bg-white hover:bg-blue-50 border-slate-200 hover:border-blue-300 text-slate-800'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-1.5">
+                                <span className="text-xs font-bold truncate">{item.keyword}</span>
+                                <span
+                                  className={`shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                    isApplied
+                                      ? 'bg-emerald-600 text-white'
+                                      : 'bg-slate-100 text-slate-600'
+                                  }`}
+                                >
+                                  {isApplied ? (
+                                    <>
+                                      <Check className="w-2.5 h-2.5" />
+                                      <span>적용됨</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Plus className="w-2.5 h-2.5" />
+                                      <span>{item.intent}</span>
+                                    </>
+                                  )}
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-slate-500 mt-1 line-clamp-1">
+                                {item.reason}
+                              </p>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1294,50 +1507,24 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
                 </div>
               </div>
 
-              {/* Live SERP & OG Card Preview */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Search Engine Snippet Preview */}
-                <div className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50 space-y-1.5">
-                  <div className="flex items-center justify-between text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
-                    <span>Google · Naver 검색 미리보기</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </div>
-                  <p className="text-[11px] text-emerald-700 truncate font-mono">
-                    {previewUrlDisplay}
+              {/* Live Quick Preview Banner + Jump to Preview Tab */}
+              <div className="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200 flex flex-wrap items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <p className="text-xs font-extrabold text-emerald-950">
+                    구글 검색결과 &amp; 카카오톡 공유 카드 실시간 확인
                   </p>
-                  <p className="text-sm font-bold text-blue-700 line-clamp-1">{resolvedTitle}</p>
-                  <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
-                    {resolvedDescription}
+                  <p className="text-[11px] text-emerald-700">
+                    방금 수정한 제목, 설명, OG 이미지가 실제 검색창과 카톡에 어떻게 뜨는지 시뮬레이션합니다.
                   </p>
                 </div>
-
-                {/* OpenGraph Social Card Preview */}
-                <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden flex flex-col">
-                  <div className="h-24 bg-slate-100 relative overflow-hidden shrink-0">
-                    {resolvedOgImage ? (
-                      <img
-                        src={resolvedOgImage}
-                        alt="OG 미리보기"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-xs text-slate-400">
-                        OG 이미지 없음
-                      </div>
-                    )}
-                    <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-slate-900/75 text-white text-[10px] font-bold">
-                      OG 공유 카드
-                    </span>
-                  </div>
-                  <div className="p-2.5 space-y-0.5">
-                    <p className="text-xs font-extrabold text-slate-900 line-clamp-1">
-                      {resolvedOgTitle}
-                    </p>
-                    <p className="text-[11px] text-slate-500 line-clamp-2">
-                      {resolvedOgDescription}
-                    </p>
-                  </div>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('preview')}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0 transition-colors"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>SEO 미리보기 열기</span>
+                </button>
               </div>
 
               {/* Inline Save Bar for SEO Tab */}
@@ -1365,6 +1552,394 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
                   <Check className="w-3.5 h-3.5" />
                   <span>{saving ? 'SEO 저장 중...' : 'SEO 설정 수정하기'}</span>
                 </button>
+              </div>
+            </div>
+          ) : (
+            /* SEO PREVIEW TAB */
+            <div className="space-y-5">
+              {/* Target Page Selector Bar in Preview Tab */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h4 className="text-xs font-extrabold text-slate-900">
+                      미리보기 대상 페이지: {getPageKeyDisplayLabel(selectedPageKey)}
+                    </h4>
+                    <p className="text-[11px] text-slate-500 font-mono truncate">
+                      {previewUrlDisplay}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {currentRoute && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSeoCategory(getCategoryFromRoute(currentRoute));
+                          if (currentRoute.type === 'home') setSelectedCoreKey('home');
+                          else if (currentRoute.type === 'gallery_list')
+                            setSelectedCoreKey('gallery_list');
+                          else if (currentRoute.type === 'service')
+                            setSelectedServiceId(currentRoute.serviceId);
+                          else if (currentRoute.type === 'region')
+                            setSelectedRegionName(currentRoute.regionName);
+                          else if (currentRoute.type === 'matrix') {
+                            setSelectedMatrixRegion(currentRoute.regionName);
+                            setSelectedMatrixServiceId(currentRoute.serviceId);
+                          } else if (currentRoute.type === 'gallery_detail')
+                            setSelectedGalleryPostId(currentRoute.postId);
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-bold cursor-pointer"
+                      >
+                        현재 화면 페이지 보기
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('seo')}
+                      className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold cursor-pointer"
+                    >
+                      이 페이지 문구 수정
+                    </button>
+                  </div>
+                </div>
+
+                {/* Quick Category + Page Switcher */}
+                <div className="flex flex-wrap gap-1.5">
+                  {(
+                    [
+                      { id: 'core', label: '주요 페이지' },
+                      { id: 'service', label: '서비스 상세' },
+                      { id: 'region', label: '지역별 페이지' },
+                      { id: 'matrix', label: '지역×서비스' },
+                      { id: 'gallery', label: '시공 갤러리' },
+                    ] as const
+                  ).map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setSeoCategory(cat.id)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer transition-colors ${
+                        seoCategory === cat.id
+                          ? 'bg-slate-900 text-white'
+                          : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+
+                {seoCategory === 'core' && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCoreKey('home')}
+                      className={`px-3 py-1.5 rounded-xl border text-left text-xs font-bold cursor-pointer ${
+                        selectedCoreKey === 'home'
+                          ? 'border-blue-500 bg-blue-50 text-blue-700'
+                          : 'border-slate-200 bg-white text-slate-700'
+                      }`}
+                    >
+                      메인 홈페이지 (/)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCoreKey('gallery_list')}
+                      className={`px-3 py-1.5 rounded-xl border text-left text-xs font-bold cursor-pointer ${
+                        selectedCoreKey === 'gallery_list'
+                          ? 'border-blue-500 bg-blue-50 text-blue-700'
+                          : 'border-slate-200 bg-white text-slate-700'
+                      }`}
+                    >
+                      현장 갤러리 목록 (#/gallery)
+                    </button>
+                  </div>
+                )}
+
+                {seoCategory === 'service' && (
+                  <select
+                    value={selectedServiceId}
+                    onChange={(e) => setSelectedServiceId(e.target.value)}
+                    className="w-full px-3 py-2 text-xs font-semibold bg-white border border-slate-200 rounded-xl"
+                  >
+                    {siteData.services.items.map((srv) => (
+                      <option key={srv.id} value={srv.id}>
+                        {srv.title} (#/service/{srv.id})
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                {seoCategory === 'region' && (
+                  <select
+                    value={selectedRegionName}
+                    onChange={(e) => setSelectedRegionName(e.target.value)}
+                    className="w-full px-3 py-2 text-xs font-semibold bg-white border border-slate-200 rounded-xl"
+                  >
+                    {siteData.regions.list.map((reg) => (
+                      <option key={reg} value={reg}>
+                        {reg} (#/region/{reg})
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                {seoCategory === 'matrix' && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <select
+                      value={selectedMatrixRegion}
+                      onChange={(e) => setSelectedMatrixRegion(e.target.value)}
+                      className="w-full px-3 py-2 text-xs font-semibold bg-white border border-slate-200 rounded-xl"
+                    >
+                      {siteData.regions.list.map((reg) => (
+                        <option key={reg} value={reg}>
+                          {reg}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      value={selectedMatrixServiceId}
+                      onChange={(e) => setSelectedMatrixServiceId(e.target.value)}
+                      className="w-full px-3 py-2 text-xs font-semibold bg-white border border-slate-200 rounded-xl"
+                    >
+                      {siteData.services.items.map((srv) => (
+                        <option key={srv.id} value={srv.id}>
+                          {srv.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {seoCategory === 'gallery' && (
+                  <select
+                    value={selectedGalleryPostId}
+                    onChange={(e) => setSelectedGalleryPostId(e.target.value)}
+                    className="w-full px-3 py-2 text-xs font-semibold bg-white border border-slate-200 rounded-xl"
+                  >
+                    {siteData.gallery.posts.map((post) => (
+                      <option key={post.id} value={post.id}>
+                        [{post.category}] {post.title}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {/* 1. Google Search Results Simulation */}
+              <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+                <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-white border border-slate-200 text-[11px] font-black text-blue-600">
+                      G
+                    </span>
+                    <span className="text-xs font-extrabold text-slate-900">
+                      Google 검색 결과 미리보기
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => setGooglePreviewDevice('desktop')}
+                      className={`px-2 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 cursor-pointer ${
+                        googlePreviewDevice === 'desktop'
+                          ? 'bg-slate-900 text-white'
+                          : 'text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      <Monitor className="w-3 h-3" />
+                      <span>PC</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGooglePreviewDevice('mobile')}
+                      className={`px-2 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 cursor-pointer ${
+                        googlePreviewDevice === 'mobile'
+                          ? 'bg-slate-900 text-white'
+                          : 'text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      <Smartphone className="w-3 h-3" />
+                      <span>모바일</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-4">
+                  <div
+                    className={`rounded-xl border border-slate-100 bg-white p-3.5 ${
+                      googlePreviewDevice === 'mobile' ? 'max-w-[360px] mx-auto shadow-xs' : ''
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 mb-1.5">
+                      <div className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0">
+                        <Sparkles className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-slate-900 leading-tight truncate">
+                          {draftCompany.name}
+                        </p>
+                        <p className="text-[11px] text-slate-500 truncate">{previewUrlDisplay}</p>
+                      </div>
+                    </div>
+                    <h4 className="text-[17px] font-medium text-[#1a0dab] hover:underline leading-snug line-clamp-1">
+                      {resolvedTitle}
+                    </h4>
+                    <p className="text-[13px] text-[#4d5156] mt-1 leading-relaxed line-clamp-2">
+                      {resolvedDescription}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Naver Search Result Preview */}
+              <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+                <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-[#03c75a] text-[11px] font-black text-white">
+                      N
+                    </span>
+                    <span className="text-xs font-extrabold text-slate-900">
+                      Naver 검색 결과 미리보기
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-semibold text-slate-500">
+                    키워드 {parsedKeywords.length}개 반영
+                  </span>
+                </div>
+                <div className="p-4 space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-[11px]">
+                    <span className="font-bold text-[#03c75a]">{draftCompany.name}</span>
+                    <span className="text-slate-300">|</span>
+                    <span className="text-slate-500 truncate">{previewUrlDisplay}</span>
+                  </div>
+                  <p className="text-[15px] font-bold text-[#0068c3] leading-snug line-clamp-1">
+                    {resolvedTitle}
+                  </p>
+                  <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">
+                    {resolvedDescription}
+                  </p>
+                  {parsedKeywords.length > 0 && (
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      {parsedKeywords.slice(0, 6).map((kw, idx) => (
+                        <span
+                          key={`${kw}-${idx}`}
+                          className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200/70 text-[10px] font-semibold"
+                        >
+                          {kw}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 3. KakaoTalk Link Share Simulation */}
+              <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+                <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-[#FEE500] text-[11px] font-black text-[#3c1e1e]">
+                      K
+                    </span>
+                    <span className="text-xs font-extrabold text-slate-900">
+                      카카오톡 링크 공유 미리보기 (OpenGraph)
+                    </span>
+                  </div>
+                  <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                </div>
+
+                <div className="p-4 bg-[#b2c7d9]">
+                  <div className="flex items-start gap-2.5 max-w-[320px]">
+                    <div className="w-9 h-9 rounded-2xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                      <Sparkles className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <span className="block text-[11px] font-bold text-slate-800">
+                        {draftCompany.name}
+                      </span>
+                      <div className="rounded-2xl bg-[#FEE500] px-3 py-2 text-xs font-medium text-[#3c1e1e] shadow-xs inline-block">
+                        무료 방문 견적 안내 페이지입니다 😊
+                      </div>
+
+                      <div className="rounded-2xl overflow-hidden bg-white shadow-sm border border-black/5">
+                        <div className="aspect-[1.91/1] bg-slate-100 relative overflow-hidden">
+                          {resolvedOgImage ? (
+                            <img
+                              src={resolvedOgImage}
+                              alt="카카오톡 링크 미리보기 이미지"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center text-xs text-slate-400 gap-1">
+                              <ImageIcon className="w-5 h-5" />
+                              <span>설정된 OG 이미지 없음</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-3 space-y-1">
+                          <p className="text-[13px] font-extrabold text-slate-900 leading-snug line-clamp-2">
+                            {resolvedOgTitle}
+                          </p>
+                          <p className="text-[11px] text-slate-500 leading-relaxed line-clamp-2">
+                            {resolvedOgDescription}
+                          </p>
+                          <p className="text-[10px] text-slate-400 pt-1 truncate font-mono">
+                            {(() => {
+                              try {
+                                return new URL(effectiveSiteUrl).hostname;
+                              } catch {
+                                return effectiveSiteUrl;
+                              }
+                            })()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. Quick SEO Diagnostic Checklist */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                <div className="p-2 rounded-xl bg-white border border-slate-100">
+                  <span className="block text-[10px] font-bold text-slate-400">제목 길이</span>
+                  <span
+                    className={`text-xs font-extrabold tabular-nums ${
+                      resolvedTitle.length >= 20 && resolvedTitle.length <= 60
+                        ? 'text-emerald-600'
+                        : 'text-amber-600'
+                    }`}
+                  >
+                    {resolvedTitle.length}자
+                  </span>
+                </div>
+                <div className="p-2 rounded-xl bg-white border border-slate-100">
+                  <span className="block text-[10px] font-bold text-slate-400">설명 길이</span>
+                  <span
+                    className={`text-xs font-extrabold tabular-nums ${
+                      resolvedDescription.length >= 60 && resolvedDescription.length <= 160
+                        ? 'text-emerald-600'
+                        : 'text-amber-600'
+                    }`}
+                  >
+                    {resolvedDescription.length}자
+                  </span>
+                </div>
+                <div className="p-2 rounded-xl bg-white border border-slate-100">
+                  <span className="block text-[10px] font-bold text-slate-400">메타 키워드</span>
+                  <span className="text-xs font-extrabold text-blue-600 tabular-nums">
+                    {parsedKeywords.length}개
+                  </span>
+                </div>
+                <div className="p-2 rounded-xl bg-white border border-slate-100">
+                  <span className="block text-[10px] font-bold text-slate-400">OG 이미지</span>
+                  <span
+                    className={`text-xs font-extrabold ${
+                      resolvedOgImage ? 'text-emerald-600' : 'text-amber-600'
+                    }`}
+                  >
+                    {resolvedOgImage ? '설정됨' : '미설정'}
+                  </span>
+                </div>
               </div>
             </div>
           )}

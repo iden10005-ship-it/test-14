@@ -1,4 +1,5 @@
 import express from 'express';
+import { GoogleGenAI, Type } from '@google/genai';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { SiteData } from './src/types/clearworks.ts';
@@ -18,6 +19,111 @@ const ROBOTS_PATH = path.resolve(PUBLIC_DIR, 'robots.txt');
 const UPLOAD_DIR = path.resolve(ROOT_DIR, 'public/uploads');
 const DIST_DIR = path.resolve(ROOT_DIR, 'dist');
 const PORT = Number(process.env.PORT || 3000);
+
+interface SuggestedKeywordItem {
+  keyword: string;
+  intent: string;
+  reason: string;
+}
+
+function getGeminiClient(): GoogleGenAI | null {
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
+  if (!apiKey || apiKey === 'MY_GEMINI_API_KEY') return null;
+  return new GoogleGenAI({
+    apiKey,
+    httpOptions: {
+      timeout: 25000,
+      headers: {
+        'User-Agent': 'aistudio-build',
+      },
+    },
+  });
+}
+
+function buildFallbackKeywordSuggestions(input: {
+  pageLabel: string;
+  title: string;
+  description: string;
+  companyName: string;
+  region: string;
+}): SuggestedKeywordItem[] {
+  const regionTokens = input.region
+    .split(/[·,\s/]+/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+  const primaryRegion = regionTokens[0] || '서울';
+  const combined = `${input.pageLabel} ${input.title} ${input.description}`;
+
+  const pool: SuggestedKeywordItem[] = [
+    {
+      keyword: `${primaryRegion} 유리창청소`,
+      intent: '지역검색',
+      reason: '구글·네이버 지역 핵심 검색량 최상위 키워드',
+    },
+    {
+      keyword: '아파트 외창청소 비용',
+      intent: '롱테일·문의',
+      reason: '견적 문의 전환율이 높은 가격 탐색형 키워드',
+    },
+    {
+      keyword: '상가 통유리청소',
+      intent: '서비스핵심',
+      reason: '매장·카페·오피스 고정 수요 검색어',
+    },
+    {
+      keyword: '고층 외벽청소 업체',
+      intent: '서비스핵심',
+      reason: '빌딩·오피스텔 B2B 발주 담당자 검색어',
+    },
+    {
+      keyword: `${primaryRegion} 외벽청소`,
+      intent: '지역검색',
+      reason: '지역명 결합 시 네이버 지도·웹사이트 상위 노출 유리',
+    },
+    {
+      keyword: '창틀 찌든때 청소',
+      intent: '롱테일·문의',
+      reason: '미세먼지·물때 고민 고객의 세부 유입 키워드',
+    },
+    {
+      keyword: '유리 발수코팅 시공',
+      intent: '서비스핵심',
+      reason: '객단가 상승 및 추가 옵션 유입 키워드',
+    },
+    {
+      keyword: '유리창청소 무료견적',
+      intent: '롱테일·문의',
+      reason: '상담 신청 직전 단계 고객이 자주 검색하는 문구',
+    },
+    {
+      keyword: input.companyName || '클리어웍스',
+      intent: '브랜드·신뢰',
+      reason: '브랜드명 직접 검색 유입 및 상호 신뢰도 강화',
+    },
+    {
+      keyword: '어닝 간판 청소',
+      intent: '서비스핵심',
+      reason: '상가 점주의 연관 검색 유입 확보',
+    },
+  ];
+
+  if (combined.includes('썬팅') || combined.includes('스티커')) {
+    pool.unshift({
+      keyword: '유리창 썬팅 시트지 제거',
+      intent: '서비스핵심',
+      reason: '상가 원상복구·이전 시즌 검색 수요 집중 키워드',
+    });
+  }
+  if (combined.includes('입주') || combined.includes('이사')) {
+    pool.unshift({
+      keyword: '입주청소 외창 별도',
+      intent: '롱테일·문의',
+      reason: '입주·이사 고객의 추가 시공 검색어',
+    });
+  }
+
+  return pool.slice(0, 10);
+}
 
 function escapeHtmlAttr(str: string): string {
   return str
@@ -346,6 +452,150 @@ async function startServer() {
       res.json({ ok: true, url: `/uploads/${filename}` });
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : 'Upload failed' });
+    }
+  });
+
+  // Suggest competitive Google & Naver SEO keywords using Gemini API
+  app.post('/api/admin/suggest-seo-keywords', async (req, res) => {
+    try {
+      const providedPin = String(req.headers['x-admin-pin'] ?? '');
+      const current = await readSiteContent();
+      if (!providedPin || providedPin !== current.adminPin) {
+        res.status(401).json({ error: '관리자 비밀번호 인증에 실패했습니다.' });
+        return;
+      }
+
+      const {
+        pageKey = 'home',
+        pageLabel = '메인 페이지',
+        title = '',
+        description = '',
+        existingKeywords = '',
+        companyName = current.company.name,
+        region = current.company.region,
+      } = (req.body || {}) as {
+        pageKey?: string;
+        pageLabel?: string;
+        title?: string;
+        description?: string;
+        existingKeywords?: string;
+        companyName?: string;
+        region?: string;
+      };
+
+      const ai = getGeminiClient();
+      if (!ai) {
+        res.json({
+          ok: true,
+          source: 'smart-local',
+          suggestions: buildFallbackKeywordSuggestions({
+            pageLabel,
+            title,
+            description,
+            companyName,
+            region,
+          }),
+        });
+        return;
+      }
+
+      const prompt = [
+        '당신은 한국 시장(구글 SEO & 네이버 검색 최적화) 전문 디지털 마케터입니다.',
+        '아래 웹페이지의 제목, 설명, 업체 정보를 분석하여 검색 노출 경쟁력과 문의 전환율을 높일 수 있는 추천 키워드 10개를 제안해 주세요.',
+        '',
+        `- 페이지 식별자: ${pageKey}`,
+        `- 페이지 구분: ${pageLabel}`,
+        `- 업체명: ${companyName}`,
+        `- 서비스 지역: ${region}`,
+        `- 현재 페이지 제목: ${title}`,
+        `- 현재 메타 설명: ${description}`,
+        `- 기존 키워드: ${existingKeywords || '없음'}`,
+        '',
+        '규칙:',
+        '1. 한국어 실제 검색어(구글·네이버 사용자 검색 의도 반영)로 작성하세요.',
+        '2. 2~5단어 이내의 간결한 키워드만 제안하세요.',
+        '3. intent는 반드시 "지역검색", "서비스핵심", "롱테일·문의", "브랜드·신뢰" 중 하나를 사용하세요.',
+        '4. reason은 왜 이 키워드가 구글·네이버에서 경쟁력이 있는지 1문장으로 설명하세요.',
+        '5. 중복되지 않는 10개를 반환하세요.',
+      ].join('\n');
+
+      const requestConfig = {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            suggestions: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  keyword: { type: Type.STRING, description: '추천 SEO 키워드' },
+                  intent: {
+                    type: Type.STRING,
+                    description: '검색 의도 (지역검색, 서비스핵심, 롱테일·문의, 브랜드·신뢰 중 택1)',
+                  },
+                  reason: {
+                    type: Type.STRING,
+                    description: '구글·네이버 검색 경쟁력 및 추천 사유',
+                  },
+                },
+              },
+            },
+          },
+        },
+      };
+
+      let response;
+      try {
+        response = await ai.models.generateContent({
+          model: 'gemini-4-hydrogen',
+          contents: prompt,
+          config: requestConfig,
+        });
+      } catch (primaryErr) {
+        const primaryMsg = primaryErr instanceof Error ? primaryErr.message : String(primaryErr);
+        if (
+          primaryMsg.includes('503') ||
+          primaryMsg.includes('504') ||
+          primaryMsg.includes('UNAVAILABLE') ||
+          primaryMsg.includes('DEADLINE_EXCEEDED')
+        ) {
+          await new Promise((r) => setTimeout(r, 500));
+          response = await ai.models.generateContent({
+            model: 'gemini-3.1-flash-lite',
+            contents: prompt,
+            config: requestConfig,
+          });
+        } else {
+          throw primaryErr;
+        }
+      }
+
+      const rawText = (response.text ?? '{}').trim();
+      const parsed = JSON.parse(rawText) as { suggestions?: SuggestedKeywordItem[] };
+      const cleaned = Array.isArray(parsed.suggestions)
+        ? parsed.suggestions
+            .filter((item) => item && typeof item.keyword === 'string' && item.keyword.trim())
+            .slice(0, 12)
+        : [];
+
+      res.json({
+        ok: true,
+        source: 'gemini',
+        suggestions:
+          cleaned.length > 0
+            ? cleaned
+            : buildFallbackKeywordSuggestions({
+                pageLabel,
+                title,
+                description,
+                companyName,
+                region,
+              }),
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '키워드 추천 중 오류가 발생했습니다.';
+      res.status(502).json({ error: `AI 키워드 추천 실패: ${msg}` });
     }
   });
 

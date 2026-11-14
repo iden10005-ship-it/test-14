@@ -23,7 +23,10 @@ import {
   type ImageEditTarget,
 } from '@/src/components/admin/ImageEditorModal';
 import { InquiriesModal } from '@/src/components/admin/InquiriesModal';
-import { SiteSettingsModal } from '@/src/components/admin/SiteSettingsModal';
+import {
+  SiteSettingsModal,
+  type SeoKeywordSuggestion,
+} from '@/src/components/admin/SiteSettingsModal';
 import {
   CLEARWORKS_IMAGES,
   DEFAULT_SITE_DATA,
@@ -1139,6 +1142,94 @@ export default function App() {
             currentRoute={route}
             canWriteCode={canWriteCode}
             onUploadImage={uploadImageToCodebase}
+            onSuggestSeoKeywords={async (payload) => {
+              if (!canWriteCode || !isAdminMode) {
+                const regionToken =
+                  payload.region.split(/[·,\s/]+/).find((t) => t.trim().length >= 2) || '서울';
+                const combined = `${payload.pageLabel} ${payload.title} ${payload.description}`;
+                const suggestions: SeoKeywordSuggestion[] = [
+                  {
+                    keyword: `${regionToken} 유리창청소`,
+                    intent: '지역검색',
+                    reason: '지역명과 핵심 서비스가 결합되어 네이버·구글 지역 검색 유입이 높습니다.',
+                  },
+                  {
+                    keyword: `${regionToken} 외벽청소 업체`,
+                    intent: '지역검색',
+                    reason: '시공 업체를 찾는 지역 고객의 비교 검색에 최적화되어 있습니다.',
+                  },
+                  {
+                    keyword: '상가 유리창청소 비용',
+                    intent: '롱테일·문의',
+                    reason: '견적 문의 직전 단계의 점주·매니저가 자주 검색하는 키워드입니다.',
+                  },
+                  {
+                    keyword: '매장 쇼윈도 청소',
+                    intent: '서비스핵심',
+                    reason: '카페·로드샵 등 고정 수요층 타겟팅에 유리합니다.',
+                  },
+                  {
+                    keyword: '고층 건물 외벽청소',
+                    intent: '서비스핵심',
+                    reason: '오피스텔·빌딩 시설 관리 담당자 검색 의도와 맞닿아 있습니다.',
+                  },
+                  {
+                    keyword: '유리창 물때 찌든때 제거',
+                    intent: '롱테일·문의',
+                    reason: '구체적인 오염 고민을 검색하는 실수요자 유입 키워드입니다.',
+                  },
+                  {
+                    keyword: '유리 발수코팅 시공',
+                    intent: '서비스핵심',
+                    reason: '추가 시공 옵션을 함께 문의하도록 유도하는 고부가 키워드입니다.',
+                  },
+                  {
+                    keyword: `${payload.companyName || '클리어웍스'} 견적문의`,
+                    intent: '브랜드·신뢰',
+                    reason: '브랜드명 직접 검색 및 신뢰도 기반 전환에 도움을 줍니다.',
+                  },
+                ];
+                if (combined.includes('썬팅') || combined.includes('스티커')) {
+                  suggestions.unshift({
+                    keyword: '유리창 썬팅 시트지 제거',
+                    intent: '서비스핵심',
+                    reason: '원상복구·이전 시즌 검색 수요가 집중되는 핵심 작업 키워드입니다.',
+                  });
+                }
+                return {
+                  ok: true,
+                  source: 'smart-local',
+                  suggestions: suggestions.slice(0, 10),
+                };
+              }
+
+              try {
+                const res = await fetch('/api/admin/suggest-seo-keywords', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'x-admin-pin': verifiedPinRef.current,
+                  },
+                  body: JSON.stringify(payload),
+                });
+                const json = (await res.json()) as {
+                  ok?: boolean;
+                  source?: string;
+                  suggestions?: SeoKeywordSuggestion[];
+                  error?: string;
+                };
+                if (!res.ok || !json.ok) {
+                  return { ok: false, error: json.error || 'AI 키워드 추천 요청에 실패했습니다.' };
+                }
+                return {
+                  ok: true,
+                  source: json.source,
+                  suggestions: json.suggestions || [],
+                };
+              } catch {
+                return { ok: false, error: '네트워크 오류로 키워드를 불러오지 못했습니다.' };
+              }
+            }}
             onSaveSettings={handleSaveSettings}
             onGenerateSitemap={async (baseUrl, includeMatrix) => {
               if (!canWriteCode || !isAdminMode) {
