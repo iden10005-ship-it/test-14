@@ -56,7 +56,7 @@ export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [buildingType, setBuildingType] = useState('아파트 외창 (베란다/확장형)');
+  const [buildingType, setBuildingType] = useState('아파트창문청소·외창청소');
   const [content, setContent] = useState(`${regionName} 지역 유리창 청소 무료 견적 문의드립니다.`);
   const [sent, setSent] = useState(false);
   const [newSubDistrict, setNewSubDistrict] = useState('');
@@ -440,10 +440,12 @@ export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
                   onChange={(e) => setBuildingType(e.target.value)}
                   className="px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="아파트 외창 (베란다/확장형)">아파트 외창 (베란다/확장형)</option>
-                  <option value="상가·매장 통유리">상가·매장 통유리</option>
-                  <option value="빌딩 외벽 (로프/스카이)">빌딩 외벽 (로프/스카이)</option>
-                  <option value="입주·이사 청소 유리창">입주·이사 청소 유리창</option>
+                  <option value="아파트창문청소·외창청소">아파트창문청소·외창청소</option>
+                  <option value="상가·매장·사무실 유리창청소">상가·매장·사무실 유리창청소</option>
+                  <option value="빌딩 외벽(로프/고소작업차)">빌딩 외벽(로프/고소작업차)</option>
+                  <option value="간판청소·어닝청소">간판청소·어닝청소</option>
+                  <option value="시트지제거·필름제거">시트지제거·필름제거</option>
+                  <option value="기타 청소문의">기타 청소문의</option>
                 </select>
               </div>
               <textarea

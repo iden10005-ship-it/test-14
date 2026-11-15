@@ -28,6 +28,14 @@ export const MobileFloatingCta: React.FC<MobileFloatingCtaProps> = ({
         </a>
 
         <a
+          href={`sms:${smsDigits}`}
+          className="flex flex-col items-center justify-center py-1.5 px-1 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 active:scale-95 transition-all shadow-2xs"
+        >
+          <MessageSquare className="w-4 h-4 mb-0.5 text-emerald-100" />
+          <span className="text-[11px] font-bold leading-tight">문자상담</span>
+        </a>
+
+        <a
           href={company.kakaoLink}
           target="_blank"
           rel="noopener noreferrer"
@@ -35,14 +43,6 @@ export const MobileFloatingCta: React.FC<MobileFloatingCtaProps> = ({
         >
           <MessageCircle className="w-4 h-4 mb-0.5 fill-current" />
           <span className="text-[11px] font-bold leading-tight">카톡상담</span>
-        </a>
-
-        <a
-          href={`sms:${smsDigits}`}
-          className="flex flex-col items-center justify-center py-1.5 px-1 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 active:scale-95 transition-all shadow-2xs"
-        >
-          <MessageSquare className="w-4 h-4 mb-0.5 text-emerald-100" />
-          <span className="text-[11px] font-bold leading-tight">문자상담</span>
         </a>
 
         <button

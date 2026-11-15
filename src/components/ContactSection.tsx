@@ -15,14 +15,13 @@ interface ContactSectionProps {
   onSubmitInquiry: (payload: InquiryPayload) => void;
 }
 
-const BUILDING_TYPES = [
-  '아파트 외창 (베란다/확장형)',
-  '상가·매장 통유리',
-  '사무실·오피스 내부/외창',
-  '빌딩 외벽 (로프/스카이)',
-  '입주·이사 청소 유리창',
-  '썬팅/스티커 제거 작업',
-  '기타 맞춤 작업',
+const INQUIRY_TYPES = [
+  '아파트창문청소·외창청소',
+  '상가·매장·사무실 유리창청소',
+  '빌딩 외벽(로프/고소작업차)',
+  '간판청소·어닝청소',
+  '시트지제거·필름제거',
+  '기타 청소문의',
 ];
 
 export const ContactSection: React.FC<ContactSectionProps> = ({
@@ -40,7 +39,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
     name: '',
     phone: '',
     region: '',
-    buildingType: BUILDING_TYPES[0],
+    buildingType: INQUIRY_TYPES[0],
     content: '',
   });
   const [submitted, setSubmitted] = useState(false);
@@ -180,7 +179,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
                       name: '',
                       phone: '',
                       region: '',
-                      buildingType: BUILDING_TYPES[0],
+                      buildingType: INQUIRY_TYPES[0],
                       content: '',
                     });
                     setSubmitted(false);
@@ -262,7 +261,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
                       htmlFor="contact-type"
                       className="block text-xs font-bold text-slate-700 mb-1.5"
                     >
-                      건물 유형
+                      문의유형
                     </label>
                     <select
                       id="contact-type"
@@ -270,7 +269,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
                       onChange={(e) => setForm({ ...form, buildingType: e.target.value })}
                       className="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                     >
-                      {BUILDING_TYPES.map((type) => (
+                      {INQUIRY_TYPES.map((type) => (
                         <option key={type} value={type}>
                           {type}
                         </option>

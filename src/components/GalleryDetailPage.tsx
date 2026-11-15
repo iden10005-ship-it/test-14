@@ -46,7 +46,7 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
 }) => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [buildingType, setBuildingType] = useState('아파트 외창 케어');
+  const [buildingType, setBuildingType] = useState('아파트창문청소·외창청소');
   const [content, setContent] = useState(
     `[${post.region}] ${post.title} 작업일지를 보고 견적 문의드립니다.`
   );
@@ -332,7 +332,7 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
                   type="text"
                   value={buildingType}
                   onChange={(e) => setBuildingType(e.target.value)}
-                  placeholder="건물 유형"
+                  placeholder="문의유형"
                   className="px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>

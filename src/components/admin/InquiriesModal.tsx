@@ -102,7 +102,7 @@ export const InquiriesModal: React.FC<InquiriesModalProps> = ({
                 </div>
 
                 <div className="text-xs font-semibold text-slate-700">
-                  서비스 유형: {item.buildingType}
+                  문의유형: {item.buildingType}
                 </div>
                 {item.content && (
                   <p className="text-xs text-slate-600 bg-white p-2.5 rounded-xl border border-slate-200/80">
