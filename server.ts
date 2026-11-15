@@ -1,6 +1,7 @@
 import express from 'express';
 import { GoogleGenAI, Type } from '@google/genai';
 import fs from 'node:fs/promises';
+import http from 'node:http';
 import path from 'node:path';
 import type { SiteData } from './src/types/clearworks.ts';
 import {
@@ -10,6 +11,14 @@ import {
   normalizeBaseUrl,
 } from './src/utils/sitemap.ts';
 
+function getCliArg(name: string): string | undefined {
+  const idx = process.argv.indexOf(name);
+  if (idx !== -1 && idx + 1 < process.argv.length) return process.argv[idx + 1];
+  const prefix = `${name}=`;
+  const match = process.argv.find((arg) => arg.startsWith(prefix));
+  return match ? match.slice(prefix.length) : undefined;
+}
+
 const ROOT_DIR = process.cwd();
 const SITE_CONTENT_PATH = path.resolve(ROOT_DIR, 'src/data/siteContent.json');
 const INDEX_HTML_PATH = path.resolve(ROOT_DIR, 'index.html');
@@ -18,7 +27,15 @@ const SITEMAP_PATH = path.resolve(PUBLIC_DIR, 'sitemap.xml');
 const ROBOTS_PATH = path.resolve(PUBLIC_DIR, 'robots.txt');
 const UPLOAD_DIR = path.resolve(ROOT_DIR, 'public/uploads');
 const DIST_DIR = path.resolve(ROOT_DIR, 'dist');
-const PORT = Number(process.env.PORT || 3000);
+const cliPort = Number(getCliArg('--port'));
+const envPort = Number(process.env.PORT);
+const PORT =
+  Number.isFinite(cliPort) && cliPort > 0
+    ? cliPort
+    : process.env.NODE_ENV === 'production' && Number.isFinite(envPort) && envPort > 0
+      ? envPort
+      : 3000;
+const HOST = getCliArg('--host') || '0.0.0.0';
 
 interface SuggestedKeywordItem {
   keyword: string;
@@ -599,13 +616,32 @@ async function startServer() {
     }
   });
 
+  const httpServer = http.createServer(app);
+
   if (process.env.NODE_ENV !== 'production') {
-    const { createServer: createViteServer } = await import('vite');
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
+    const viteReady = (async () => {
+      const { createServer: createViteServer } = await import('vite');
+      return createViteServer({
+        server: {
+          middlewareMode: true,
+          hmr: process.env.DISABLE_HMR === 'true' ? false : { server: httpServer },
+        },
+        appType: 'spa',
+      });
+    })();
+
+    viteReady.catch((err) => {
+      console.error('Failed to initialize Vite dev middleware:', err);
     });
-    app.use(vite.middlewares);
+
+    app.use(async (req, res, next) => {
+      try {
+        const vite = await viteReady;
+        vite.middlewares(req, res, next);
+      } catch (err) {
+        next(err);
+      }
+    });
   } else {
     app.use(express.static(DIST_DIR));
     app.get('*', (_req, res) => {
@@ -613,8 +649,8 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Clearworks server listening on http://0.0.0.0:${PORT}`);
+  httpServer.listen(PORT, HOST, () => {
+    console.log(`Clearworks server listening on http://${HOST}:${PORT}`);
   });
 }
 
