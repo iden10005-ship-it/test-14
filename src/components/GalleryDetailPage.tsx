@@ -12,12 +12,17 @@ import {
   User,
   Wrench,
 } from 'lucide-react';
-import { BeforeAfterSlider } from '@/src/components/BeforeAfterSlider';
 import { EditableText } from '@/src/components/admin/EditableText';
 import { GalleryPostModal } from '@/src/components/admin/GalleryPostModal';
 import type { ImageEditTarget } from '@/src/components/admin/ImageEditorModal';
 import type { CompanyInfo, GalleryPost, InquiryPayload } from '@/src/types/clearworks';
 import { resolveAssetUrl } from '@/src/utils/assetUrl';
+import {
+  blocksToPlainContent,
+  getPostBlocks,
+  getPostCoverImage,
+} from '@/src/utils/galleryBlocks';
+import { generateNaverSeoFromPost } from '@/src/utils/naverSeoGenerator';
 
 interface GalleryDetailPageProps {
   post: GalleryPost;
@@ -58,7 +63,60 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
     setSent(false);
   }, [post.id, post.region, post.title]);
 
+  const blocks = getPostBlocks(post);
+  const heroCover = getPostCoverImage(post);
   const relatedPosts = allPosts.filter((p) => p.id !== post.id).slice(0, 3);
+
+  const commitPostUpdate = (nextPost: GalleryPost) => {
+    if (nextPost.seo?.autoSync !== false) {
+      const generated = generateNaverSeoFromPost(nextPost, company.name);
+      onUpdatePost({
+        ...nextPost,
+        seo: {
+          title: generated.title,
+          description: generated.description,
+          ogTitle: generated.ogTitle,
+          keywords: generated.keywords,
+          autoSync: true,
+        },
+      });
+    } else {
+      onUpdatePost(nextPost);
+    }
+  };
+
+  const handleUpdateBlockText = (blockId: string, newText: string) => {
+    const nextBlocks = blocks.map((b) =>
+      b.id === blockId && (b.type === 'heading' || b.type === 'text')
+        ? { ...b, text: newText }
+        : b
+    );
+    commitPostUpdate({
+      ...post,
+      blocks: nextBlocks,
+      content: blocksToPlainContent(nextBlocks),
+    });
+  };
+
+  const handleUpdateBlockImage = (blockId: string, url: string) => {
+    const nextBlocks = blocks.map((b) =>
+      b.id === blockId && b.type === 'image' ? { ...b, url } : b
+    );
+    commitPostUpdate({
+      ...post,
+      blocks: nextBlocks,
+    });
+  };
+
+  const handleUpdateBlockCaption = (blockId: string, caption: string) => {
+    const nextBlocks = blocks.map((b) =>
+      b.id === blockId && b.type === 'image' ? { ...b, caption } : b
+    );
+    commitPostUpdate({
+      ...post,
+      blocks: nextBlocks,
+    });
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,14 +151,14 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md cursor-pointer"
             >
               <Pencil className="w-3.5 h-3.5" />
-              <span>이 게시글 전체 수정하기</span>
+              <span>글 · 사진 블록 편집하기</span>
             </button>
           )}
         </div>
 
         <article className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden mb-10">
-          {/* Header */}
-          <div className="p-6 sm:p-10 border-b border-slate-100 bg-gradient-to-b from-slate-50/80 to-white">
+          {/* Blog Article Header */}
+          <header className="p-6 sm:p-10 border-b border-slate-100 bg-gradient-to-b from-slate-50/80 to-white">
             <div className="flex flex-wrap items-center gap-2 mb-4">
               <span className="px-3.5 py-1 rounded-full bg-blue-600 text-white text-xs font-extrabold shadow-2xs">
                 {post.category}
@@ -109,21 +167,33 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
                 <MapPin className="w-3.5 h-3.5 text-blue-600" />
                 <EditableText
                   value={post.region}
-                  onSave={(v) => onUpdatePost({ ...post, region: v })}
+                  onSave={(v) => commitPostUpdate({ ...post, region: v })}
                   isEditMode={isEditMode}
                   label="지역 수정"
                 />
               </span>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight leading-snug mb-4">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight leading-snug mb-3">
               <EditableText
                 value={post.title}
-                onSave={(v) => onUpdatePost({ ...post, title: v })}
+                onSave={(v) => commitPostUpdate({ ...post, title: v })}
                 isEditMode={isEditMode}
                 label="게시글 제목 수정"
               />
             </h1>
+
+            {post.excerpt && (
+              <p className="text-sm sm:text-base text-slate-600 leading-relaxed mb-4">
+                <EditableText
+                  value={post.excerpt}
+                  onSave={(v) => commitPostUpdate({ ...post, excerpt: v })}
+                  isEditMode={isEditMode}
+                  label="요약 문구 수정"
+                  multiline
+                />
+              </p>
+            )}
 
             <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-slate-500 pt-3 border-t border-slate-100">
               <span className="flex items-center gap-1.5 tabular-nums">
@@ -152,76 +222,140 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
                 </span>
               </span>
             </div>
-          </div>
+          </header>
 
-          {/* Before/After Visual Comparison */}
-          {post.beforeImage && post.afterImage && (
-            <div className="p-4 sm:p-8 bg-slate-900 border-y border-slate-800">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4">
-                <div className="text-center sm:text-left">
-                  <span className="text-xs font-bold text-blue-400 tracking-wider uppercase block mb-1">
-                    Before &amp; After Visual Comparison
-                  </span>
-                  <p className="text-xs text-slate-300">
-                    슬라이더를 좌우로 밀어 현장 시공 전후 차이를 확인하세요
-                  </p>
-                </div>
-
-                {isEditMode && (
-                  <div className="flex flex-wrap items-center justify-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onEditImage({
-                          title: '현장일지 시공 전(Before) 사진 변경',
-                          currentUrl: post.beforeImage,
-                          onSave: (url) => onUpdatePost({ ...post, beforeImage: url }),
-                        })
-                      }
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold border border-slate-700 cursor-pointer"
-                    >
-                      <ImageIcon className="w-3.5 h-3.5 text-blue-400" />
-                      <span>시공 전 사진 변경</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onEditImage({
-                          title: '현장일지 시공 후(After) 사진 변경',
-                          currentUrl: post.afterImage,
-                          onSave: (url) =>
-                            onUpdatePost({ ...post, afterImage: url, coverImage: url }),
-                        })
-                      }
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold cursor-pointer"
-                    >
-                      <ImageIcon className="w-3.5 h-3.5" />
-                      <span>시공 후 사진 변경</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-              <BeforeAfterSlider
-                beforeImage={post.beforeImage}
-                afterImage={post.afterImage}
-                beforeLabel="시공 전"
-                afterLabel="시공 후"
+          {/* Featured Cover Photo */}
+          {heroCover && (
+            <div className="relative bg-slate-100 border-b border-slate-100">
+              <img
+                src={resolveAssetUrl(heroCover)}
+                alt={post.title}
+                referrerPolicy="no-referrer"
+                className="w-full max-h-[520px] object-cover"
               />
+              {isEditMode && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    onEditImage({
+                      title: '현장일지 대표 사진 변경',
+                      currentUrl: heroCover,
+                      optimizationTarget: {
+                        region: post.region,
+                        category: post.category,
+                        title: post.title,
+                      },
+                      onSave: (url) =>
+                        commitPostUpdate({ ...post, coverImage: url, afterImage: url }),
+                    })
+                  }
+                  className="absolute bottom-3 right-3 px-3 py-1.5 rounded-xl bg-slate-900/85 hover:bg-blue-600 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg cursor-pointer"
+                >
+                  <ImageIcon className="w-3.5 h-3.5" />
+                  <span>대표 사진 변경</span>
+                </button>
+              )}
             </div>
           )}
 
-          {/* Body Content */}
-          <div className="p-6 sm:p-10 space-y-8">
-            <div className="whitespace-pre-line text-sm sm:text-base text-slate-700 leading-relaxed">
-              <EditableText
-                value={post.content}
-                onSave={(v) => onUpdatePost({ ...post, content: v })}
-                isEditMode={isEditMode}
-                label="본문 내용 수정"
-                multiline
-                as="div"
-              />
-            </div>
+          {/* Blog-Style Interleaved Body Content (Headings, Text, Photos) */}
+          <div className="p-6 sm:p-10 space-y-6">
+            {blocks.map((block) => {
+              if (block.type === 'heading') {
+                return (
+                  <h2
+                    key={block.id}
+                    className="text-lg sm:text-xl font-extrabold text-slate-900 pt-3 border-l-4 border-blue-600 pl-3.5 leading-snug"
+                  >
+                    <EditableText
+                      value={block.text}
+                      onSave={(v) => handleUpdateBlockText(block.id, v)}
+                      isEditMode={isEditMode}
+                      label="소제목 수정"
+                    />
+                  </h2>
+                );
+              }
+
+              if (block.type === 'text') {
+                return (
+                  <div
+                    key={block.id}
+                    className="whitespace-pre-line text-[15px] sm:text-base text-slate-700 leading-[1.85]"
+                  >
+                    <EditableText
+                      value={block.text}
+                      onSave={(v) => handleUpdateBlockText(block.id, v)}
+                      isEditMode={isEditMode}
+                      label="본문 내용 수정"
+                      multiline
+                      as="div"
+                    />
+                  </div>
+                );
+              }
+
+              return (
+                <figure
+                  key={block.id}
+                  className="my-2 rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 shadow-sm relative"
+                >
+                  <div className="relative bg-slate-900">
+                    <img
+                      src={resolveAssetUrl(block.url)}
+                      alt={block.caption || `${post.title} 시공 사진`}
+                      referrerPolicy="no-referrer"
+                      loading="lazy"
+                      className="w-full max-h-[580px] object-cover"
+                    />
+                    {isEditMode && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onEditImage({
+                            title: '본문 사진 변경',
+                            currentUrl: block.url,
+                            optimizationTarget: {
+                              region: post.region,
+                              category: post.category,
+                              title: post.title,
+                            },
+                            onSave: (url) => handleUpdateBlockImage(block.id, url),
+                          })
+                        }
+                        className="absolute bottom-3 right-3 px-3 py-1.5 rounded-xl bg-slate-900/85 hover:bg-blue-600 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg cursor-pointer"
+                      >
+                        <ImageIcon className="w-3.5 h-3.5" />
+                        <span>사진 변경</span>
+                      </button>
+                    )}
+                  </div>
+                  {(block.caption || isEditMode) && (
+                    <figcaption className="px-4 py-2.5 text-xs text-slate-500 text-center bg-slate-50 border-t border-slate-100">
+                      <EditableText
+                        value={block.caption || (isEditMode ? '사진 설명 입력 (선택)' : '')}
+                        onSave={(v) => handleUpdateBlockCaption(block.id, v)}
+                        isEditMode={isEditMode}
+                        label="사진 설명 수정"
+                      />
+                    </figcaption>
+                  )}
+                </figure>
+              );
+            })}
+
+            {isEditMode && (
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => setModalOpen(true)}
+                  className="w-full py-3 rounded-2xl border-2 border-dashed border-blue-300 bg-blue-50/50 hover:bg-blue-50 text-blue-700 text-xs font-extrabold flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  <span>+ 새 글 / 소제목 / 현장 사진 추가 및 순서 편집하기</span>
+                </button>
+              </div>
+            )}
 
             {/* Key Points & Equipment */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-6 border-t border-slate-100">
@@ -328,13 +462,18 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
                   placeholder="연락처 (010-0000-0000) *"
                   className="px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                <input
-                  type="text"
+                <select
                   value={buildingType}
                   onChange={(e) => setBuildingType(e.target.value)}
-                  placeholder="문의유형"
                   className="px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                >
+                  <option value="아파트창문청소·외창청소">아파트창문청소·외창청소</option>
+                  <option value="상가·매장·사무실 유리창청소">상가·매장·사무실 유리창청소</option>
+                  <option value="빌딩 외벽(로프/고소작업차)">빌딩 외벽(로프/고소작업차)</option>
+                  <option value="간판청소·어닝청소">간판청소·어닝청소</option>
+                  <option value="시트지제거·필름제거">시트지제거·필름제거</option>
+                  <option value="기타 청소문의">기타 청소문의</option>
+                </select>
               </div>
               <textarea
                 rows={2}
@@ -370,7 +509,7 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
                   <div>
                     <div className="aspect-[16/10] bg-slate-900 overflow-hidden">
                       <img
-                        src={resolveAssetUrl(rel.coverImage || rel.afterImage)}
+                        src={resolveAssetUrl(getPostCoverImage(rel))}
                         alt={rel.title}
                         referrerPolicy="no-referrer"
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"

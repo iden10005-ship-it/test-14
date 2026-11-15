@@ -1,10 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { Image as ImageIcon, RotateCcw, Upload, X } from 'lucide-react';
+import {
+  formatBytes,
+  optimizeWorkLogImage,
+  type WorkLogImageNameInput,
+} from '@/src/utils/imageOptimizer';
 
 export interface ImageEditTarget {
   title: string;
   currentUrl: string;
   defaultUrl?: string;
+  optimizationTarget?: WorkLogImageNameInput;
   onSave: (newUrl: string) => void;
 }
 
@@ -50,11 +56,13 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
   const [urlInput, setUrlInput] = useState('');
   const [error, setError] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [uploadNote, setUploadNote] = useState('');
 
   useEffect(() => {
     if (target) {
       setUrlInput(target.currentUrl);
       setError('');
+      setUploadNote('');
     }
   }, [target]);
 
@@ -65,12 +73,34 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
     if (!file) return;
     setUploading(true);
     setError('');
+    setUploadNote('');
     try {
-      const dataUrl = await resizeImageFile(file);
-      const savedUrl = onUploadImage
-        ? await onUploadImage(dataUrl, file.name.replace(/\.[^.]+$/, ''))
-        : dataUrl;
-      setUrlInput(savedUrl);
+      if (target.optimizationTarget) {
+        const optimized = await optimizeWorkLogImage(file, target.optimizationTarget);
+        const savedUrl = onUploadImage
+          ? await onUploadImage(optimized.dataUrl, optimized.filename)
+          : optimized.dataUrl;
+        const resolvedName = savedUrl.startsWith('/uploads/')
+          ? decodeURIComponent(savedUrl.replace('/uploads/', '').split('?')[0])
+          : optimized.filename;
+        const ratio =
+          optimized.originalBytes > 0 && optimized.compressedBytes > 0
+            ? Math.max(
+                0,
+                Math.round((1 - optimized.compressedBytes / optimized.originalBytes) * 100)
+              )
+            : 0;
+        setUrlInput(savedUrl);
+        setUploadNote(
+          `${resolvedName} · ${formatBytes(optimized.originalBytes)} → ${formatBytes(optimized.compressedBytes)} (${ratio}% 절감)`
+        );
+      } else {
+        const dataUrl = await resizeImageFile(file);
+        const savedUrl = onUploadImage
+          ? await onUploadImage(dataUrl, file.name.replace(/\.[^.]+$/, ''))
+          : dataUrl;
+        setUrlInput(savedUrl);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : '이미지 처리 중 오류가 발생했습니다.');
     } finally {
@@ -142,6 +172,11 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
                 className="hidden"
               />
             </label>
+            {uploadNote && (
+              <p className="mt-2 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-1.5">
+                자동 변환 완료: {uploadNote}
+              </p>
+            )}
           </div>
 
           {/* URL Input */}

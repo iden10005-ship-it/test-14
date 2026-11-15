@@ -110,12 +110,7 @@ function isAdminHash(): boolean {
   return hash === 'admin';
 }
 
-function parseHashRoute(): PageRoute {
-  if (typeof window === 'undefined') return { type: 'home' };
-  const hash = window.location.hash.replace(/^#\/?/, '');
-  if (!hash || hash.toLowerCase() === 'admin') return { type: 'home' };
-
-  const parts = hash.split('/').map((p) => decodeURIComponent(p));
+function parseRouteSegments(parts: string[]): PageRoute {
   if (parts[0] === 'service' && parts[1]) {
     return { type: 'service', serviceId: parts[1] };
   }
@@ -132,27 +127,47 @@ function parseHashRoute(): PageRoute {
   return { type: 'home' };
 }
 
-function buildHashForRoute(route: PageRoute): string {
+function parseCurrentRoute(): PageRoute {
+  if (typeof window === 'undefined') return { type: 'home' };
+  const hash = window.location.hash.replace(/^#\/?/, '');
+  if (hash && hash.toLowerCase() !== 'admin') {
+    const hashParts = hash.split('/').filter(Boolean).map((p) => decodeURIComponent(p));
+    return parseRouteSegments(hashParts);
+  }
+  const pathParts = window.location.pathname
+    .replace(/^\/+|\/+$/g, '')
+    .split('/')
+    .filter(Boolean)
+    .map((p) => decodeURIComponent(p));
+  return parseRouteSegments(pathParts);
+}
+
+function buildPathForRoute(route: PageRoute): string {
   switch (route.type) {
     case 'home':
-      return '';
+      return '/';
     case 'service':
-      return `#/service/${encodeURIComponent(route.serviceId)}`;
+      return `/service/${encodeURIComponent(route.serviceId)}`;
     case 'region':
-      return `#/region/${encodeURIComponent(route.regionName)}`;
+      return `/region/${encodeURIComponent(route.regionName)}`;
     case 'matrix':
-      return `#/region/${encodeURIComponent(route.regionName)}/service/${encodeURIComponent(route.serviceId)}`;
+      return `/region/${encodeURIComponent(route.regionName)}/service/${encodeURIComponent(route.serviceId)}`;
     case 'gallery_list':
-      return '#/gallery';
+      return '/gallery';
     case 'gallery_detail':
-      return `#/gallery/${encodeURIComponent(route.postId)}`;
+      return `/gallery/${encodeURIComponent(route.postId)}`;
   }
+}
+
+function buildHashForRoute(route: PageRoute): string {
+  const path = buildPathForRoute(route);
+  return path === '/' ? '' : `#${path}`;
 }
 
 export default function App() {
   const [siteData, setSiteData] = useState<SiteData>(() => loadInitialSiteData());
   const [inquiries, setInquiries] = useState<InquiryItem[]>(() => loadInitialInquiries());
-  const [route, setRoute] = useState<PageRoute>(() => parseHashRoute());
+  const [route, setRoute] = useState<PageRoute>(() => parseCurrentRoute());
 
   const [isAdminMode, setIsAdminMode] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
@@ -462,14 +477,18 @@ export default function App() {
   }, [isAdminMode]);
 
   useEffect(() => {
-    const onHashChange = () => {
+    const onRouteChange = () => {
       if (isAdminHash() && !isAdminMode) {
         setLoginModalOpen(true);
       }
-      setRoute(parseHashRoute());
+      setRoute(parseCurrentRoute());
     };
-    window.addEventListener('hashchange', onHashChange);
-    return () => window.removeEventListener('hashchange', onHashChange);
+    window.addEventListener('hashchange', onRouteChange);
+    window.addEventListener('popstate', onRouteChange);
+    return () => {
+      window.removeEventListener('hashchange', onRouteChange);
+      window.removeEventListener('popstate', onRouteChange);
+    };
   }, [isAdminMode]);
 
   useEffect(() => {
@@ -497,12 +516,18 @@ export default function App() {
 
   const navigateTo = (next: PageRoute) => {
     setRoute(next);
-    const nextHash = buildHashForRoute(next);
     if (typeof window !== 'undefined') {
-      if (nextHash) {
-        window.history.pushState(null, '', nextHash);
+      const useCleanUrls = (import.meta.env.BASE_URL || '/') === '/';
+      if (useCleanUrls) {
+        const nextPath = buildPathForRoute(next);
+        window.history.pushState(null, '', nextPath);
       } else {
-        window.history.pushState(null, '', window.location.pathname + window.location.search);
+        const nextHash = buildHashForRoute(next);
+        if (nextHash) {
+          window.history.pushState(null, '', nextHash);
+        } else {
+          window.history.pushState(null, '', window.location.pathname + window.location.search);
+        }
       }
       window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
     }

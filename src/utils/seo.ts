@@ -1,5 +1,6 @@
 import { INITIAL_SITE_DATA } from '@/src/data/clearworksData';
 import type { PageRoute, PageSeoMeta, SiteData } from '@/src/types/clearworks';
+import { generateNaverSeoFromPost, parseSeoKeywords } from '@/src/utils/naverSeoGenerator';
 
 export const DEFAULT_HOME_KEYWORDS =
   '유리창청소, 아파트외창청소, 외벽청소, 상가유리창청소, 빌딩외벽청소, 고층유리창청소, 서울유리창청소, 경기유리창청소, 인천유리창청소, 창틀청소, 유리발수코팅, 어닝청소, 클리어웍스';
@@ -30,6 +31,7 @@ export interface ResolvedSeoMeta {
   ogDescription: string;
   ogImage: string;
   routeHash: string;
+  routePath: string;
   jsonLd: Record<string, unknown> | null;
 }
 
@@ -44,8 +46,10 @@ export function getDefaultSeoForRoute(
   let title = `${regionText} 유리창청소·외벽청소 전문 | ${company.name}`;
   let description = `${company.region} 아파트·상가·빌딩 유리창청소와 건물 외벽청소 전문 ${company.name}. 고층 유리창·외벽 고압세척, 안전한 맞춤 시공과 무료 출장견적을 제공합니다.`;
   let keywords = `${company.name}, ${regionText} 유리창청소, 아파트외창청소, 외벽청소, 상가유리창청소, 빌딩외벽청소`;
+  let ogTitle = '';
   let ogImage = siteData.seo?.defaultOgImage?.trim() || hero.afterImage || '';
   let routeHash = '';
+  let routePath = '/';
   let jsonLd: Record<string, unknown> | null = null;
 
   if (route.type === 'service') {
@@ -57,7 +61,8 @@ export function getDefaultSeoForRoute(
       keywords = `${service.title}, ${company.name}, ${company.region}, 유리창청소, 외벽청소`;
       ogImage =
         siteData.seo?.defaultOgImage?.trim() || service.detail.afterImage || hero.afterImage || '';
-      routeHash = `#/service/${service.id}`;
+      routePath = `/service/${encodeURIComponent(service.id)}`;
+      routeHash = `#${routePath}`;
       jsonLd = {
         '@context': 'https://schema.org',
         '@type': 'Service',
@@ -78,7 +83,8 @@ export function getDefaultSeoForRoute(
       ? `${route.regionName}(${detail.subDistricts.slice(0, 5).join(', ')}) ${detail.description}. ${detail.leadTime}.`
       : `${route.regionName} 전지역 아파트 외창·상가 통유리·빌딩 외벽청소 전문 ${company.name}. 당일·익일 무료 출장 견적.`;
     keywords = `${route.regionName} 유리창청소, ${route.regionName} 외창청소, ${route.regionName} 외벽청소, ${company.name}`;
-    routeHash = `#/region/${encodeURIComponent(route.regionName)}`;
+    routePath = `/region/${encodeURIComponent(route.regionName)}`;
+    routeHash = `#${routePath}`;
     jsonLd = {
       '@context': 'https://schema.org',
       '@type': 'Service',
@@ -103,7 +109,8 @@ export function getDefaultSeoForRoute(
       keywords = `${route.regionName} ${service.title}, ${route.regionName} 유리창청소, ${service.title}, ${company.name}`;
       ogImage =
         siteData.seo?.defaultOgImage?.trim() || service.detail.afterImage || hero.afterImage || '';
-      routeHash = `#/region/${encodeURIComponent(route.regionName)}/service/${service.id}`;
+      routePath = `/region/${encodeURIComponent(route.regionName)}/service/${encodeURIComponent(service.id)}`;
+      routeHash = `#${routePath}`;
       jsonLd = {
         '@context': 'https://schema.org',
         '@type': 'Service',
@@ -117,28 +124,59 @@ export function getDefaultSeoForRoute(
     description =
       '아파트 외창, 상가 통유리, 빌딩 외벽 고소작업, 간판·어닝청소, 썬팅 시트지 제거 실제 시공 일지.';
     keywords = `${company.name} 시공사례, 유리창청소 전후, 외벽청소 후기, 아파트 외창청소 사례`;
+    routePath = '/gallery';
     routeHash = '#/gallery';
   } else if (route.type === 'gallery_detail') {
     const post =
       gallery.posts.find((p) => p.id === route.postId) ?? gallery.posts[0];
     if (post) {
-      title = `${post.title} | ${company.name}`;
-      description = post.excerpt;
-      keywords = [...post.tags, post.region, post.category, company.name].join(', ');
+      const autoSeo = generateNaverSeoFromPost(post, company.name);
+      const useStored = post.seo && post.seo.autoSync === false;
+      title = (useStored ? post.seo?.title?.trim() : post.seo?.title?.trim() || autoSeo.title) || autoSeo.title;
+      description =
+        (useStored
+          ? post.seo?.description?.trim()
+          : post.seo?.description?.trim() || autoSeo.description) || autoSeo.description;
+      ogTitle =
+        (useStored
+          ? post.seo?.ogTitle?.trim()
+          : post.seo?.ogTitle?.trim() || autoSeo.ogTitle) || autoSeo.ogTitle;
+      keywords =
+        (useStored
+          ? post.seo?.keywords?.trim()
+          : post.seo?.keywords?.trim() || autoSeo.keywords) || autoSeo.keywords;
       ogImage =
         post.coverImage ||
         post.afterImage ||
         siteData.seo?.defaultOgImage?.trim() ||
         hero.afterImage ||
         '';
-      routeHash = `#/gallery/${post.id}`;
+      routePath = `/gallery/${encodeURIComponent(post.id)}`;
+      routeHash = `#${routePath}`;
+      const blockImages = (post.blocks ?? [])
+        .filter((b): b is Extract<typeof b, { type: 'image' }> => b.type === 'image')
+        .map((b) => b.url)
+        .filter(Boolean);
+      const images = Array.from(
+        new Set([ogImage, ...blockImages, post.afterImage, post.beforeImage].filter(Boolean))
+      );
+      const publishedIso = post.date.replace(/\./g, '-');
       jsonLd = {
         '@context': 'https://schema.org',
-        '@type': 'Article',
+        '@type': 'BlogPosting',
         headline: post.title,
-        description: post.excerpt,
-        datePublished: post.date.replace(/\./g, '-'),
+        description,
+        articleSection: post.category,
+        keywords,
+        datePublished: publishedIso,
+        dateModified: publishedIso,
+        image: images,
+        articleBody: post.content,
         author: {
+          '@type': 'Person',
+          name: post.author || company.name,
+        },
+        publisher: {
           '@type': 'Organization',
           name: company.name,
         },
@@ -153,10 +191,11 @@ export function getDefaultSeoForRoute(
     title,
     description,
     keywords,
-    ogTitle: title,
+    ogTitle: ogTitle || title,
     ogDescription: description,
     ogImage,
     routeHash,
+    routePath,
     jsonLd,
   };
 }
@@ -171,7 +210,8 @@ export function resolveSeoForRoute(
   const title = override?.title?.trim() || defaults.title;
   const description = override?.description?.trim() || defaults.description;
   const keywords = override?.keywords?.trim() || defaults.keywords;
-  const ogTitle = override?.ogTitle?.trim() || title;
+  const ogTitle =
+    override?.ogTitle?.trim() || (override?.title?.trim() ? override.title.trim() : defaults.ogTitle);
   const ogDescription = override?.ogDescription?.trim() || description;
   const ogImage =
     override?.ogImage?.trim() || siteData.seo?.defaultOgImage?.trim() || defaults.ogImage;
@@ -224,6 +264,16 @@ function setDynamicJsonLd(data: Record<string, unknown> | null) {
   document.head.appendChild(script);
 }
 
+function setArticleTags(tags: string[]) {
+  document.querySelectorAll('meta[property="article:tag"]').forEach((el) => el.remove());
+  for (const tag of tags) {
+    const meta = document.createElement('meta');
+    meta.setAttribute('property', 'article:tag');
+    meta.setAttribute('content', tag);
+    document.head.appendChild(meta);
+  }
+}
+
 function toAbsoluteUrl(urlOrPath: string, origin: string): string {
   const trimmed = urlOrPath.trim();
   if (!trimmed) return '';
@@ -267,9 +317,15 @@ export function applySeoForRoute(route: PageRoute, siteData: SiteData = INITIAL_
     removeMetaTag('meta[name="twitter:image"]');
   }
 
-  const canonicalUrl = `${origin}${pathname}${resolved.routeHash}`;
+  const useCleanUrls = (import.meta.env?.BASE_URL || '/') === '/';
+  const canonicalUrl = useCleanUrls
+    ? `${origin}${resolved.routePath}`
+    : `${origin}${pathname}${resolved.routeHash}`;
   setMetaTag('meta[property="og:url"]', 'property', 'og:url', canonicalUrl);
   setCanonical(canonicalUrl);
+  setArticleTags(
+    route.type === 'gallery_detail' ? parseSeoKeywords(resolved.keywords, 10) : []
+  );
   setDynamicJsonLd(resolved.jsonLd);
 }
 

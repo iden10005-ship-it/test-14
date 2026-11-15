@@ -319,7 +319,7 @@ async function writeSitemapFiles(
   includeMatrix = true
 ): Promise<number> {
   const baseUrl = normalizeBaseUrl(
-    overrideBaseUrl || data.siteUrl || process.env.APP_URL || 'https://www.clearworks.kr'
+    overrideBaseUrl || data.siteUrl || process.env.APP_URL || 'https://clearworks.kr'
   );
   const entries = buildSitemapEntries(data, { baseUrl, includeMatrix });
   const xml = generateSitemapXml(data, { baseUrl, includeMatrix });
@@ -457,16 +457,56 @@ async function startServer() {
       const rawExt = match[1].toLowerCase();
       const ext = rawExt === 'jpeg' ? 'jpg' : rawExt;
       const base64Data = match[2];
-      const safeHint = (nameHint || 'image')
-        .toLowerCase()
-        .replace(/[^a-z0-9_-]/g, '')
-        .slice(0, 24) || 'image';
 
-      const filename = `${safeHint}-${Date.now()}.${ext}`;
+      const rawHint = (nameHint || '').trim();
+      const hasSemanticFilename =
+        /\.jpe?g$/i.test(rawHint) || /[가-힣]/.test(rawHint) || rawHint.includes('_');
+
+      let filename: string;
+      if (hasSemanticFilename) {
+        const baseWithoutExt = rawHint.replace(/\.(png|jpe?g|webp|gif)$/i, '');
+        const safeBase =
+          baseWithoutExt
+            .replace(/[\s/\\]+/g, '-')
+            .replace(/[^가-힣a-zA-Z0-9_-]/g, '')
+            .replace(/-+/g, '-')
+            .replace(/^[-_]+|[-_]+$/g, '')
+            .slice(0, 64) || '현장사진';
+
+        let candidate = `${safeBase}.${ext}`;
+        let counter = 2;
+        while (counter <= 99) {
+          try {
+            await fs.access(path.resolve(UPLOAD_DIR, candidate));
+            candidate = `${safeBase}-${counter}.${ext}`;
+            counter += 1;
+          } catch {
+            break;
+          }
+        }
+        if (counter > 99) {
+          candidate = `${safeBase}-${Date.now()}.${ext}`;
+        }
+        filename = candidate;
+      } else {
+        const safeHint =
+          rawHint
+            .toLowerCase()
+            .replace(/[^a-z0-9_-]/g, '')
+            .slice(0, 24) || 'image';
+        filename = `${safeHint}-${Date.now()}.${ext}`;
+      }
+
+      const buffer = Buffer.from(base64Data, 'base64');
       const filePath = path.resolve(UPLOAD_DIR, filename);
-      await fs.writeFile(filePath, Buffer.from(base64Data, 'base64'));
+      await fs.writeFile(filePath, buffer);
 
-      res.json({ ok: true, url: `/uploads/${filename}` });
+      res.json({
+        ok: true,
+        url: `/uploads/${filename}`,
+        filename,
+        bytes: buffer.length,
+      });
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : 'Upload failed' });
     }

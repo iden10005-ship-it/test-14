@@ -20,9 +20,10 @@ export interface SitemapOptions {
   baseUrl?: string;
   lastmod?: string;
   includeMatrix?: boolean;
+  useHashRouting?: boolean;
 }
 
-const DEFAULT_BASE_URL = 'https://www.clearworks.kr';
+const DEFAULT_BASE_URL = 'https://clearworks.kr';
 
 export function normalizeBaseUrl(rawUrl?: string): string {
   const candidate = (rawUrl ?? '').trim();
@@ -56,6 +57,7 @@ export function buildSitemapEntries(
   const baseUrl = normalizeBaseUrl(options.baseUrl ?? siteData.siteUrl);
   const defaultLastmod = options.lastmod ?? new Date().toISOString().slice(0, 10);
   const includeMatrix = options.includeMatrix ?? true;
+  const prefix = options.useHashRouting ? '/#' : '';
 
   const entries: SitemapUrlEntry[] = [];
   const seen = new Set<string>();
@@ -76,36 +78,36 @@ export function buildSitemapEntries(
 
   // 2. Gallery list page
   pushEntry({
-    loc: `${baseUrl}/#/gallery`,
+    loc: `${baseUrl}${prefix}/gallery`,
     lastmod: defaultLastmod,
     changefreq: 'weekly',
-    priority: '0.8',
+    priority: '0.9',
   });
 
-  // 3. Individual service detail pages
+  // 3. Individual gallery field log pages (Blog-style SEO priority)
+  for (const post of siteData.gallery.posts) {
+    pushEntry({
+      loc: `${baseUrl}${prefix}/gallery/${encodeURIComponent(post.id)}`,
+      lastmod: formatPostLastmod(post.date, defaultLastmod),
+      changefreq: 'monthly',
+      priority: '0.9',
+    });
+  }
+
+  // 4. Individual service detail pages
   for (const service of siteData.services.items) {
     pushEntry({
-      loc: `${baseUrl}/#/service/${encodeURIComponent(service.id)}`,
+      loc: `${baseUrl}${prefix}/service/${encodeURIComponent(service.id)}`,
       lastmod: defaultLastmod,
       changefreq: 'monthly',
       priority: '0.9',
     });
   }
 
-  // 4. Individual gallery field log pages
-  for (const post of siteData.gallery.posts) {
-    pushEntry({
-      loc: `${baseUrl}/#/gallery/${encodeURIComponent(post.id)}`,
-      lastmod: formatPostLastmod(post.date, defaultLastmod),
-      changefreq: 'monthly',
-      priority: '0.8',
-    });
-  }
-
   // 5. Regional SEO landing pages
   for (const region of siteData.regions.list) {
     pushEntry({
-      loc: `${baseUrl}/#/region/${encodeURIComponent(region)}`,
+      loc: `${baseUrl}${prefix}/region/${encodeURIComponent(region)}`,
       lastmod: defaultLastmod,
       changefreq: 'monthly',
       priority: '0.7',
@@ -117,7 +119,7 @@ export function buildSitemapEntries(
     for (const region of siteData.regions.list) {
       for (const service of siteData.services.items) {
         pushEntry({
-          loc: `${baseUrl}/#/region/${encodeURIComponent(region)}/service/${encodeURIComponent(service.id)}`,
+          loc: `${baseUrl}${prefix}/region/${encodeURIComponent(region)}/service/${encodeURIComponent(service.id)}`,
           lastmod: defaultLastmod,
           changefreq: 'monthly',
           priority: '0.6',

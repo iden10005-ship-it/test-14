@@ -80,6 +80,26 @@ export interface CaseItem {
   description: string;
 }
 
+export type GalleryBlock =
+  | { id: string; type: 'heading'; text: string }
+  | { id: string; type: 'text'; text: string }
+  | {
+      id: string;
+      type: 'image';
+      url: string;
+      caption?: string;
+      filename?: string;
+      sizeInfo?: string;
+    };
+
+export interface GalleryPostSeo {
+  title?: string;
+  description?: string;
+  ogTitle?: string;
+  keywords?: string;
+  autoSync?: boolean;
+}
+
 export interface GalleryPost {
   id: string;
   title: string;
@@ -95,6 +115,8 @@ export interface GalleryPost {
   equipmentUsed: string[];
   keyPoints: string[];
   content: string;
+  blocks?: GalleryBlock[];
+  seo?: GalleryPostSeo;
 }
 
 export interface PricingRow {

@@ -304,7 +304,7 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
 
   const effectiveSiteUrl =
     draftSiteUrl.trim() ||
-    (typeof window !== 'undefined' ? window.location.origin : 'https://www.clearworks.kr');
+    (typeof window !== 'undefined' ? window.location.origin : 'https://clearworks.kr');
 
   const draftPreviewData = useMemo<SiteData>(
     () => ({
@@ -713,7 +713,7 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
     .filter(Boolean);
 
   const previewUrlDisplay = `${effectiveSiteUrl.replace(/\/+$/, '')}${
-    selectedDefaults.routeHash ? `/${selectedDefaults.routeHash}` : ''
+    selectedDefaults.routePath === '/' ? '' : selectedDefaults.routePath
   }`;
 
   return (
@@ -1099,7 +1099,7 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
                       setSaveMessage('');
                       setSaveError('');
                     }}
-                    placeholder="https://www.clearworks.kr"
+                    placeholder="https://clearworks.kr"
                     className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
                   />
                   <label className="inline-flex items-center gap-2 text-xs text-slate-600 cursor-pointer select-none">
@@ -2073,7 +2073,7 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
                           : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                       }`}
                     >
-                      <span>현장 갤러리 목록 (#/gallery)</span>
+                      <span>현장 갤러리 목록 (/gallery)</span>
                       {hasCustomMeta(draftSeo.pages.gallery_list) && (
                         <span className="w-2 h-2 rounded-full bg-blue-600" />
                       )}
@@ -2091,7 +2091,7 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
                       const customized = hasCustomMeta(draftSeo.pages[`service:${srv.id}`]);
                       return (
                         <option key={srv.id} value={srv.id}>
-                          {srv.title} (#/service/{srv.id}){customized ? ' ★ 개별설정됨' : ''}
+                          {srv.title} (/service/{srv.id}){customized ? ' ★ 개별설정됨' : ''}
                         </option>
                       );
                     })}
@@ -2108,7 +2108,7 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
                       const customized = hasCustomMeta(draftSeo.pages[`region:${reg}`]);
                       return (
                         <option key={reg} value={reg}>
-                          {reg} (#/region/{reg}){customized ? ' ★ 개별설정됨' : ''}
+                          {reg} (/region/{reg}){customized ? ' ★ 개별설정됨' : ''}
                         </option>
                       );
                     })}
@@ -2663,7 +2663,7 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
                           : 'border-slate-200 bg-white text-slate-700'
                       }`}
                     >
-                      현장 갤러리 목록 (#/gallery)
+                      현장 갤러리 목록 (/gallery)
                     </button>
                   </div>
                 )}
@@ -2676,7 +2676,7 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
                   >
                     {siteData.services.items.map((srv) => (
                       <option key={srv.id} value={srv.id}>
-                        {srv.title} (#/service/{srv.id})
+                        {srv.title} (/service/{srv.id})
                       </option>
                     ))}
                   </select>
@@ -2690,7 +2690,7 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
                   >
                     {siteData.regions.list.map((reg) => (
                       <option key={reg} value={reg}>
-                        {reg} (#/region/{reg})
+                        {reg} (/region/{reg})
                       </option>
                     ))}
                   </select>
