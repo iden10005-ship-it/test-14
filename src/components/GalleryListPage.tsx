@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ArrowRight,
   Building2,
   Calendar,
+  ChevronLeft,
   ChevronRight,
   Home,
   Layers,
@@ -52,9 +53,12 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
   onSelectPost,
 }) => {
   const [activeCategory, setActiveCategory] = useState<string>('전체');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(6);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<GalleryPost | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const gridTopRef = useRef<HTMLDivElement | null>(null);
 
   const matchesCategory = (postCategory: string, selected: string) => {
     if (selected === '전체') return true;
@@ -94,6 +98,46 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
   };
 
   const filteredPosts = posts.filter((p) => matchesCategory(p.category, activeCategory));
+  const totalPages = Math.max(1, Math.ceil(filteredPosts.length / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIndex = (safePage - 1) * pageSize;
+  const paginatedPosts = filteredPosts.slice(startIndex, startIndex + pageSize);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const handleCategoryChange = (catId: string) => {
+    setActiveCategory(catId);
+    setCurrentPage(1);
+  };
+
+  const handlePageSizeChange = (nextSize: number) => {
+    setPageSize(nextSize);
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (nextPage: number) => {
+    const clamped = Math.max(1, Math.min(nextPage, totalPages));
+    setCurrentPage(clamped);
+    gridTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const visiblePageNumbers = (() => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    const pages: (number | 'ellipsis')[] = [1];
+    const left = Math.max(2, safePage - 1);
+    const right = Math.min(totalPages - 1, safePage + 1);
+    if (left > 2) pages.push('ellipsis');
+    for (let p = left; p <= right; p++) pages.push(p);
+    if (right < totalPages - 1) pages.push('ellipsis');
+    pages.push(totalPages);
+    return pages;
+  })();
 
   return (
     <div className="bg-slate-50 min-h-screen py-8 sm:py-12 pb-24">
@@ -146,27 +190,55 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
           </div>
         </div>
 
-        {/* Filter Tabs */}
-        <div className="flex flex-wrap items-center gap-2 mb-8">
-          {CATEGORIES.map((cat) => {
-            const isActive = activeCategory === cat.id;
-            const Icon = cat.icon;
-            return (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => setActiveCategory(cat.id)}
-                className={`flex items-center gap-1.5 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
-                  isActive
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
-                }`}
+        {/* Filter Tabs + Count / Page Size Bar */}
+        <div
+          ref={gridTopRef}
+          className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8 scroll-mt-24"
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            {CATEGORIES.map((cat) => {
+              const isActive = activeCategory === cat.id;
+              const Icon = cat.icon;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => handleCategoryChange(cat.id)}
+                  className={`flex items-center gap-1.5 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
+                    isActive
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                      : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                  }`}
+                >
+                  {Icon && <Icon className="w-4 h-4" />}
+                  <span>{cat.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center justify-between lg:justify-end gap-3 text-xs text-slate-600 shrink-0">
+            <span className="font-semibold tabular-nums">
+              총 <strong className="text-slate-900">{filteredPosts.length}</strong>건
+              {filteredPosts.length > 0 && (
+                <span className="text-slate-400 ml-1.5">
+                  ({startIndex + 1}–{Math.min(startIndex + pageSize, filteredPosts.length)} 표시)
+                </span>
+              )}
+            </span>
+            <label className="inline-flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 shadow-2xs">
+              <span className="text-[11px] font-bold text-slate-500">목록 수</span>
+              <select
+                value={pageSize}
+                onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                className="text-xs font-bold text-slate-800 bg-transparent focus:outline-none cursor-pointer"
+                aria-label="페이지당 게시글 수"
               >
-                {Icon && <Icon className="w-4 h-4" />}
-                <span>{cat.label}</span>
-              </button>
-            );
-          })}
+                <option value={6}>6개씩</option>
+                <option value={12}>12개씩</option>
+              </select>
+            </label>
+          </div>
         </div>
 
         {/* Posts Grid */}
@@ -177,8 +249,9 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-            {filteredPosts.map((post) => (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+              {paginatedPosts.map((post) => (
               <article
                 key={post.id}
                 onClick={() => onSelectPost(post.id)}
@@ -282,8 +355,72 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </div>
               </article>
-            ))}
-          </div>
+              ))}
+            </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <nav
+                aria-label="작업갤러리 페이지 이동"
+                className="mt-10 sm:mt-12 flex flex-col items-center justify-center gap-2.5 bg-white border border-slate-200/90 rounded-2xl px-4 sm:px-6 py-4 shadow-2xs"
+              >
+                <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => handlePageChange(safePage - 1)}
+                    disabled={safePage === 1}
+                    className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none text-xs font-bold text-slate-700 cursor-pointer transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    <span>이전</span>
+                  </button>
+
+                  {visiblePageNumbers.map((item, idx) =>
+                    item === 'ellipsis' ? (
+                      <span
+                        key={`ellipsis-${idx}`}
+                        className="px-2 py-1.5 text-xs font-bold text-slate-400 select-none"
+                      >
+                        …
+                      </span>
+                    ) : (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => handlePageChange(item)}
+                        aria-current={item === safePage ? 'page' : undefined}
+                        className={`min-w-9 h-9 px-2.5 rounded-xl text-xs font-extrabold tabular-nums transition-all cursor-pointer ${
+                          item === safePage
+                            ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/25'
+                            : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                        }`}
+                      >
+                        {item}
+                      </button>
+                    )
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => handlePageChange(safePage + 1)}
+                    disabled={safePage === totalPages}
+                    className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none text-xs font-bold text-slate-700 cursor-pointer transition-colors"
+                  >
+                    <span>다음</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <p className="text-[11px] font-medium text-slate-500 tabular-nums text-center">
+                  총 <strong className="text-slate-900">{filteredPosts.length}</strong>개 작업일지 ·{' '}
+                  <strong className="text-blue-600">
+                    {safePage} / {totalPages}
+                  </strong>{' '}
+                  페이지
+                </p>
+              </nav>
+            )}
+          </>
         )}
       </div>
 
