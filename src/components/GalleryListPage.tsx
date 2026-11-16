@@ -122,7 +122,10 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
   const handlePageChange = (nextPage: number) => {
     const clamped = Math.max(1, Math.min(nextPage, totalPages));
     setCurrentPage(clamped);
-    gridTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    gridTopRef.current?.scrollIntoView({
+      behavior: 'instant' as ScrollBehavior,
+      block: 'start',
+    });
   };
 
   const visiblePageNumbers = (() => {

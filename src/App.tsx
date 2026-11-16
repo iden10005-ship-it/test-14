@@ -536,11 +536,17 @@ export default function App() {
   const scrollToSection = (sectionId: string) => {
     if (route.type !== 'home') {
       navigateTo({ type: 'home' });
-      setTimeout(() => {
-        document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
-      }, 60);
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          document.getElementById(sectionId)?.scrollIntoView({
+            behavior: 'instant' as ScrollBehavior,
+          });
+        }, 20);
+      });
     } else {
-      document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
+      document.getElementById(sectionId)?.scrollIntoView({
+        behavior: 'instant' as ScrollBehavior,
+      });
     }
   };
 
