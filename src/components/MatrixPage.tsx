@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
   ArrowLeft,
+  ArrowRight,
   CheckCircle2,
+  Clock,
   Image as ImageIcon,
   MapPin,
   MessageCircle,
@@ -23,6 +25,7 @@ interface MatrixPageProps {
   regionName: string;
   regionDetail?: RegionDetail;
   service: ServiceItem;
+  allServices: ServiceItem[];
   company: CompanyInfo;
   isEditMode?: boolean;
   onUpdateService?: (updated: ServiceItem) => void;
@@ -30,6 +33,7 @@ interface MatrixPageProps {
   onBack: () => void;
   onNavigateRegion: (regionName: string) => void;
   onNavigateService: (serviceId: string) => void;
+  onNavigateMatrix: (regionName: string, serviceId: string) => void;
   onSubmitInquiry: (payload: InquiryPayload) => void;
 }
 
@@ -37,6 +41,7 @@ export const MatrixPage: React.FC<MatrixPageProps> = ({
   regionName,
   regionDetail,
   service,
+  allServices,
   company,
   isEditMode = false,
   onUpdateService,
@@ -44,6 +49,7 @@ export const MatrixPage: React.FC<MatrixPageProps> = ({
   onBack,
   onNavigateRegion,
   onNavigateService,
+  onNavigateMatrix,
   onSubmitInquiry,
 }) => {
   const [name, setName] = useState('');
@@ -59,6 +65,9 @@ export const MatrixPage: React.FC<MatrixPageProps> = ({
   }, [regionName, service.title]);
 
   const subDistricts = regionDetail?.subDistricts ?? [`${regionName} 전지역`];
+  const popularComplexes = regionDetail?.popularComplexes ?? [];
+  const leadTime = regionDetail?.leadTime || '당일·익일 무료 방문 견적 가능';
+  const siblingServices = allServices.filter((s) => s.id !== service.id);
 
   const updateDetail = (patch: Partial<ServiceItem['detail']>) => {
     if (!onUpdateService) return;
@@ -269,6 +278,73 @@ export const MatrixPage: React.FC<MatrixPageProps> = ({
           </div>
         </div>
 
+        {/* Local Coverage & Complexes */}
+        <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-7 border border-slate-200 shadow-2xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-blue-600 shrink-0" />
+              <span>{regionName} {service.title} 출장 가능 지역 안내</span>
+            </h2>
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-100 self-start sm:self-auto">
+              <Clock className="w-3.5 h-3.5" />
+              <span>{leadTime}</span>
+            </span>
+          </div>
+
+          <div>
+            <p className="text-xs font-bold text-slate-500 mb-2">세부 출장 가능 동</p>
+            <div className="flex flex-wrap gap-1.5">
+              {subDistricts.map((sub, idx) => (
+                <span
+                  key={`${sub}-${idx}`}
+                  className="px-3 py-1 rounded-xl bg-slate-100 text-slate-800 text-xs font-semibold border border-slate-200/70"
+                >
+                  {sub}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {popularComplexes.length > 0 && (
+            <div className="pt-2">
+              <p className="text-xs font-bold text-slate-500 mb-2">
+                {regionName} 주요 시공 아파트 · 상권 구역
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {popularComplexes.map((complex, idx) => (
+                  <span
+                    key={`${complex}-${idx}`}
+                    className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-semibold"
+                  >
+                    {complex}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Service FAQs tailored for this Region */}
+        {service.detail.faqList && service.detail.faqList.length > 0 && (
+          <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-7 border border-slate-200 shadow-2xs">
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 mb-4">
+              {regionName} {service.title} 자주 묻는 질문
+            </h2>
+            <div className="space-y-3">
+              {service.detail.faqList.map((faq, idx) => (
+                <div key={idx} className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                  <p className="text-sm font-bold text-slate-900 mb-1">
+                    Q. [{regionName}] {faq.q}
+                  </p>
+                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                    A. {faq.a}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 border border-slate-200 shadow-xl">
           <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 mb-1">
             {regionName} {service.title} 빠른 견적 신청
@@ -318,6 +394,44 @@ export const MatrixPage: React.FC<MatrixPageProps> = ({
             </form>
           )}
         </div>
+
+        {/* Cross-links to other services in the same region */}
+        {siblingServices.length > 0 && (
+          <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 border border-slate-200 shadow-2xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+              <div>
+                <h3 className="text-base sm:text-lg font-bold text-slate-900">
+                  {regionName}의 다른 전문 청소 서비스
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  같은 {regionName} 지역 내 다른 유리창·외벽·간판 청소 안내 페이지로 바로 이동하실 수 있습니다.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => onNavigateRegion(regionName)}
+                className="self-start sm:self-auto text-xs font-bold text-blue-600 hover:underline cursor-pointer whitespace-nowrap"
+              >
+                {regionName} 전체 안내 보기 →
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {siblingServices.map((other) => (
+                <button
+                  key={other.id}
+                  type="button"
+                  onClick={() => onNavigateMatrix(regionName, other.id)}
+                  className="text-left p-3.5 rounded-2xl bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition-all flex items-center justify-between gap-2 cursor-pointer group"
+                >
+                  <span className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-blue-700">
+                    {regionName} {other.title}
+                  </span>
+                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 shrink-0" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

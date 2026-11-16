@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
   Building,
+  Calendar,
   CheckCircle2,
   Clock,
   MapPin,
@@ -17,20 +18,41 @@ import {
 import { EditableText } from '@/src/components/admin/EditableText';
 import type {
   CompanyInfo,
+  GalleryPost,
   InquiryPayload,
   RegionDetail,
   ServiceItem,
 } from '@/src/types/clearworks';
+import { resolveAssetUrl } from '@/src/utils/assetUrl';
+
+function buildRegionMatchTokens(regionName: string): string[] {
+  const tokens = new Set<string>();
+  const trimmed = regionName.trim();
+  if (trimmed) tokens.add(trimmed);
+
+  for (const part of trimmed.split(/[\s·,/]+/)) {
+    const clean = part.trim();
+    if (!clean) continue;
+    tokens.add(clean);
+    if (clean.length >= 3 && /[시군구동]$/.test(clean)) {
+      tokens.add(clean.slice(0, -1));
+    }
+  }
+  return Array.from(tokens).filter((t) => t.length >= 2);
+}
 
 interface RegionDetailPageProps {
   regionName: string;
   regionDetail?: RegionDetail;
   allServices: ServiceItem[];
+  galleryPosts: GalleryPost[];
   company: CompanyInfo;
   isEditMode: boolean;
   onUpdateRegionDetail: (regionName: string, detail: RegionDetail) => void;
   onBack: () => void;
   onSelectMatrix: (regionName: string, serviceId: string) => void;
+  onSelectPost: (postId: string) => void;
+  onViewGalleryList: () => void;
   onSubmitInquiry: (payload: InquiryPayload) => void;
 }
 
@@ -38,11 +60,14 @@ export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
   regionName,
   regionDetail,
   allServices,
+  galleryPosts,
   company,
   isEditMode,
   onUpdateRegionDetail,
   onBack,
   onSelectMatrix,
+  onSelectPost,
+  onViewGalleryList,
   onSubmitInquiry,
 }) => {
   const detail: RegionDetail = regionDetail ?? {
@@ -66,6 +91,34 @@ export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
     setContent(`${regionName} 지역 유리창 청소 무료 견적 문의드립니다.`);
     setSent(false);
   }, [regionName]);
+
+  const featuredGalleryPosts = useMemo(() => {
+    const tokens = buildRegionMatchTokens(regionName);
+    const subTokens = detail.subDistricts
+      .map((s) => s.trim().replace(/[동리읍면]$/, ''))
+      .filter((s) => s.length >= 2);
+
+    const scored = galleryPosts.map((post, idx) => {
+      let score = 0;
+      const postRegion = post.region || '';
+      const haystack = `${post.title} ${post.excerpt} ${post.tags.join(' ')}`;
+
+      if (postRegion.includes(regionName) || regionName.includes(postRegion)) {
+        score += 20;
+      }
+      for (const tk of tokens) {
+        if (postRegion.includes(tk)) score += 8;
+        if (haystack.includes(tk)) score += 4;
+      }
+      for (const sub of subTokens) {
+        if (postRegion.includes(sub) || post.title.includes(sub)) score += 3;
+      }
+      return { post, score, idx };
+    });
+
+    scored.sort((a, b) => (b.score !== a.score ? b.score - a.score : a.idx - a.idx));
+    return scored.slice(0, 6).map((item) => item.post);
+  }, [galleryPosts, regionName, detail.subDistricts]);
 
   const updateDetail = (patch: Partial<RegionDetail>) => {
     onUpdateRegionDetail(regionName, {
@@ -372,6 +425,98 @@ export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Region Featured Gallery Work Logs (Fixed 6 Cards above Custom Services) */}
+        {featuredGalleryPosts.length > 0 && (
+          <section
+            aria-labelledby="region-gallery-heading"
+            className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 border border-slate-200 shadow-2xs"
+          >
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-5 sm:mb-6">
+              <div>
+                <span className="text-[11px] font-bold text-blue-600 tracking-wider uppercase mb-1.5 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                  <span>실제 현장 시공 일지</span>
+                </span>
+                <h2
+                  id="region-gallery-heading"
+                  className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight"
+                >
+                  {regionName} 맞춤 실제 현장 작업 사례
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                  카드를 클릭하시면 실제 작업 전·후 사진과 상세 시공 과정을 확인하실 수 있습니다.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={onViewGalleryList}
+                className="self-start sm:self-auto px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-blue-50 text-blue-600 font-bold text-xs border border-slate-200 hover:border-blue-200 flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+              >
+                <span>전체 작업일지 보기</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+              {featuredGalleryPosts.map((post) => (
+                <article
+                  key={post.id}
+                  onClick={() => onSelectPost(post.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onSelectPost(post.id);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  className="bg-white rounded-2xl border border-slate-200/90 overflow-hidden shadow-2xs hover:shadow-xl hover:border-blue-200 transition-all duration-300 flex flex-col justify-between group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                >
+                  <div>
+                    <div className="relative aspect-[16/10] bg-slate-900 overflow-hidden">
+                      <img
+                        src={resolveAssetUrl(post.coverImage || post.afterImage)}
+                        alt={post.title}
+                        referrerPolicy="no-referrer"
+                        loading="lazy"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1.5 z-10">
+                        <span className="px-2.5 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-extrabold shadow-md">
+                          {post.category}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-white text-[10px] font-bold flex items-center gap-1">
+                          <MapPin className="w-2.5 h-2.5 text-blue-400" />
+                          <span>{post.region}</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="p-4">
+                      <div className="flex items-center gap-1.5 text-[11px] text-slate-400 mb-1.5 tabular-nums">
+                        <Calendar className="w-3 h-3 text-blue-600" />
+                        <span>{post.date}</span>
+                      </div>
+                      <h3 className="text-sm sm:text-[15px] font-extrabold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-2 leading-snug mb-1.5">
+                        {post.title}
+                      </h3>
+                      <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">
+                        {post.excerpt}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between text-xs font-bold text-blue-600 group-hover:bg-blue-50/50 transition-colors">
+                    <span>자세히 보기</span>
+                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Region x Service Matrix Links */}
         <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 border border-slate-200 shadow-2xs">

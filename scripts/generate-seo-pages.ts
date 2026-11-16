@@ -180,6 +180,115 @@ function buildGalleryListHtml(siteData: SiteData): string {
   `);
 }
 
+function buildServiceHtml(siteData: SiteData, serviceId: string): string {
+  const srv = siteData.services.items.find((s) => s.id === serviceId);
+  if (!srv) return '';
+  const scopeHtml = srv.detail.scopeList
+    .map((item) => `<li>✓ ${escapeHtmlText(item)}</li>`)
+    .join('');
+  const equipHtml = srv.detail.equipment
+    .map((item) => `<li>• ${escapeHtmlText(item)}</li>`)
+    .join('');
+  const faqHtml = (srv.detail.faqList ?? [])
+    .map(
+      (f) =>
+        `<div><h3>Q. ${escapeHtmlText(f.q)}</h3><p>A. ${escapeHtmlText(f.a)}</p></div>`
+    )
+    .join('');
+  const topRegionsHtml = siteData.regions.list
+    .slice(0, 12)
+    .map(
+      (r) =>
+        `<a href="/region/${encodeURIComponent(r)}/service/${encodeURIComponent(srv.id)}">${escapeHtmlText(r)} ${escapeHtmlText(srv.title)}</a>`
+    )
+    .join(' · ');
+
+  return wrapSubpagePrerender(`<article>
+    <p class="cw-pre-meta">${escapeHtmlText(siteData.company.name)} 전문 서비스</p>
+    <h1>${escapeHtmlText(srv.title)} 전문 | ${escapeHtmlText(siteData.company.name)}</h1>
+    <p>${escapeHtmlText(srv.detail.tagline)}</p>
+    <p>${escapeHtmlText(srv.description)} (${escapeHtmlText(srv.detail.duration)} · ${escapeHtmlText(srv.detail.priceGuide)})</p>
+    <h2>시공 범위</h2>
+    <ul class="cw-pre-list">${scopeHtml}</ul>
+    <h2>사용 전문 장비</h2>
+    <ul class="cw-pre-list">${equipHtml}</ul>
+    ${faqHtml ? `<h2>자주 묻는 질문</h2>${faqHtml}` : ''}
+    <nav aria-label="지역별 서비스 바로가기"><h2>주요 지역별 ${escapeHtmlText(srv.title)}</h2><p>${topRegionsHtml}</p></nav>
+    <p>${escapeHtmlText(siteData.company.name)} 무료 견적 문의: ${escapeHtmlText(siteData.company.phone)}</p>
+  </article>`);
+}
+
+function buildRegionHtml(siteData: SiteData, regionName: string): string {
+  const detail = siteData.regions.details[regionName];
+  const subDistricts = detail?.subDistricts ?? [`${regionName} 전지역`];
+  const serviceLinks = siteData.services.items
+    .map(
+      (srv) =>
+        `<li><a href="/region/${encodeURIComponent(regionName)}/service/${encodeURIComponent(srv.id)}">${escapeHtmlText(regionName)} ${escapeHtmlText(srv.title)}</a><p>${escapeHtmlText(srv.detail.tagline)}</p></li>`
+    )
+    .join('\n');
+
+  return wrapSubpagePrerender(`<article>
+    <p class="cw-pre-meta">${escapeHtmlText(siteData.company.name)} 출장 가능 지역</p>
+    <h1>${escapeHtmlText(regionName)} 유리창청소·외창청소 전문 | ${escapeHtmlText(siteData.company.name)}</h1>
+    <p>${escapeHtmlText(detail?.description || `${regionName} 전지역 아파트 외창·상가 통유리·빌딩 외벽청소`)}</p>
+    <p>출장 가능 동: ${escapeHtmlText(subDistricts.join(', '))} (${escapeHtmlText(detail?.leadTime || '당일·익일 방문 견적 가능')})</p>
+    <nav aria-label="${escapeHtmlAttr(regionName)} 맞춤 서비스 목록">
+      <h2>${escapeHtmlText(regionName)} 맞춤 서비스 바로가기</h2>
+      <ul class="cw-pre-list">${serviceLinks}</ul>
+    </nav>
+    <p>${escapeHtmlText(siteData.company.name)} 직통 상담: ${escapeHtmlText(siteData.company.phone)}</p>
+  </article>`);
+}
+
+function buildMatrixHtml(siteData: SiteData, regionName: string, serviceId: string): string {
+  const srv = siteData.services.items.find((s) => s.id === serviceId);
+  if (!srv) return '';
+  const detail = siteData.regions.details[regionName];
+  const subDistricts = detail?.subDistricts ?? [`${regionName} 전지역`];
+  const complexes = detail?.popularComplexes ?? [];
+  const scopeHtml = srv.detail.scopeList
+    .map((item) => `<li>✓ ${escapeHtmlText(item)}</li>`)
+    .join('');
+  const equipHtml = srv.detail.equipment
+    .map((item) => `<li>• ${escapeHtmlText(item)}</li>`)
+    .join('');
+  const faqHtml = (srv.detail.faqList ?? [])
+    .map(
+      (f) =>
+        `<div><h3>Q. ${escapeHtmlText(f.q)}</h3><p>A. ${escapeHtmlText(f.a)}</p></div>`
+    )
+    .join('');
+  const siblingServiceLinks = siteData.services.items
+    .filter((s) => s.id !== srv.id)
+    .map(
+      (other) =>
+        `<a href="/region/${encodeURIComponent(regionName)}/service/${encodeURIComponent(other.id)}">${escapeHtmlText(regionName)} ${escapeHtmlText(other.title)}</a>`
+    )
+    .join(' · ');
+
+  return wrapSubpagePrerender(`<article>
+    <nav aria-label="경로" class="cw-pre-meta">
+      <a href="/region/${encodeURIComponent(regionName)}">${escapeHtmlText(regionName)}</a> /
+      <a href="/service/${encodeURIComponent(srv.id)}">${escapeHtmlText(srv.title)}</a>
+    </nav>
+    <h1>${escapeHtmlText(regionName)} ${escapeHtmlText(srv.title)} 전문 | ${escapeHtmlText(siteData.company.name)}</h1>
+    <p>${escapeHtmlText(srv.detail.tagline)}</p>
+    <p>${escapeHtmlText(regionName)}(${escapeHtmlText(subDistricts.join(', '))}) 전지역 ${escapeHtmlText(srv.title)} 직영 출장. ${escapeHtmlText(srv.detail.duration)} · ${escapeHtmlText(srv.detail.priceGuide)}.</p>
+    ${complexes.length > 0 ? `<p>주요 출장 구역: ${escapeHtmlText(complexes.join(', '))}</p>` : ''}
+    <h2>${escapeHtmlText(regionName)} ${escapeHtmlText(srv.title)} 작업 범위</h2>
+    <ul class="cw-pre-list">${scopeHtml}</ul>
+    <h2>사용 장비 및 안심 보증</h2>
+    <ul class="cw-pre-list">${equipHtml}</ul>
+    ${faqHtml ? `<h2>${escapeHtmlText(regionName)} ${escapeHtmlText(srv.title)} 자주 묻는 질문</h2>${faqHtml}` : ''}
+    <nav aria-label="같은 지역 다른 서비스">
+      <h2>${escapeHtmlText(regionName)}의 다른 전문 서비스</h2>
+      <p>${siblingServiceLinks}</p>
+    </nav>
+    <p>${escapeHtmlText(siteData.company.name)} 무료 견적 문의: ${escapeHtmlText(siteData.company.phone)}</p>
+  </article>`);
+}
+
 async function writeStaticRoute(routeDir: string, html: string): Promise<void> {
   const outDir = path.resolve(DIST_DIR, routeDir);
   await fs.mkdir(outDir, { recursive: true });
@@ -235,30 +344,44 @@ async function main() {
         baseUrl,
         route: { type: 'service', serviceId: srv.id },
         siteData,
-        prerenderBodyHtml: wrapSubpagePrerender(
-          `<p class="cw-pre-meta">${escapeHtmlText(siteData.company.name)} 서비스 안내</p><h1>${escapeHtmlText(srv.title)}</h1><p>${escapeHtmlText(srv.detail.tagline)}</p><p>${escapeHtmlText(srv.description)}</p>`
-        ),
+        prerenderBodyHtml: buildServiceHtml(siteData, srv.id),
       })
     );
   }
 
   // 4. Prerender /region/<regionName>
   for (const regionName of siteData.regions.list) {
-    const detail = siteData.regions.details[regionName];
     await writeStaticRoute(
       path.join('region', regionName),
       injectPageSeoHtml(templateHtml, {
         baseUrl,
         route: { type: 'region', regionName },
         siteData,
-        prerenderBodyHtml: wrapSubpagePrerender(
-          `<p class="cw-pre-meta">${escapeHtmlText(siteData.company.name)} 출장 가능 지역</p><h1>${escapeHtmlText(regionName)} 유리창청소·외창청소 전문 | ${escapeHtmlText(siteData.company.name)}</h1><p>${escapeHtmlText(detail?.description || `${regionName} 전지역 아파트 외창·상가 통유리·빌딩 외벽청소`)}</p>`
-        ),
+        prerenderBodyHtml: buildRegionHtml(siteData, regionName),
       })
     );
   }
 
-  // 5. Update root dist/index.html head tags (canonical, og:url, og:image) while keeping #root empty
+  // 5. Prerender every /region/<regionName>/service/<serviceId> matrix landing page
+  let matrixCount = 0;
+  for (const regionName of siteData.regions.list) {
+    await Promise.all(
+      siteData.services.items.map(async (srv) => {
+        matrixCount += 1;
+        await writeStaticRoute(
+          path.join('region', regionName, 'service', srv.id),
+          injectPageSeoHtml(templateHtml, {
+            baseUrl,
+            route: { type: 'matrix', regionName, serviceId: srv.id },
+            siteData,
+            prerenderBodyHtml: buildMatrixHtml(siteData, regionName, srv.id),
+          })
+        );
+      })
+    );
+  }
+
+  // 6. Update root dist/index.html head tags (canonical, og:url, og:image) while keeping #root empty
   //    so first-time visitors never see unstyled prerender text flash before React mounts.
   const enhancedHome = injectPageSeoHtml(templateHtml, {
     baseUrl,
@@ -269,7 +392,7 @@ async function main() {
   await fs.writeFile(DIST_INDEX_PATH, enhancedHome, 'utf-8');
 
   console.log(
-    `Generated static SEO pages for ${siteData.gallery.posts.length} gallery posts, ${siteData.services.items.length} services, and ${siteData.regions.list.length} regions.`
+    `Generated static SEO pages for ${siteData.gallery.posts.length} gallery posts, ${siteData.services.items.length} services, ${siteData.regions.list.length} regions, and ${matrixCount} region+service pages.`
   );
 }
 

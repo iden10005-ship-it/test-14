@@ -1151,12 +1151,16 @@ export default function App() {
           <ServiceDetailPage
             service={activeService}
             allServices={siteData.services.items}
+            regions={siteData.regions.list}
             company={siteData.company}
             isEditMode={activeEditMode}
             onUpdateService={updateFullService}
             onEditImage={setImageEditTarget}
             onBack={() => navigateTo({ type: 'home' })}
             onSelectService={(serviceId) => navigateTo({ type: 'service', serviceId })}
+            onSelectRegionService={(regionName, serviceId) =>
+              navigateTo({ type: 'matrix', regionName, serviceId })
+            }
             onSubmitInquiry={handleInquirySubmit}
           />
         )}
@@ -1166,6 +1170,7 @@ export default function App() {
             regionName={route.regionName}
             regionDetail={siteData.regions.details[route.regionName]}
             allServices={siteData.services.items}
+            galleryPosts={siteData.gallery.posts}
             company={siteData.company}
             isEditMode={activeEditMode}
             onUpdateRegionDetail={updateRegionDetail}
@@ -1173,6 +1178,8 @@ export default function App() {
             onSelectMatrix={(regionName, serviceId) =>
               navigateTo({ type: 'matrix', regionName, serviceId })
             }
+            onSelectPost={(postId) => navigateTo({ type: 'gallery_detail', postId })}
+            onViewGalleryList={() => navigateTo({ type: 'gallery_list' })}
             onSubmitInquiry={handleInquirySubmit}
           />
         )}
@@ -1182,6 +1189,7 @@ export default function App() {
             regionName={route.regionName}
             regionDetail={siteData.regions.details[route.regionName]}
             service={activeService}
+            allServices={siteData.services.items}
             company={siteData.company}
             isEditMode={activeEditMode}
             onUpdateService={updateFullService}
@@ -1189,6 +1197,9 @@ export default function App() {
             onBack={() => navigateTo({ type: 'home' })}
             onNavigateRegion={(regionName) => navigateTo({ type: 'region', regionName })}
             onNavigateService={(serviceId) => navigateTo({ type: 'service', serviceId })}
+            onNavigateMatrix={(regionName, serviceId) =>
+              navigateTo({ type: 'matrix', regionName, serviceId })
+            }
             onSubmitInquiry={handleInquirySubmit}
           />
         )}
