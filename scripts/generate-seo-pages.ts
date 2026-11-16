@@ -1,7 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { PageRoute, SiteData } from '../src/types/clearworks.ts';
-import { getPostBlocks, getPostCoverImage } from '../src/utils/galleryBlocks.ts';
 import { parseSeoKeywords } from '../src/utils/naverSeoGenerator.ts';
 import { resolveSeoForRoute } from '../src/utils/seo.ts';
 import { normalizeBaseUrl } from '../src/utils/sitemap.ts';
@@ -36,10 +35,9 @@ function injectPageSeoHtml(
     baseUrl: string;
     route: PageRoute;
     siteData: SiteData;
-    prerenderBodyHtml: string;
   }
 ): string {
-  const { baseUrl, route, siteData, prerenderBodyHtml } = options;
+  const { baseUrl, route, siteData } = options;
   const meta = resolveSeoForRoute(route, siteData);
   const canonicalUrl = `${baseUrl}${meta.routePath}`;
   const ogImageAbs = meta.ogImage ? toAbsoluteUrl(meta.ogImage, baseUrl) : '';
@@ -103,190 +101,7 @@ function injectPageSeoHtml(
     .join('\n    ');
 
   html = html.replace('</head>', `    ${extraHeadTags}\n  </head>`);
-  if (prerenderBodyHtml) {
-    html = html.replace(
-      '<div id="root"></div>',
-      `<div id="root">${prerenderBodyHtml}</div>`
-    );
-  }
   return html;
-}
-
-const SUBPAGE_PRERENDER_STYLE = `<style>
-  .cw-pre{min-height:100vh;background:#f8fafc;padding:88px 16px 64px;font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,system-ui,sans-serif;color:#0f172a;line-height:1.7;}
-  .cw-pre-card{max-width:896px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:24px;padding:32px 24px;box-shadow:0 1px 3px rgba(15,23,42,.04);}
-  .cw-pre-meta{font-size:13px;font-weight:600;color:#2563eb;margin:0 0 10px;}
-  .cw-pre h1{font-size:26px;font-weight:800;letter-spacing:-0.02em;line-height:1.35;margin:0 0 14px;color:#0f172a;}
-  .cw-pre h2{font-size:19px;font-weight:700;margin:28px 0 10px;color:#0f172a;}
-  .cw-pre p{font-size:15px;color:#334155;margin:0 0 14px;}
-  .cw-pre figure{margin:20px 0;}
-  .cw-pre figcaption{font-size:13px;color:#64748b;margin-top:8px;text-align:center;}
-  .cw-pre img{width:100%;max-height:520px;object-fit:cover;border-radius:16px;display:block;margin:18px 0;}
-  .cw-pre-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px;padding-top:20px;border-top:1px solid #f1f5f9;font-size:13px;color:#475569;}
-  .cw-pre-list{list-style:none;padding:0;margin:20px 0 0;display:grid;gap:12px;}
-  .cw-pre-list li{border:1px solid #e2e8f0;border-radius:16px;padding:16px;background:#fff;}
-  .cw-pre-list a{font-size:16px;font-weight:700;color:#0f172a;text-decoration:none;}
-</style>`;
-
-function wrapSubpagePrerender(innerHtml: string): string {
-  return `${SUBPAGE_PRERENDER_STYLE}<div class="cw-pre"><main class="cw-pre-card">${innerHtml}</main></div>`;
-}
-
-function buildGalleryPostHtml(siteData: SiteData, postId: string): string {
-  const post = siteData.gallery.posts.find((p) => p.id === postId);
-  if (!post) return '';
-  const blocks = getPostBlocks(post);
-  const cover = getPostCoverImage(post);
-
-  const blocksHtml = blocks
-    .map((b) => {
-      if (b.type === 'heading') {
-        return `<h2>${escapeHtmlText(b.text)}</h2>`;
-      }
-      if (b.type === 'text') {
-        return `<p>${escapeHtmlText(b.text).replace(/\n/g, '<br />')}</p>`;
-      }
-      return `<figure><img src="${escapeHtmlAttr(b.url)}" alt="${escapeHtmlAttr(
-        b.caption || post.title
-      )}" />${b.caption ? `<figcaption>${escapeHtmlText(b.caption)}</figcaption>` : ''}</figure>`;
-    })
-    .join('\n');
-
-  const tagsHtml = post.tags.map((t) => `<span>#${escapeHtmlText(t)}</span>`).join(' ');
-
-  return wrapSubpagePrerender(`<article>
-    <p class="cw-pre-meta">${escapeHtmlText(post.category)} · ${escapeHtmlText(post.region)} · ${escapeHtmlText(post.date)}</p>
-    <h1>${escapeHtmlText(post.title)}</h1>
-    <p>${escapeHtmlText(post.excerpt)}</p>
-    ${cover ? `<img src="${escapeHtmlAttr(cover)}" alt="${escapeHtmlAttr(post.title)}" />` : ''}
-    ${blocksHtml}
-    <div class="cw-pre-tags">${tagsHtml}</div>
-    <p>${escapeHtmlText(siteData.company.name)} 무료 견적 문의: ${escapeHtmlText(siteData.company.phone)}</p>
-  </article>`);
-}
-
-function buildGalleryListHtml(siteData: SiteData): string {
-  const items = siteData.gallery.posts
-    .map(
-      (post) =>
-        `<li><a href="/gallery/${encodeURIComponent(post.id)}">${escapeHtmlText(post.title)}</a><p>${escapeHtmlText(post.region)} · ${escapeHtmlText(post.category)} — ${escapeHtmlText(post.excerpt)}</p></li>`
-    )
-    .join('\n');
-  return wrapSubpagePrerender(`
-    <p class="cw-pre-meta">${escapeHtmlText(siteData.company.name)} 작업 갤러리</p>
-    <h1>${escapeHtmlText(siteData.company.name)} 현장 작업 갤러리 &amp; 시공사례</h1>
-    <p>${escapeHtmlText(siteData.gallery.sectionSubtitle)}</p>
-    <ul class="cw-pre-list">${items}</ul>
-  `);
-}
-
-function buildServiceHtml(siteData: SiteData, serviceId: string): string {
-  const srv = siteData.services.items.find((s) => s.id === serviceId);
-  if (!srv) return '';
-  const scopeHtml = srv.detail.scopeList
-    .map((item) => `<li>✓ ${escapeHtmlText(item)}</li>`)
-    .join('');
-  const equipHtml = srv.detail.equipment
-    .map((item) => `<li>• ${escapeHtmlText(item)}</li>`)
-    .join('');
-  const faqHtml = (srv.detail.faqList ?? [])
-    .map(
-      (f) =>
-        `<div><h3>Q. ${escapeHtmlText(f.q)}</h3><p>A. ${escapeHtmlText(f.a)}</p></div>`
-    )
-    .join('');
-  const topRegionsHtml = siteData.regions.list
-    .slice(0, 12)
-    .map(
-      (r) =>
-        `<a href="/region/${encodeURIComponent(r)}/service/${encodeURIComponent(srv.id)}">${escapeHtmlText(r)} ${escapeHtmlText(srv.title)}</a>`
-    )
-    .join(' · ');
-
-  return wrapSubpagePrerender(`<article>
-    <p class="cw-pre-meta">${escapeHtmlText(siteData.company.name)} 전문 서비스</p>
-    <h1>${escapeHtmlText(srv.title)} 전문 | ${escapeHtmlText(siteData.company.name)}</h1>
-    <p>${escapeHtmlText(srv.detail.tagline)}</p>
-    <p>${escapeHtmlText(srv.description)} (${escapeHtmlText(srv.detail.duration)} · ${escapeHtmlText(srv.detail.priceGuide)})</p>
-    <h2>시공 범위</h2>
-    <ul class="cw-pre-list">${scopeHtml}</ul>
-    <h2>사용 전문 장비</h2>
-    <ul class="cw-pre-list">${equipHtml}</ul>
-    ${faqHtml ? `<h2>자주 묻는 질문</h2>${faqHtml}` : ''}
-    <nav aria-label="지역별 서비스 바로가기"><h2>주요 지역별 ${escapeHtmlText(srv.title)}</h2><p>${topRegionsHtml}</p></nav>
-    <p>${escapeHtmlText(siteData.company.name)} 무료 견적 문의: ${escapeHtmlText(siteData.company.phone)}</p>
-  </article>`);
-}
-
-function buildRegionHtml(siteData: SiteData, regionName: string): string {
-  const detail = siteData.regions.details[regionName];
-  const subDistricts = detail?.subDistricts ?? [`${regionName} 전지역`];
-  const serviceLinks = siteData.services.items
-    .map(
-      (srv) =>
-        `<li><a href="/region/${encodeURIComponent(regionName)}/service/${encodeURIComponent(srv.id)}">${escapeHtmlText(regionName)} ${escapeHtmlText(srv.title)}</a><p>${escapeHtmlText(srv.detail.tagline)}</p></li>`
-    )
-    .join('\n');
-
-  return wrapSubpagePrerender(`<article>
-    <p class="cw-pre-meta">${escapeHtmlText(siteData.company.name)} 출장 가능 지역</p>
-    <h1>${escapeHtmlText(regionName)} 유리창청소·외창청소 전문 | ${escapeHtmlText(siteData.company.name)}</h1>
-    <p>${escapeHtmlText(detail?.description || `${regionName} 전지역 아파트 외창·상가 통유리·빌딩 외벽청소`)}</p>
-    <p>출장 가능 동: ${escapeHtmlText(subDistricts.join(', '))} (${escapeHtmlText(detail?.leadTime || '당일·익일 방문 견적 가능')})</p>
-    <nav aria-label="${escapeHtmlAttr(regionName)} 맞춤 서비스 목록">
-      <h2>${escapeHtmlText(regionName)} 맞춤 서비스 바로가기</h2>
-      <ul class="cw-pre-list">${serviceLinks}</ul>
-    </nav>
-    <p>${escapeHtmlText(siteData.company.name)} 직통 상담: ${escapeHtmlText(siteData.company.phone)}</p>
-  </article>`);
-}
-
-function buildMatrixHtml(siteData: SiteData, regionName: string, serviceId: string): string {
-  const srv = siteData.services.items.find((s) => s.id === serviceId);
-  if (!srv) return '';
-  const detail = siteData.regions.details[regionName];
-  const subDistricts = detail?.subDistricts ?? [`${regionName} 전지역`];
-  const complexes = detail?.popularComplexes ?? [];
-  const scopeHtml = srv.detail.scopeList
-    .map((item) => `<li>✓ ${escapeHtmlText(item)}</li>`)
-    .join('');
-  const equipHtml = srv.detail.equipment
-    .map((item) => `<li>• ${escapeHtmlText(item)}</li>`)
-    .join('');
-  const faqHtml = (srv.detail.faqList ?? [])
-    .map(
-      (f) =>
-        `<div><h3>Q. ${escapeHtmlText(f.q)}</h3><p>A. ${escapeHtmlText(f.a)}</p></div>`
-    )
-    .join('');
-  const siblingServiceLinks = siteData.services.items
-    .filter((s) => s.id !== srv.id)
-    .map(
-      (other) =>
-        `<a href="/region/${encodeURIComponent(regionName)}/service/${encodeURIComponent(other.id)}">${escapeHtmlText(regionName)} ${escapeHtmlText(other.title)}</a>`
-    )
-    .join(' · ');
-
-  return wrapSubpagePrerender(`<article>
-    <nav aria-label="경로" class="cw-pre-meta">
-      <a href="/region/${encodeURIComponent(regionName)}">${escapeHtmlText(regionName)}</a> /
-      <a href="/service/${encodeURIComponent(srv.id)}">${escapeHtmlText(srv.title)}</a>
-    </nav>
-    <h1>${escapeHtmlText(regionName)} ${escapeHtmlText(srv.title)} 전문 | ${escapeHtmlText(siteData.company.name)}</h1>
-    <p>${escapeHtmlText(srv.detail.tagline)}</p>
-    <p>${escapeHtmlText(regionName)}(${escapeHtmlText(subDistricts.join(', '))}) 전지역 ${escapeHtmlText(srv.title)} 직영 출장. ${escapeHtmlText(srv.detail.duration)} · ${escapeHtmlText(srv.detail.priceGuide)}.</p>
-    ${complexes.length > 0 ? `<p>주요 출장 구역: ${escapeHtmlText(complexes.join(', '))}</p>` : ''}
-    <h2>${escapeHtmlText(regionName)} ${escapeHtmlText(srv.title)} 작업 범위</h2>
-    <ul class="cw-pre-list">${scopeHtml}</ul>
-    <h2>사용 장비 및 안심 보증</h2>
-    <ul class="cw-pre-list">${equipHtml}</ul>
-    ${faqHtml ? `<h2>${escapeHtmlText(regionName)} ${escapeHtmlText(srv.title)} 자주 묻는 질문</h2>${faqHtml}` : ''}
-    <nav aria-label="같은 지역 다른 서비스">
-      <h2>${escapeHtmlText(regionName)}의 다른 전문 서비스</h2>
-      <p>${siblingServiceLinks}</p>
-    </nav>
-    <p>${escapeHtmlText(siteData.company.name)} 무료 견적 문의: ${escapeHtmlText(siteData.company.phone)}</p>
-  </article>`);
 }
 
 async function writeStaticRoute(routeDir: string, html: string): Promise<void> {
@@ -312,18 +127,20 @@ async function main() {
     process.env.SITE_URL || siteData.siteUrl || vercelProdUrl || 'https://clearworks.kr'
   );
 
-  // 1. Prerender /gallery
+  // Keep #root empty across ALL routes so human visitors never see unstyled fallback text
+  // flash before React mounts, while preserving route-specific <head> SEO tags and JSON-LD.
+
+  // 1. /gallery
   await writeStaticRoute(
     'gallery',
     injectPageSeoHtml(templateHtml, {
       baseUrl,
       route: { type: 'gallery_list' },
       siteData,
-      prerenderBodyHtml: buildGalleryListHtml(siteData),
     })
   );
 
-  // 2. Prerender every /gallery/<postId> blog post
+  // 2. Every /gallery/<postId> blog post
   for (const post of siteData.gallery.posts) {
     await writeStaticRoute(
       path.join('gallery', post.id),
@@ -331,12 +148,11 @@ async function main() {
         baseUrl,
         route: { type: 'gallery_detail', postId: post.id },
         siteData,
-        prerenderBodyHtml: buildGalleryPostHtml(siteData, post.id),
       })
     );
   }
 
-  // 3. Prerender /service/<serviceId>
+  // 3. /service/<serviceId>
   for (const srv of siteData.services.items) {
     await writeStaticRoute(
       path.join('service', srv.id),
@@ -344,12 +160,11 @@ async function main() {
         baseUrl,
         route: { type: 'service', serviceId: srv.id },
         siteData,
-        prerenderBodyHtml: buildServiceHtml(siteData, srv.id),
       })
     );
   }
 
-  // 4. Prerender /region/<regionName>
+  // 4. /region/<regionName>
   for (const regionName of siteData.regions.list) {
     await writeStaticRoute(
       path.join('region', regionName),
@@ -357,12 +172,11 @@ async function main() {
         baseUrl,
         route: { type: 'region', regionName },
         siteData,
-        prerenderBodyHtml: buildRegionHtml(siteData, regionName),
       })
     );
   }
 
-  // 5. Prerender every /region/<regionName>/service/<serviceId> matrix landing page
+  // 5. Every /region/<regionName>/service/<serviceId> matrix landing page
   let matrixCount = 0;
   for (const regionName of siteData.regions.list) {
     await Promise.all(
@@ -374,25 +188,22 @@ async function main() {
             baseUrl,
             route: { type: 'matrix', regionName, serviceId: srv.id },
             siteData,
-            prerenderBodyHtml: buildMatrixHtml(siteData, regionName, srv.id),
           })
         );
       })
     );
   }
 
-  // 6. Update root dist/index.html head tags (canonical, og:url, og:image) while keeping #root empty
-  //    so first-time visitors never see unstyled prerender text flash before React mounts.
+  // 6. Root dist/index.html
   const enhancedHome = injectPageSeoHtml(templateHtml, {
     baseUrl,
     route: { type: 'home' },
     siteData,
-    prerenderBodyHtml: '',
   });
   await fs.writeFile(DIST_INDEX_PATH, enhancedHome, 'utf-8');
 
   console.log(
-    `Generated static SEO pages for ${siteData.gallery.posts.length} gallery posts, ${siteData.services.items.length} services, ${siteData.regions.list.length} regions, and ${matrixCount} region+service pages.`
+    `Generated static SEO head pages for ${siteData.gallery.posts.length} gallery posts, ${siteData.services.items.length} services, ${siteData.regions.list.length} regions, and ${matrixCount} region+service pages.`
   );
 }
 
