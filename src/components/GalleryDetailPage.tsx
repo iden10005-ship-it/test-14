@@ -15,7 +15,7 @@ import {
 import { EditableText } from '@/src/components/admin/EditableText';
 import { GalleryPostModal } from '@/src/components/admin/GalleryPostModal';
 import type { ImageEditTarget } from '@/src/components/admin/ImageEditorModal';
-import type { CompanyInfo, GalleryPost, InquiryPayload } from '@/src/types/clearworks';
+import type { CompanyInfo, GalleryPost, InquiryPayload, SiteData } from '@/src/types/clearworks';
 import { resolveAssetUrl } from '@/src/utils/assetUrl';
 import {
   blocksToPlainContent,
@@ -33,6 +33,7 @@ interface GalleryDetailPageProps {
   allPosts: GalleryPost[];
   categories?: string[];
   regions?: string[];
+  siteData?: SiteData;
   company: CompanyInfo;
   isEditMode: boolean;
   onUpdatePost: (post: GalleryPost) => void;
@@ -49,6 +50,7 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
   allPosts,
   categories,
   regions,
+  siteData,
   company,
   isEditMode,
   onUpdatePost,
@@ -575,6 +577,7 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
           editingPost={post}
           categories={categories}
           regions={regions}
+          siteData={siteData}
           onUploadImage={onUploadImage}
           onClose={() => setModalOpen(false)}
           onSave={onUpdatePost}

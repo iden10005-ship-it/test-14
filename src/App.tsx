@@ -724,13 +724,18 @@ export default function App() {
   };
 
   const addGalleryPost = (post: GalleryPost) => {
-    updateSiteData((prev) => ({
-      ...prev,
-      gallery: {
-        ...prev.gallery,
-        posts: [post, ...prev.gallery.posts],
-      },
-    }));
+    updateSiteData((prev) => {
+      const exists = prev.gallery.posts.some((p) => p.id === post.id);
+      return {
+        ...prev,
+        gallery: {
+          ...prev.gallery,
+          posts: exists
+            ? prev.gallery.posts.map((p) => (p.id === post.id ? post : p))
+            : [post, ...prev.gallery.posts],
+        },
+      };
+    });
   };
 
   const updateGalleryPost = (updated: GalleryPost) => {
@@ -1217,6 +1222,7 @@ export default function App() {
             posts={siteData.gallery.posts}
             categories={siteData.gallery.categories}
             regions={siteData.regions.list}
+            siteData={siteData}
             isEditMode={activeEditMode}
             onAddPost={addGalleryPost}
             onUpdatePost={updateGalleryPost}
@@ -1233,6 +1239,7 @@ export default function App() {
             allPosts={siteData.gallery.posts}
             categories={siteData.gallery.categories}
             regions={siteData.regions.list}
+            siteData={siteData}
             company={siteData.company}
             isEditMode={activeEditMode}
             onUpdatePost={updateGalleryPost}

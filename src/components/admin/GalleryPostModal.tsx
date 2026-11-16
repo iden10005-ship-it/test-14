@@ -3,12 +3,15 @@ import {
   AlignLeft,
   ArrowDown,
   ArrowUp,
+  Check,
   CheckCircle2,
+  Copy,
   Globe,
   Heading2,
   ImagePlus,
   Plus,
   RefreshCw,
+  Save,
   Search,
   Sparkles,
   Trash2,
@@ -16,7 +19,7 @@ import {
   X,
 } from 'lucide-react';
 import { CLEARWORKS_IMAGES } from '@/src/data/clearworksData';
-import type { GalleryBlock, GalleryPost } from '@/src/types/clearworks';
+import type { GalleryBlock, GalleryPost, SiteData } from '@/src/types/clearworks';
 import { resolveAssetUrl } from '@/src/utils/assetUrl';
 import {
   blocksToPlainContent,
@@ -49,6 +52,7 @@ interface GalleryPostModalProps {
   editingPost: GalleryPost | null;
   categories?: string[];
   regions?: string[];
+  siteData?: SiteData;
   onUploadImage?: (dataUrl: string, nameHint?: string) => Promise<string>;
   onClose: () => void;
   onSave: (post: GalleryPost) => void;
@@ -58,11 +62,38 @@ function makeBlockId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
+async function copyTextToClipboard(text: string): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // Fall back to execCommand below
+  }
+  try {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(textarea);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
 export const GalleryPostModal: React.FC<GalleryPostModalProps> = ({
   isOpen,
   editingPost,
   categories,
   regions,
+  siteData,
   onUploadImage,
   onClose,
   onSave,
@@ -96,6 +127,10 @@ export const GalleryPostModal: React.FC<GalleryPostModalProps> = ({
   const [ogTitle, setOgTitle] = useState('');
   const [seoKeywords, setSeoKeywords] = useState('');
   const [keywordDraft, setKeywordDraft] = useState('');
+  const [draftPostId, setDraftPostId] = useState<string>('');
+  const [hasSavedInSession, setHasSavedInSession] = useState(false);
+  const [copiedJson, setCopiedJson] = useState(false);
+  const [formError, setFormError] = useState('');
 
   const parsedTags = useMemo(
     () =>
@@ -121,7 +156,11 @@ export const GalleryPostModal: React.FC<GalleryPostModalProps> = ({
 
   useEffect(() => {
     if (!isOpen) return;
+    setHasSavedInSession(false);
+    setCopiedJson(false);
+    setFormError('');
     if (editingPost) {
+      setDraftPostId(editingPost.id);
       setTitle(editingPost.title);
       const normCat = normalizeGalleryCategory(editingPost.category);
       setCategory(normCat || resolvedCategories[0] || '아파트·주택');
@@ -151,6 +190,7 @@ export const GalleryPostModal: React.FC<GalleryPostModalProps> = ({
         setSeoKeywords(generated.keywords);
       }
     } else {
+      setDraftPostId(`post-${Date.now()}`);
       const today = new Date();
       const formatted = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(
         2,
@@ -180,7 +220,7 @@ export const GalleryPostModal: React.FC<GalleryPostModalProps> = ({
       setCoverOptimizationNote('');
       setSeoAutoSync(true);
     }
-  }, [isOpen, editingPost]);
+  }, [isOpen, editingPost?.id]);
 
   useEffect(() => {
     if (!isOpen || !seoAutoSync) return;
@@ -372,9 +412,12 @@ export const GalleryPostModal: React.FC<GalleryPostModalProps> = ({
     setBlocks((prev) => prev.filter((b) => b.id !== blockId));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim()) return;
+  const buildPostFromForm = (): GalleryPost | null => {
+    if (!title.trim()) {
+      setFormError('제목을 먼저 입력해 주세요.');
+      return null;
+    }
+    setFormError('');
 
     const cleanedBlocks = blocks.filter((b) => {
       if (b.type === 'image') return Boolean(b.url?.trim());
@@ -407,8 +450,10 @@ export const GalleryPostModal: React.FC<GalleryPostModalProps> = ({
       tags: parsedTags,
     });
 
-    const post: GalleryPost = {
-      id: editingPost ? editingPost.id : `post-${Date.now()}`,
+    const resolvedId = editingPost?.id || draftPostId || `post-${Date.now()}`;
+
+    return {
+      id: resolvedId,
       title: title.trim(),
       category,
       region: region.trim() || '서울·수도권',
@@ -441,9 +486,69 @@ export const GalleryPostModal: React.FC<GalleryPostModalProps> = ({
         autoSync: seoAutoSync,
       },
     };
+  };
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const post = buildPostFromForm();
+    if (!post) return;
     onSave(post);
-    onClose();
+    setHasSavedInSession(true);
+  };
+
+  const handleCopyJson = async () => {
+    const currentPost = title.trim() ? buildPostFromForm() : null;
+    if (title.trim() && !currentPost) return;
+
+    let payload: unknown = currentPost;
+    if (siteData) {
+      const basePosts = siteData.gallery.posts;
+      let nextPosts = basePosts;
+      if (currentPost) {
+        const exists = basePosts.some((p) => p.id === currentPost.id);
+        nextPosts = exists
+          ? basePosts.map((p) => (p.id === currentPost.id ? currentPost : p))
+          : [currentPost, ...basePosts];
+      }
+      payload = {
+        ...siteData,
+        gallery: {
+          ...siteData.gallery,
+          posts: nextPosts,
+        },
+        updatedAt: new Date().toISOString(),
+      };
+    }
+
+    if (!payload) {
+      setFormError('복사할 내용이 없습니다. 제목을 먼저 입력해 주세요.');
+      return;
+    }
+
+    const jsonText = `${JSON.stringify(payload, null, 2)}\n`;
+    const ok = await copyTextToClipboard(jsonText);
+    if (ok) {
+      setFormError('');
+      setCopiedJson(true);
+      setTimeout(() => setCopiedJson(false), 2500);
+    } else {
+      setFormError('클립보드 복사에 실패했습니다. 브라우저 복사 권한을 확인해 주세요.');
+    }
+  };
+
+  const handleConfirmAndClose = () => {
+    if (title.trim()) {
+      const post = buildPostFromForm();
+      if (!post) return;
+      onSave(post);
+      onClose();
+      return;
+    }
+    if (hasSavedInSession) {
+      onClose();
+      return;
+    }
+    setFormError('제목을 입력해 주세요. (저장 없이 닫으려면 [취소]를 누르세요)');
   };
 
   const handleRegenerateSeo = () => {
@@ -481,7 +586,7 @@ export const GalleryPostModal: React.FC<GalleryPostModalProps> = ({
   const titleLen = seoTitle.trim().length;
   const descLen = seoDescription.trim().length;
   const ogTitleLen = ogTitle.trim().length;
-  const previewPostId = editingPost?.id || 'new-post';
+  const previewPostId = editingPost?.id || draftPostId || 'new-post';
 
   return (
     <div
@@ -1053,21 +1158,70 @@ export const GalleryPostModal: React.FC<GalleryPostModalProps> = ({
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer"
-            >
-              취소
-            </button>
-            <button
-              type="submit"
-              disabled={uploadingImage}
-              className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold shadow-md cursor-pointer"
-            >
-              저장하기
-            </button>
+          <div className="pt-3.5 border-t border-slate-100 space-y-2.5">
+            {formError && (
+              <p className="text-xs font-bold text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+                {formError}
+              </p>
+            )}
+
+            <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-50 border border-slate-200/80 rounded-2xl px-3.5 py-2.5">
+              <span
+                className={`text-[11px] font-bold ${
+                  hasSavedInSession ? 'text-emerald-700' : 'text-slate-500'
+                }`}
+              >
+                {hasSavedInSession
+                  ? '✓ 프리뷰에 저장되었습니다. 아래 [JSON 복사하기] 후 [확인 및 닫기]를 눌러주세요.'
+                  : '1단계: [저장하기] → 2단계: [JSON 복사하기] → 3단계: [확인 및 닫기]'}
+              </span>
+              <button
+                type="submit"
+                disabled={uploadingImage}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold shadow-sm inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>{hasSavedInSession ? '다시 저장하기' : '저장하기'}</span>
+              </button>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5">
+              <button
+                type="button"
+                onClick={handleCopyJson}
+                className={`px-3.5 py-2.5 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm ${
+                  copiedJson
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                }`}
+              >
+                {copiedJson ? (
+                  <Check className="w-3.5 h-3.5" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5" />
+                )}
+                <span>{copiedJson ? 'JSON 복사 완료!' : 'JSON 복사하기'}</span>
+              </button>
+
+              <div className="flex items-center gap-2 ml-auto">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  type="button"
+                  disabled={uploadingImage}
+                  onClick={handleConfirmAndClose}
+                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold shadow-md inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>확인 및 닫기</span>
+                </button>
+              </div>
+            </div>
           </div>
         </form>
       </div>

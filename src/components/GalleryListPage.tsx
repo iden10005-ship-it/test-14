@@ -18,7 +18,7 @@ import {
   Wrench,
 } from 'lucide-react';
 import { GalleryPostModal } from '@/src/components/admin/GalleryPostModal';
-import type { GalleryPost } from '@/src/types/clearworks';
+import type { GalleryPost, SiteData } from '@/src/types/clearworks';
 import { resolveAssetUrl } from '@/src/utils/assetUrl';
 import {
   getGalleryCategories,
@@ -29,6 +29,7 @@ interface GalleryListPageProps {
   posts: GalleryPost[];
   categories?: string[];
   regions?: string[];
+  siteData?: SiteData;
   isEditMode: boolean;
   onAddPost: (post: GalleryPost) => void;
   onUpdatePost: (post: GalleryPost) => void;
@@ -52,6 +53,7 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
   posts,
   categories,
   regions,
+  siteData,
   isEditMode,
   onAddPost,
   onUpdatePost,
@@ -422,13 +424,14 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
           editingPost={editingPost}
           categories={resolvedCategories}
           regions={regions}
+          siteData={siteData}
           onUploadImage={onUploadImage}
           onClose={() => {
             setModalOpen(false);
             setEditingPost(null);
           }}
           onSave={(saved) => {
-            if (editingPost) {
+            if (editingPost || posts.some((p) => p.id === saved.id)) {
               onUpdatePost(saved);
             } else {
               onAddPost(saved);
