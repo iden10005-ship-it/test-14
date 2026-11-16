@@ -239,11 +239,8 @@ export const Header: React.FC<HeaderProps> = ({
               type="button"
               onClick={() => {
                 setMobileMenuOpen(false);
-                if (currentPage.type === 'home') {
-                  handleSectionLink('gallery');
-                } else {
-                  onNavigateGalleryList();
-                }
+                setServiceDropdownOpen(false);
+                onNavigateGalleryList();
               }}
               className={`px-3 py-2 text-sm font-bold rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                 currentPage.type === 'gallery_list' || currentPage.type === 'gallery_detail'
