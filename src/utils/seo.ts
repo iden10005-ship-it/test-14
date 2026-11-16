@@ -3,7 +3,7 @@ import type { PageRoute, PageSeoMeta, SiteData } from '@/src/types/clearworks';
 import { generateNaverSeoFromPost, parseSeoKeywords } from '@/src/utils/naverSeoGenerator';
 
 export const DEFAULT_HOME_KEYWORDS =
-  '유리창청소, 아파트외창청소, 외벽청소, 상가유리창청소, 빌딩외벽청소, 고층유리창청소, 서울유리창청소, 경기유리창청소, 인천유리창청소, 창틀청소, 유리발수코팅, 어닝청소, 클리어웍스';
+  '유리창청소, 아파트외창청소, 외벽청소, 상가유리창청소, 빌딩외벽청소, 고층유리창청소, 서울유리창청소, 경기유리창청소, 인천유리창청소, 창틀청소, 유리발수코팅, 어닝청소, 클리어웍스, 서울 건물 외벽청소 업체, 수도권 상가 유리창청소, 경기 아파트 외창청소 업체, 빌딩 외벽 고압세척, 상가 간판 어닝청소, 매장 유리 시트지 제거, 아파트 외창청소 비용 견적, 상가 유리창 정기청소 비용, 건물 외벽청소 견적 문의, 클리어웍스 유리창청소 후기';
 
 export function getSeoPageKey(route: PageRoute): string {
   switch (route.type) {
@@ -119,7 +119,7 @@ export function getDefaultSeoForRoute(
   const pageKey = getSeoPageKey(route);
 
   let title = `${regionText} 유리창청소·외벽청소 전문 | ${company.name}`;
-  let description = `${company.region} 아파트·상가·빌딩 유리창청소와 건물 외벽청소 전문 ${company.name}. 고층 유리창·외벽 고압세척, 안전한 맞춤 시공과 무료 출장견적을 제공합니다.`;
+  let description = `${company.region} 아파트·상가·빌딩 유리창청소와 건물 외벽청소 전문 ${company.name}. 간판·어닝청소 고압세척, 시트지제거까지 프리미엄 청소전문업체.`;
   let keywords = `${company.name}, ${regionText} 유리창청소, 아파트외창청소, 외벽청소, 상가유리창청소, 빌딩외벽청소`;
   let ogTitle = '';
   let ogImage = siteData.seo?.defaultOgImage?.trim() || hero.afterImage || '';
