@@ -923,6 +923,7 @@ export default function App() {
           inquiryCount={inquiries.length}
           codeSyncStatus={codeSyncStatus}
           currentRoute={route}
+          siteUrl={siteData.siteUrl}
           regions={siteData.regions.list}
           services={siteData.services.items}
           onNavigate={navigateTo}
