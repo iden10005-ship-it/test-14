@@ -916,6 +916,10 @@ export default function App() {
           isEditMode={isEditMode}
           inquiryCount={inquiries.length}
           codeSyncStatus={codeSyncStatus}
+          currentRoute={route}
+          regions={siteData.regions.list}
+          services={siteData.services.items}
+          onNavigate={navigateTo}
           onSaveNow={() => {
             const stamped: SiteData = {
               ...latestSiteDataRef.current,
