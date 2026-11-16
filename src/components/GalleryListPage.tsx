@@ -28,6 +28,7 @@ import {
 interface GalleryListPageProps {
   posts: GalleryPost[];
   categories?: string[];
+  regions?: string[];
   isEditMode: boolean;
   onAddPost: (post: GalleryPost) => void;
   onUpdatePost: (post: GalleryPost) => void;
@@ -50,6 +51,7 @@ function getCategoryIcon(cat: string) {
 export const GalleryListPage: React.FC<GalleryListPageProps> = ({
   posts,
   categories,
+  regions,
   isEditMode,
   onAddPost,
   onUpdatePost,
@@ -419,6 +421,7 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
           isOpen={modalOpen}
           editingPost={editingPost}
           categories={resolvedCategories}
+          regions={regions}
           onUploadImage={onUploadImage}
           onClose={() => {
             setModalOpen(false);

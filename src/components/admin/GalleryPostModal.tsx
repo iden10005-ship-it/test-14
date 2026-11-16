@@ -33,6 +33,11 @@ import {
   normalizeGalleryCategory,
 } from '@/src/utils/galleryCategories';
 import {
+  getAvailableGalleryRegions,
+  groupGalleryRegions,
+  normalizeRegionToDetailKey,
+} from '@/src/utils/galleryRegions';
+import {
   formatSeoKeywords,
   generateNaverPostSeo,
   MAX_SEO_KEYWORDS,
@@ -43,6 +48,7 @@ interface GalleryPostModalProps {
   isOpen: boolean;
   editingPost: GalleryPost | null;
   categories?: string[];
+  regions?: string[];
   onUploadImage?: (dataUrl: string, nameHint?: string) => Promise<string>;
   onClose: () => void;
   onSave: (post: GalleryPost) => void;
@@ -56,6 +62,7 @@ export const GalleryPostModal: React.FC<GalleryPostModalProps> = ({
   isOpen,
   editingPost,
   categories,
+  regions,
   onUploadImage,
   onClose,
   onSave,
@@ -64,9 +71,17 @@ export const GalleryPostModal: React.FC<GalleryPostModalProps> = ({
     () => getGalleryCategories(categories),
     [categories]
   );
+  const availableRegions = useMemo(
+    () => getAvailableGalleryRegions(regions),
+    [regions]
+  );
+  const regionGroups = useMemo(
+    () => groupGalleryRegions(availableRegions),
+    [availableRegions]
+  );
   const [title, setTitle] = useState('');
-  const [category, setCategory] = useState(() => resolvedCategories[0] || '아파트');
-  const [region, setRegion] = useState('서울 강남구');
+  const [category, setCategory] = useState(() => resolvedCategories[0] || '아파트·주택');
+  const [region, setRegion] = useState(() => availableRegions[0] || '강남구');
   const [date, setDate] = useState('');
   const [author, setAuthor] = useState('클리어웍스 마스터');
   const [excerpt, setExcerpt] = useState('');
@@ -109,8 +124,9 @@ export const GalleryPostModal: React.FC<GalleryPostModalProps> = ({
     if (editingPost) {
       setTitle(editingPost.title);
       const normCat = normalizeGalleryCategory(editingPost.category);
-      setCategory(normCat || resolvedCategories[0] || '아파트');
-      setRegion(editingPost.region);
+      setCategory(normCat || resolvedCategories[0] || '아파트·주택');
+      const normRegion = normalizeRegionToDetailKey(editingPost.region, availableRegions);
+      setRegion(normRegion || availableRegions[0] || '강남구');
       setDate(editingPost.date);
       setAuthor(editingPost.author);
       setExcerpt(editingPost.excerpt);
@@ -141,8 +157,8 @@ export const GalleryPostModal: React.FC<GalleryPostModalProps> = ({
         '0'
       )}.${String(today.getDate()).padStart(2, '0')}`;
       setTitle('');
-      setCategory(resolvedCategories[0] || '아파트');
-      setRegion('서울 강남구');
+      setCategory(resolvedCategories[0] || '아파트·주택');
+      setRegion(availableRegions[0] || '강남구');
       setDate(formatted);
       setAuthor('클리어웍스 현장팀');
       setExcerpt('');
@@ -528,14 +544,29 @@ export const GalleryPostModal: React.FC<GalleryPostModalProps> = ({
               </select>
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">지역</label>
-              <input
-                type="text"
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                지역 <span className="font-normal text-blue-600">(상세페이지 연동)</span>
+              </label>
+              <select
                 value={region}
                 onChange={(e) => setRegion(e.target.value)}
-                placeholder="예: 서울 강남구"
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"
-              />
+                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {region && !availableRegions.includes(region) && (
+                  <optgroup label="기존 입력값">
+                    <option value={region}>{region}</option>
+                  </optgroup>
+                )}
+                {regionGroups.map((group) => (
+                  <optgroup key={group.label} label={group.label}>
+                    {group.items.map((reg) => (
+                      <option key={reg} value={reg}>
+                        {reg}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">작성일</label>

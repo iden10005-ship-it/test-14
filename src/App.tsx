@@ -1175,6 +1175,7 @@ export default function App() {
           <RegionDetailPage
             regionName={route.regionName}
             regionDetail={siteData.regions.details[route.regionName]}
+            allRegions={siteData.regions.list}
             allServices={siteData.services.items}
             galleryPosts={siteData.gallery.posts}
             company={siteData.company}
@@ -1214,6 +1215,7 @@ export default function App() {
           <GalleryListPage
             posts={siteData.gallery.posts}
             categories={siteData.gallery.categories}
+            regions={siteData.regions.list}
             isEditMode={activeEditMode}
             onAddPost={addGalleryPost}
             onUpdatePost={updateGalleryPost}
@@ -1228,6 +1230,8 @@ export default function App() {
           <GalleryDetailPage
             post={activePost}
             allPosts={siteData.gallery.posts}
+            categories={siteData.gallery.categories}
+            regions={siteData.regions.list}
             company={siteData.company}
             isEditMode={activeEditMode}
             onUpdatePost={updateGalleryPost}
@@ -1235,6 +1239,7 @@ export default function App() {
             onUploadImage={uploadImageToCodebase}
             onBackToList={() => navigateTo({ type: 'gallery_list' })}
             onSelectPost={(postId) => navigateTo({ type: 'gallery_detail', postId })}
+            onSelectRegion={(regionName) => navigateTo({ type: 'region', regionName })}
             onSubmitInquiry={handleInquirySubmit}
           />
         )}

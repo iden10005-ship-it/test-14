@@ -23,10 +23,16 @@ import {
   getPostCoverImage,
 } from '@/src/utils/galleryBlocks';
 import { generateNaverSeoFromPost } from '@/src/utils/naverSeoGenerator';
+import {
+  getAvailableGalleryRegions,
+  normalizeRegionToDetailKey,
+} from '@/src/utils/galleryRegions';
 
 interface GalleryDetailPageProps {
   post: GalleryPost;
   allPosts: GalleryPost[];
+  categories?: string[];
+  regions?: string[];
   company: CompanyInfo;
   isEditMode: boolean;
   onUpdatePost: (post: GalleryPost) => void;
@@ -34,12 +40,15 @@ interface GalleryDetailPageProps {
   onUploadImage?: (dataUrl: string, nameHint?: string) => Promise<string>;
   onBackToList: () => void;
   onSelectPost: (postId: string) => void;
+  onSelectRegion?: (regionName: string) => void;
   onSubmitInquiry: (payload: InquiryPayload) => void;
 }
 
 export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
   post,
   allPosts,
+  categories,
+  regions,
   company,
   isEditMode,
   onUpdatePost,
@@ -47,6 +56,7 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
   onUploadImage,
   onBackToList,
   onSelectPost,
+  onSelectRegion,
   onSubmitInquiry,
 }) => {
   const [name, setName] = useState('');
@@ -163,15 +173,41 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
               <span className="px-3.5 py-1 rounded-full bg-blue-600 text-white text-xs font-extrabold shadow-2xs">
                 {post.category}
               </span>
-              <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-800 text-xs font-bold flex items-center gap-1 border border-slate-200">
-                <MapPin className="w-3.5 h-3.5 text-blue-600" />
-                <EditableText
-                  value={post.region}
-                  onSave={(v) => commitPostUpdate({ ...post, region: v })}
-                  isEditMode={isEditMode}
-                  label="지역 수정"
-                />
-              </span>
+              {(() => {
+                const availableRegions = getAvailableGalleryRegions(regions);
+                const canonicalRegion = normalizeRegionToDetailKey(post.region, availableRegions);
+                const canLinkToRegion =
+                  !isEditMode &&
+                  Boolean(onSelectRegion) &&
+                  Boolean(canonicalRegion) &&
+                  availableRegions.includes(canonicalRegion);
+
+                if (canLinkToRegion && onSelectRegion) {
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => onSelectRegion(canonicalRegion)}
+                      title={`${canonicalRegion} 지역 상세페이지 보기`}
+                      className="px-3 py-1 rounded-full bg-slate-100 hover:bg-blue-50 text-slate-800 hover:text-blue-700 text-xs font-bold flex items-center gap-1 border border-slate-200 hover:border-blue-200 transition-colors cursor-pointer"
+                    >
+                      <MapPin className="w-3.5 h-3.5 text-blue-600" />
+                      <span>{post.region}</span>
+                    </button>
+                  );
+                }
+
+                return (
+                  <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-800 text-xs font-bold flex items-center gap-1 border border-slate-200">
+                    <MapPin className="w-3.5 h-3.5 text-blue-600" />
+                    <EditableText
+                      value={post.region}
+                      onSave={(v) => commitPostUpdate({ ...post, region: v })}
+                      isEditMode={isEditMode}
+                      label="지역 수정"
+                    />
+                  </span>
+                );
+              })()}
             </div>
 
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight leading-snug mb-3">
@@ -537,6 +573,8 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
         <GalleryPostModal
           isOpen={modalOpen}
           editingPost={post}
+          categories={categories}
+          regions={regions}
           onUploadImage={onUploadImage}
           onClose={() => setModalOpen(false)}
           onSave={onUpdatePost}

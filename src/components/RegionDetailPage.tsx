@@ -24,26 +24,12 @@ import type {
   ServiceItem,
 } from '@/src/types/clearworks';
 import { resolveAssetUrl } from '@/src/utils/assetUrl';
-
-function buildRegionMatchTokens(regionName: string): string[] {
-  const tokens = new Set<string>();
-  const trimmed = regionName.trim();
-  if (trimmed) tokens.add(trimmed);
-
-  for (const part of trimmed.split(/[\s·,/]+/)) {
-    const clean = part.trim();
-    if (!clean) continue;
-    tokens.add(clean);
-    if (clean.length >= 3 && /[시군구동]$/.test(clean)) {
-      tokens.add(clean.slice(0, -1));
-    }
-  }
-  return Array.from(tokens).filter((t) => t.length >= 2);
-}
+import { getFeaturedPostsForRegion } from '@/src/utils/galleryRegions';
 
 interface RegionDetailPageProps {
   regionName: string;
   regionDetail?: RegionDetail;
+  allRegions?: string[];
   allServices: ServiceItem[];
   galleryPosts: GalleryPost[];
   company: CompanyInfo;
@@ -59,6 +45,7 @@ interface RegionDetailPageProps {
 export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
   regionName,
   regionDetail,
+  allRegions,
   allServices,
   galleryPosts,
   company,
@@ -92,33 +79,17 @@ export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
     setSent(false);
   }, [regionName]);
 
-  const featuredGalleryPosts = useMemo(() => {
-    const tokens = buildRegionMatchTokens(regionName);
-    const subTokens = detail.subDistricts
-      .map((s) => s.trim().replace(/[동리읍면]$/, ''))
-      .filter((s) => s.length >= 2);
-
-    const scored = galleryPosts.map((post, idx) => {
-      let score = 0;
-      const postRegion = post.region || '';
-      const haystack = `${post.title} ${post.excerpt} ${post.tags.join(' ')}`;
-
-      if (postRegion.includes(regionName) || regionName.includes(postRegion)) {
-        score += 20;
-      }
-      for (const tk of tokens) {
-        if (postRegion.includes(tk)) score += 8;
-        if (haystack.includes(tk)) score += 4;
-      }
-      for (const sub of subTokens) {
-        if (postRegion.includes(sub) || post.title.includes(sub)) score += 3;
-      }
-      return { post, score, idx };
-    });
-
-    scored.sort((a, b) => (b.score !== a.score ? b.score - a.score : a.idx - a.idx));
-    return scored.slice(0, 6).map((item) => item.post);
-  }, [galleryPosts, regionName, detail.subDistricts]);
+  const featuredGalleryPosts = useMemo(
+    () =>
+      getFeaturedPostsForRegion(
+        galleryPosts,
+        regionName,
+        detail.subDistricts,
+        allRegions,
+        6
+      ),
+    [galleryPosts, regionName, detail.subDistricts, allRegions]
+  );
 
   const updateDetail = (patch: Partial<RegionDetail>) => {
     onUpdateRegionDetail(regionName, {
