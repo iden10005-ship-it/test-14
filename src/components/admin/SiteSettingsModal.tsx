@@ -24,11 +24,16 @@ import {
   Smartphone,
   Sparkles,
   Tag,
+  Trash2,
   Upload,
   X,
 } from 'lucide-react';
 import type { PageRoute, PageSeoMeta, SeoSettings, SiteData } from '@/src/types/clearworks';
 import { resolveAssetUrl } from '@/src/utils/assetUrl';
+import {
+  getGalleryCategories,
+  normalizeGalleryCategory,
+} from '@/src/utils/galleryCategories';
 import { getDefaultSeoForRoute, getSeoPageKey } from '@/src/utils/seo';
 import {
   buildSitemapEntries,
@@ -165,6 +170,15 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
     sectionTitle: siteData.gallery.sectionTitle,
     sectionSubtitle: siteData.gallery.sectionSubtitle,
   });
+  const [draftGalleryCategories, setDraftGalleryCategories] = useState<
+    Array<{ original: string; value: string }>
+  >(() =>
+    getGalleryCategories(siteData.gallery.categories).map((cat) => ({
+      original: cat,
+      value: cat,
+    }))
+  );
+  const [newGalleryCategory, setNewGalleryCategory] = useState('');
   const [draftReviewsMeta, setDraftReviewsMeta] = useState<{
     sectionTitle: string;
     sectionSubtitle: string;
@@ -255,6 +269,13 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
         sectionTitle: siteData.gallery.sectionTitle,
         sectionSubtitle: siteData.gallery.sectionSubtitle,
       });
+      setDraftGalleryCategories(
+        getGalleryCategories(siteData.gallery.categories).map((cat) => ({
+          original: cat,
+          value: cat,
+        }))
+      );
+      setNewGalleryCategory('');
       setDraftReviewsMeta({
         sectionTitle: siteData.reviews.sectionTitle,
         sectionSubtitle: siteData.reviews.sectionSubtitle,
@@ -323,6 +344,7 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
         ...siteData.gallery,
         sectionTitle: draftGalleryMeta.sectionTitle,
         sectionSubtitle: draftGalleryMeta.sectionSubtitle,
+        categories: getGalleryCategories(draftGalleryCategories.map((c) => c.value)),
       },
       reviews: {
         ...siteData.reviews,
@@ -344,6 +366,7 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
       draftPricing,
       draftRegionsMeta,
       draftGalleryMeta,
+      draftGalleryCategories,
       draftReviewsMeta,
       draftFaq,
       draftContactForm,
@@ -576,12 +599,35 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
         sectionSubtitle:
           draftRegionsMeta.sectionSubtitle.trim() || siteData.regions.sectionSubtitle,
       },
-      gallery: {
-        ...siteData.gallery,
-        sectionTitle: draftGalleryMeta.sectionTitle.trim() || siteData.gallery.sectionTitle,
-        sectionSubtitle:
-          draftGalleryMeta.sectionSubtitle.trim() || siteData.gallery.sectionSubtitle,
-      },
+      gallery: (() => {
+        const nextCategories = getGalleryCategories(
+          draftGalleryCategories.map((c) => c.value)
+        );
+        const renameMap = new Map<string, string>();
+        for (const item of draftGalleryCategories) {
+          const origNorm = normalizeGalleryCategory(item.original);
+          const nextNorm = normalizeGalleryCategory(item.value);
+          if (origNorm && nextNorm && origNorm !== nextNorm) {
+            renameMap.set(origNorm, nextNorm);
+          }
+        }
+        const updatedPosts =
+          renameMap.size > 0
+            ? siteData.gallery.posts.map((post) => {
+                const postCatNorm = normalizeGalleryCategory(post.category);
+                const renamed = renameMap.get(postCatNorm);
+                return renamed ? { ...post, category: renamed } : post;
+              })
+            : siteData.gallery.posts;
+        return {
+          ...siteData.gallery,
+          sectionTitle: draftGalleryMeta.sectionTitle.trim() || siteData.gallery.sectionTitle,
+          sectionSubtitle:
+            draftGalleryMeta.sectionSubtitle.trim() || siteData.gallery.sectionSubtitle,
+          categories: nextCategories,
+          posts: updatedPosts,
+        };
+      })(),
       reviews: {
         ...siteData.reviews,
         sectionTitle: draftReviewsMeta.sectionTitle.trim() || siteData.reviews.sectionTitle,
@@ -635,6 +681,13 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
       sectionTitle: nextData.gallery.sectionTitle,
       sectionSubtitle: nextData.gallery.sectionSubtitle,
     });
+    setDraftGalleryCategories(
+      getGalleryCategories(nextData.gallery.categories).map((cat) => ({
+        original: cat,
+        value: cat,
+      }))
+    );
+    setNewGalleryCategory('');
     setDraftReviewsMeta({
       sectionTitle: nextData.reviews.sectionTitle,
       sectionSubtitle: nextData.reviews.sectionSubtitle,
@@ -1849,6 +1902,115 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
                         placeholder="고객 후기 부제목"
                         className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       />
+                    </div>
+                  </div>
+
+                  {/* Gallery Categories Manager */}
+                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                    <div>
+                      <h5 className="text-xs font-extrabold text-slate-900">
+                        작업갤러리 카테고리 관리
+                      </h5>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        이름을 수정하면 새 작업일지 작성 드롭다운, 갤러리 필터 탭, 기존 게시글의 카테고리명이 함께 반영됩니다.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {draftGalleryCategories.map((catItem, idx) => (
+                        <div
+                          key={`${catItem.original}-${idx}`}
+                          className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5"
+                        >
+                          <span className="text-[11px] font-bold text-slate-400 w-4 text-center shrink-0 tabular-nums">
+                            {idx + 1}
+                          </span>
+                          <input
+                            type="text"
+                            value={catItem.value}
+                            onChange={(e) => {
+                              const nextVal = e.target.value;
+                              setDraftGalleryCategories((prev) =>
+                                prev.map((item, i) =>
+                                  i === idx ? { ...item, value: nextVal } : item
+                                )
+                              );
+                              setIsDirty(true);
+                            }}
+                            placeholder="카테고리 이름"
+                            className="flex-1 min-w-0 text-xs font-bold text-slate-800 bg-transparent focus:outline-none"
+                          />
+                          {draftGalleryCategories.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDraftGalleryCategories((prev) =>
+                                  prev.filter((_, i) => i !== idx)
+                                );
+                                setIsDirty(true);
+                              }}
+                              title="카테고리 삭제"
+                              className="p-1 text-slate-400 hover:text-red-500 rounded-lg cursor-pointer shrink-0"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <input
+                        type="text"
+                        value={newGalleryCategory}
+                        onChange={(e) => setNewGalleryCategory(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const clean = normalizeGalleryCategory(newGalleryCategory);
+                            if (!clean) return;
+                            if (
+                              draftGalleryCategories.some(
+                                (c) => normalizeGalleryCategory(c.value) === clean
+                              )
+                            ) {
+                              return;
+                            }
+                            setDraftGalleryCategories((prev) => [
+                              ...prev,
+                              { original: '', value: clean },
+                            ]);
+                            setNewGalleryCategory('');
+                            setIsDirty(true);
+                          }
+                        }}
+                        placeholder="새 카테고리 이름 (예: 원룸·오피스텔)"
+                        className="flex-1 px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const clean = normalizeGalleryCategory(newGalleryCategory);
+                          if (!clean) return;
+                          if (
+                            draftGalleryCategories.some(
+                              (c) => normalizeGalleryCategory(c.value) === clean
+                            )
+                          ) {
+                            return;
+                          }
+                          setDraftGalleryCategories((prev) => [
+                            ...prev,
+                            { original: '', value: clean },
+                          ]);
+                          setNewGalleryCategory('');
+                          setIsDirty(true);
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold inline-flex items-center gap-1 cursor-pointer shrink-0"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>카테고리 추가</span>
+                      </button>
                     </div>
                   </div>
 

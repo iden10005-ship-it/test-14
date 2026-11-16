@@ -34,7 +34,9 @@ const SPECIFIC_WORK_TERMS = [
 
 const CATEGORY_WORKTYPE_MAP: Record<string, string> = {
   아파트: '아파트외창청소',
+  '아파트·주택': '아파트외창청소',
   상가: '상가유리창청소',
+  '상가·매장': '상가유리창청소',
   빌딩: '빌딩외벽청소',
   '간판,어닝청소': '간판어닝청소',
   '간판·어닝청소': '간판어닝청소',

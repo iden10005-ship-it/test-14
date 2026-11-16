@@ -206,6 +206,7 @@ export interface SiteData {
   gallery: {
     sectionTitle: string;
     sectionSubtitle: string;
+    categories?: string[];
     posts: GalleryPost[];
   };
   pricing: {

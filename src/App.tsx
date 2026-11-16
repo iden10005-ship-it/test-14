@@ -1213,6 +1213,7 @@ export default function App() {
         {route.type === 'gallery_list' && (
           <GalleryListPage
             posts={siteData.gallery.posts}
+            categories={siteData.gallery.categories}
             isEditMode={activeEditMode}
             onAddPost={addGalleryPost}
             onUpdatePost={updateGalleryPost}

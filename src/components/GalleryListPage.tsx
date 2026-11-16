@@ -20,9 +20,14 @@ import {
 import { GalleryPostModal } from '@/src/components/admin/GalleryPostModal';
 import type { GalleryPost } from '@/src/types/clearworks';
 import { resolveAssetUrl } from '@/src/utils/assetUrl';
+import {
+  getGalleryCategories,
+  matchesGalleryCategory,
+} from '@/src/utils/galleryCategories';
 
 interface GalleryListPageProps {
   posts: GalleryPost[];
+  categories?: string[];
   isEditMode: boolean;
   onAddPost: (post: GalleryPost) => void;
   onUpdatePost: (post: GalleryPost) => void;
@@ -32,18 +37,19 @@ interface GalleryListPageProps {
   onSelectPost: (postId: string) => void;
 }
 
-const CATEGORIES = [
-  { id: '전체', label: '전체일지', icon: LayoutGrid },
-  { id: '아파트', label: '아파트', icon: Home },
-  { id: '상가', label: '상가', icon: Store },
-  { id: '빌딩', label: '빌딩', icon: Building2 },
-  { id: '간판,어닝청소', label: '간판·어닝청소', icon: Wrench },
-  { id: '시트지제거', label: '시트지제거', icon: Layers },
-  { id: '기타', label: '기타', icon: null },
-] as const;
+function getCategoryIcon(cat: string) {
+  if (cat.includes('아파트') || cat.includes('주택')) return Home;
+  if (cat.includes('상가') || cat.includes('매장')) return Store;
+  if (cat.includes('빌딩') || cat.includes('외벽')) return Building2;
+  if (cat.includes('간판') || cat.includes('어닝')) return Wrench;
+  if (cat.includes('시트지') || cat.includes('필름') || cat.includes('썬팅')) return Layers;
+  if (cat.includes('기타')) return null;
+  return Sparkles;
+}
 
 export const GalleryListPage: React.FC<GalleryListPageProps> = ({
   posts,
+  categories,
   isEditMode,
   onAddPost,
   onUpdatePost,
@@ -60,44 +66,25 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const gridTopRef = useRef<HTMLDivElement | null>(null);
 
-  const matchesCategory = (postCategory: string, selected: string) => {
-    if (selected === '전체') return true;
-    const cat = postCategory.trim().toLowerCase();
-    if (selected === '아파트') return cat.includes('아파트') || cat.includes('주택');
-    if (selected === '상가') return cat.includes('상가') || cat.includes('매장') || cat.includes('점포');
-    if (selected === '빌딩') return cat.includes('빌딩') || cat.includes('외벽');
-    if (selected === '간판,어닝청소') return cat.includes('간판') || cat.includes('어닝');
-    if (selected === '시트지제거') {
-      return (
-        cat.includes('시트지') ||
-        cat.includes('썬팅') ||
-        cat.includes('스티커') ||
-        cat.includes('필름')
-      );
-    }
-    if (selected === '기타') {
-      return (
-        cat.includes('기타') ||
-        cat.includes('특수') ||
-        (!cat.includes('아파트') &&
-          !cat.includes('주택') &&
-          !cat.includes('상가') &&
-          !cat.includes('매장') &&
-          !cat.includes('점포') &&
-          !cat.includes('빌딩') &&
-          !cat.includes('외벽') &&
-          !cat.includes('간판') &&
-          !cat.includes('어닝') &&
-          !cat.includes('시트지') &&
-          !cat.includes('썬팅') &&
-          !cat.includes('스티커') &&
-          !cat.includes('필름'))
-      );
-    }
-    return cat.includes(selected.toLowerCase());
-  };
+  const resolvedCategories = getGalleryCategories(categories);
+  const categoryTabs = [
+    { id: '전체', label: '전체일지', icon: LayoutGrid },
+    ...resolvedCategories.map((cat) => ({
+      id: cat,
+      label: cat,
+      icon: getCategoryIcon(cat),
+    })),
+  ];
 
-  const filteredPosts = posts.filter((p) => matchesCategory(p.category, activeCategory));
+  useEffect(() => {
+    if (activeCategory !== '전체' && !resolvedCategories.includes(activeCategory)) {
+      setActiveCategory('전체');
+    }
+  }, [activeCategory, resolvedCategories]);
+
+  const filteredPosts = posts.filter((p) =>
+    matchesGalleryCategory(p.category, activeCategory, resolvedCategories)
+  );
   const totalPages = Math.max(1, Math.ceil(filteredPosts.length / pageSize));
   const safePage = Math.min(currentPage, totalPages);
   const startIndex = (safePage - 1) * pageSize;
@@ -199,7 +186,7 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
           className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8 scroll-mt-24"
         >
           <div className="flex flex-wrap items-center gap-2">
-            {CATEGORIES.map((cat) => {
+            {categoryTabs.map((cat) => {
               const isActive = activeCategory === cat.id;
               const Icon = cat.icon;
               return (
@@ -431,6 +418,7 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
         <GalleryPostModal
           isOpen={modalOpen}
           editingPost={editingPost}
+          categories={resolvedCategories}
           onUploadImage={onUploadImage}
           onClose={() => {
             setModalOpen(false);

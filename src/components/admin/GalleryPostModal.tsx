@@ -29,6 +29,10 @@ import {
   optimizeWorkLogImage,
 } from '@/src/utils/imageOptimizer';
 import {
+  getGalleryCategories,
+  normalizeGalleryCategory,
+} from '@/src/utils/galleryCategories';
+import {
   formatSeoKeywords,
   generateNaverPostSeo,
   MAX_SEO_KEYWORDS,
@@ -38,6 +42,7 @@ import {
 interface GalleryPostModalProps {
   isOpen: boolean;
   editingPost: GalleryPost | null;
+  categories?: string[];
   onUploadImage?: (dataUrl: string, nameHint?: string) => Promise<string>;
   onClose: () => void;
   onSave: (post: GalleryPost) => void;
@@ -50,12 +55,17 @@ function makeBlockId(prefix: string): string {
 export const GalleryPostModal: React.FC<GalleryPostModalProps> = ({
   isOpen,
   editingPost,
+  categories,
   onUploadImage,
   onClose,
   onSave,
 }) => {
+  const resolvedCategories = useMemo(
+    () => getGalleryCategories(categories),
+    [categories]
+  );
   const [title, setTitle] = useState('');
-  const [category, setCategory] = useState('아파트');
+  const [category, setCategory] = useState(() => resolvedCategories[0] || '아파트');
   const [region, setRegion] = useState('서울 강남구');
   const [date, setDate] = useState('');
   const [author, setAuthor] = useState('클리어웍스 마스터');
@@ -98,7 +108,8 @@ export const GalleryPostModal: React.FC<GalleryPostModalProps> = ({
     if (!isOpen) return;
     if (editingPost) {
       setTitle(editingPost.title);
-      setCategory(editingPost.category);
+      const normCat = normalizeGalleryCategory(editingPost.category);
+      setCategory(normCat || resolvedCategories[0] || '아파트');
       setRegion(editingPost.region);
       setDate(editingPost.date);
       setAuthor(editingPost.author);
@@ -130,7 +141,7 @@ export const GalleryPostModal: React.FC<GalleryPostModalProps> = ({
         '0'
       )}.${String(today.getDate()).padStart(2, '0')}`;
       setTitle('');
-      setCategory('아파트');
+      setCategory(resolvedCategories[0] || '아파트');
       setRegion('서울 강남구');
       setDate(formatted);
       setAuthor('클리어웍스 현장팀');
@@ -506,12 +517,14 @@ export const GalleryPostModal: React.FC<GalleryPostModalProps> = ({
                 onChange={(e) => setCategory(e.target.value)}
                 className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"
               >
-                <option value="아파트">아파트</option>
-                <option value="상가">상가</option>
-                <option value="빌딩">빌딩</option>
-                <option value="간판,어닝청소">간판·어닝청소</option>
-                <option value="시트지제거">시트지제거</option>
-                <option value="기타">기타</option>
+                {(resolvedCategories.includes(category) || !category
+                  ? resolvedCategories
+                  : [category, ...resolvedCategories]
+                ).map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
