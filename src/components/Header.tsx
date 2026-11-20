@@ -161,10 +161,10 @@ export const Header: React.FC<HeaderProps> = ({
   const isContactActive = currentPage.type === 'home' && activeHomeSection === 'contact';
 
   const getDesktopNavClass = (active: boolean) =>
-    `px-3 py-2 text-sm font-bold rounded-xl transition-all duration-200 whitespace-nowrap shrink-0 cursor-pointer ${
+    `px-2.5 xl:px-3.5 py-2 text-[15px] xl:text-base font-bold rounded-xl transition-all duration-200 whitespace-nowrap shrink-0 cursor-pointer ${
       active
-        ? 'text-blue-600 bg-blue-50/70'
-        : 'text-slate-700 hover:text-blue-600 hover:bg-slate-50'
+        ? 'text-blue-600 bg-blue-50/80'
+        : 'text-slate-800 hover:text-blue-600 hover:bg-slate-50'
     }`;
 
   return (
@@ -239,7 +239,7 @@ export const Header: React.FC<HeaderProps> = ({
       >
         <nav
           aria-label="주 메뉴"
-          className={`max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-4 transition-all duration-200 ${
+          className={`max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-3 xl:gap-4 transition-all duration-200 ${
             scrolled ? 'py-2.5' : 'py-3 sm:py-3.5'
           }`}
         >
@@ -274,8 +274,8 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center gap-1">
+          {/* Desktop Navigation (Center-Aligned) */}
+          <div className="hidden lg:flex flex-1 items-center justify-center gap-0.5 xl:gap-1.5">
             <button
               type="button"
               onClick={handleGoHome}
@@ -297,16 +297,16 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <span>서비스</span>
                 <ChevronDown
-                  className={`w-3.5 h-3.5 transition-colors ${
+                  className={`w-4 h-4 transition-colors ${
                     isServiceActive ? 'text-blue-600' : 'text-slate-400'
                   }`}
                 />
               </button>
 
               {serviceDropdownOpen && (
-                <div className="absolute top-full left-0 w-64 pt-1.5 z-50">
+                <div className="absolute top-full left-0 w-68 pt-1.5 z-50">
                   <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-2">
-                    <div className="text-[11px] font-bold text-slate-400 px-3 py-1.5 uppercase tracking-wider border-b border-slate-100 mb-1">
+                    <div className="text-xs font-bold text-slate-400 px-3 py-1.5 uppercase tracking-wider border-b border-slate-100 mb-1">
                       전문 서비스 목록
                     </div>
                     {services.map((srv) => (
@@ -317,10 +317,10 @@ export const Header: React.FC<HeaderProps> = ({
                           setServiceDropdownOpen(false);
                           onNavigateService(srv.id);
                         }}
-                        className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors flex items-center justify-between group cursor-pointer"
+                        className="w-full text-left px-3 py-2.5 text-sm font-semibold text-slate-800 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors flex items-center justify-between group cursor-pointer"
                       >
                         <span>{srv.title}</span>
-                        <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" />
+                        <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" />
                       </button>
                     ))}
                   </div>
@@ -375,7 +375,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={() => handleSectionLink('contact')}
-              className={`ml-1 px-4 py-2 text-sm font-bold rounded-xl transition-all duration-200 border whitespace-nowrap shrink-0 cursor-pointer ${
+              className={`ml-1 px-3.5 xl:px-4 py-2 text-[15px] xl:text-base font-bold rounded-xl transition-all duration-200 border whitespace-nowrap shrink-0 cursor-pointer ${
                 isContactActive
                   ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
                   : 'text-blue-600 hover:text-white bg-blue-50 hover:bg-blue-600 border-blue-200 hover:border-blue-600'
@@ -385,45 +385,34 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           </div>
 
-          {/* Desktop Action Buttons */}
-          <div className="hidden sm:flex items-center gap-2 shrink-0">
-            <a
-              href={company.kakaoLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-3.5 py-2.5 rounded-xl bg-[#FEE500] hover:bg-[#fada0a] text-[#3c1e1e] text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs whitespace-nowrap shrink-0"
-              title="카카오톡 1:1 상담"
-            >
-              <MessageCircle className="w-3.5 h-3.5 fill-current" />
-              <span>카톡 문의</span>
-            </a>
+          {/* Right Action & Mobile Controls */}
+          <div className="flex items-center gap-2 shrink-0">
             <a
               href={`tel:${company.phone}`}
-              className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-md shadow-blue-500/20 whitespace-nowrap shrink-0 tabular-nums"
-            >
-              <Phone className="w-3.5 h-3.5" />
-              <span>{company.phone}</span>
-            </a>
-          </div>
-
-          {/* Mobile Controls */}
-          <div className="flex lg:hidden items-center gap-2 shrink-0">
-            <a
-              href={`tel:${company.phone}`}
-              className="w-11 h-11 rounded-xl bg-blue-600 text-white shadow-xs flex items-center justify-center sm:hidden"
-              aria-label="전화 걸기"
+              className="hidden sm:flex px-4 xl:px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm xl:text-[15px] font-bold transition-all items-center gap-1.5 shadow-md shadow-blue-500/20 whitespace-nowrap shrink-0 tabular-nums"
             >
               <Phone className="w-4 h-4" />
+              <span>{company.phone}</span>
             </a>
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen((prev) => !prev)}
-              aria-expanded={mobileMenuOpen}
-              aria-label={mobileMenuOpen ? '메뉴 닫기' : '메뉴 열기'}
-              className="w-11 h-11 flex items-center justify-center text-slate-700 hover:bg-slate-100 rounded-xl transition-colors border border-slate-200"
-            >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
+
+            <div className="flex lg:hidden items-center gap-2 shrink-0">
+              <a
+                href={`tel:${company.phone}`}
+                className="w-11 h-11 rounded-xl bg-blue-600 text-white shadow-xs flex items-center justify-center sm:hidden"
+                aria-label="전화 걸기"
+              >
+                <Phone className="w-4 h-4" />
+              </a>
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen((prev) => !prev)}
+                aria-expanded={mobileMenuOpen}
+                aria-label={mobileMenuOpen ? '메뉴 닫기' : '메뉴 열기'}
+                className="w-11 h-11 flex items-center justify-center text-slate-700 hover:bg-slate-100 rounded-xl transition-colors border border-slate-200"
+              >
+                {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </button>
+            </div>
           </div>
         </nav>
 
