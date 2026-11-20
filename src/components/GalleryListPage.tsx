@@ -3,8 +3,10 @@ import {
   ArrowRight,
   Building2,
   Calendar,
+  Check,
   ChevronLeft,
   ChevronRight,
+  Copy,
   Home,
   Layers,
   LayoutGrid,
@@ -68,7 +70,50 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
   const [modalOpen, setModalOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<GalleryPost | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [copiedListJson, setCopiedListJson] = useState(false);
   const gridTopRef = useRef<HTMLDivElement | null>(null);
+
+  const handleCopyListJson = async () => {
+    const payload = siteData
+      ? {
+          ...siteData,
+          gallery: {
+            ...siteData.gallery,
+            posts,
+          },
+          updatedAt: new Date().toISOString(),
+        }
+      : { posts };
+    const text = `${JSON.stringify(payload, null, 2)}\n`;
+    let ok = false;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        ok = true;
+      }
+    } catch {
+      // Fallback below
+    }
+    if (!ok) {
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        ok = document.execCommand('copy');
+        document.body.removeChild(textarea);
+      } catch {
+        ok = false;
+      }
+    }
+    if (ok) {
+      setCopiedListJson(true);
+      setTimeout(() => setCopiedListJson(false), 2500);
+    }
+  };
 
   const resolvedCategories = getGalleryCategories(categories);
   const categoryTabs = [
@@ -169,17 +214,36 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
             </div>
 
             {isEditMode && (
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingPost(null);
-                  setModalOpen(true);
-                }}
-                className="self-start md:self-auto px-5 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-bold shadow-lg flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0"
-              >
-                <Plus className="w-4 h-4" />
-                <span>새 작업일지 작성하기</span>
-              </button>
+              <div className="flex flex-wrap items-center gap-2 self-start md:self-auto shrink-0">
+                <button
+                  type="button"
+                  onClick={handleCopyListJson}
+                  title="삭제/수정된 현재 갤러리 목록을 포함한 전체 JSON을 복사합니다"
+                  className={`px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold shadow-lg flex items-center gap-1.5 cursor-pointer whitespace-nowrap transition-colors ${
+                    copiedListJson
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                  }`}
+                >
+                  {copiedListJson ? (
+                    <Check className="w-4 h-4" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
+                  <span>{copiedListJson ? 'JSON 복사 완료!' : 'JSON 복사하기'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingPost(null);
+                    setModalOpen(true);
+                  }}
+                  className="px-5 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-bold shadow-lg flex items-center gap-2 cursor-pointer whitespace-nowrap"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>새 작업일지 작성하기</span>
+                </button>
+              </div>
             )}
           </div>
         </div>
