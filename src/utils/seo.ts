@@ -1,5 +1,11 @@
 import { INITIAL_SITE_DATA } from '@/src/data/clearworksData';
-import type { PageRoute, PageSeoMeta, ServiceItem, SiteData } from '@/src/types/clearworks';
+import type {
+  PageRoute,
+  PageSeoMeta,
+  RegionDetail,
+  ServiceItem,
+  SiteData,
+} from '@/src/types/clearworks';
 import { generateNaverSeoFromPost, parseSeoKeywords } from '@/src/utils/naverSeoGenerator';
 
 export const DEFAULT_HOME_KEYWORDS =
@@ -300,6 +306,69 @@ function clampTitle(core: string, suffix: string, maxLen = 58): string {
   return `${trimmedCore}${suffix}`;
 }
 
+function collectServiceImageUrls(service: ServiceItem, siteData: SiteData): string[] {
+  const origin = siteData.siteUrl?.trim().replace(/\/+$/, '') || '';
+  const raw = [
+    service.image,
+    service.detail.afterImage,
+    service.detail.beforeImage,
+    siteData.seo?.defaultOgImage,
+    siteData.hero.afterImage,
+  ];
+  const unique = Array.from(new Set(raw.map((u) => (u || '').trim()).filter(Boolean)));
+  return unique.map((u) => (origin ? toAbsoluteUrl(u, origin) : u));
+}
+
+function buildServiceFaqEntities(
+  service: ServiceItem,
+  siteData: SiteData,
+  regionContext?: { cleanRegion: string; subDistricts: string[]; leadTime: string }
+): Array<Record<string, unknown>> {
+  const prefix = regionContext ? `[${regionContext.cleanRegion}] ` : '';
+  const baseFaqs = (service.detail.faqList ?? []).map((f) => ({
+    '@type': 'Question',
+    name: regionContext && !f.q.includes(regionContext.cleanRegion) ? `${prefix}${f.q}` : f.q,
+    acceptedAnswer: { '@type': 'Answer', text: f.a },
+  }));
+
+  const targetSubject = regionContext
+    ? `${regionContext.cleanRegion} ${service.title}`
+    : service.title;
+  const supplemental: Array<{ q: string; a: string }> = [
+    {
+      q: `${targetSubject} 비용 및 견적 기준은 어떻게 되나요?`,
+      a: `${service.detail.priceGuide}. ${siteData.company.name}은(는) 현장 사진 또는 무료 방문 실측을 통해 추가 비용 없는 투명한 확정 견적을 안내해 드립니다.`,
+    },
+    {
+      q: `${targetSubject} 작업 시간과 A/S 보증은 어떻게 되나요?`,
+      a: `${service.detail.duration}이며, 작업 완료 후 고객 검수 및 ${siteData.company.asPeriod}일 이내 무상 A/S와 영업배상책임보험을 보장합니다.`,
+    },
+  ];
+  if (regionContext) {
+    const areaText =
+      regionContext.subDistricts.length > 0
+        ? regionContext.subDistricts.join(', ')
+        : `${regionContext.cleanRegion} 전지역`;
+    supplemental.push({
+      q: `${regionContext.cleanRegion} 어느 지역까지 ${service.title} 출장이 가능한가요?`,
+      a: `${areaText} 전지역 직영 전담팀이 출장하며, ${regionContext.leadTime}으로 신속하게 방문 시공합니다.`,
+    });
+  }
+
+  const existingNames = new Set(baseFaqs.map((item) => String(item.name)));
+  for (const item of supplemental) {
+    if (baseFaqs.length >= 4) break;
+    if (!existingNames.has(item.q)) {
+      baseFaqs.push({
+        '@type': 'Question',
+        name: item.q,
+        acceptedAnswer: { '@type': 'Answer', text: item.a },
+      });
+    }
+  }
+  return baseFaqs;
+}
+
 export function buildServicePageSeo(service: ServiceItem, siteData: SiteData): ResolvedSeoMeta {
   const { company, hero, regions } = siteData;
   const stems = getServiceSeoStems(service.id, service.title);
@@ -350,34 +419,84 @@ export function buildServicePageSeo(service: ServiceItem, siteData: SiteData): R
     '';
   const routePath = getRoutePath({ type: 'service', serviceId: service.id });
   const routeHash = `#${routePath}`;
+  const origin = siteData.siteUrl?.trim().replace(/\/+$/, '') || '';
+  const canonicalPathOrUrl = origin ? `${origin}${routePath}` : routePath;
 
-  const faqEntities = (service.detail.faqList ?? []).map((f) => ({
-    '@type': 'Question',
-    name: f.q,
-    acceptedAnswer: { '@type': 'Answer', text: f.a },
-  }));
+  const images = collectServiceImageUrls(service, siteData);
+  const faqEntities = buildServiceFaqEntities(service, siteData);
 
   const jsonLd: Record<string, unknown> = {
     '@context': 'https://schema.org',
     '@graph': [
       {
         '@type': 'Service',
+        '@id': `${canonicalPathOrUrl}#service`,
         name: service.title,
+        alternateName: stems,
         serviceType: service.title,
+        category: '유리창청소·외벽청소 전문 시공',
         description,
+        url: canonicalPathOrUrl,
+        ...(images.length > 0 ? { image: images } : {}),
+        audience: {
+          '@type': 'Audience',
+          audienceType: service.detail.targetAudience,
+        },
         provider: {
           '@type': 'HomeAndConstructionBusiness',
           name: company.name,
           telephone: company.phone,
           priceRange: '₩₩',
+          address: {
+            '@type': 'PostalAddress',
+            streetAddress: company.address,
+            addressCountry: 'KR',
+          },
+          openingHours: company.operatingHours,
         },
-        areaServed: ['서울특별시', '경기도', '인천광역시'],
+        areaServed: [
+          { '@type': 'AdministrativeArea', name: '서울특별시' },
+          { '@type': 'AdministrativeArea', name: '경기도' },
+          { '@type': 'AdministrativeArea', name: '인천광역시' },
+        ],
+        hasOfferCatalog: {
+          '@type': 'OfferCatalog',
+          name: `${service.title} 시공 범위`,
+          itemListElement: service.detail.scopeList.map((scope, idx) => ({
+            '@type': 'Offer',
+            position: idx + 1,
+            itemOffered: {
+              '@type': 'Service',
+              name: scope,
+            },
+          })),
+        },
+        offers: {
+          '@type': 'Offer',
+          priceCurrency: 'KRW',
+          description: service.detail.priceGuide,
+          availability: 'https://schema.org/InStock',
+        },
+        additionalProperty: [
+          { '@type': 'PropertyValue', name: '평균 소요 시간', value: service.detail.duration },
+          { '@type': 'PropertyValue', name: '예상 견적 기준', value: service.detail.priceGuide },
+          { '@type': 'PropertyValue', name: '무상 A/S 보증', value: `${company.asPeriod}일` },
+          ...(service.detail.equipment.length > 0
+            ? [
+                {
+                  '@type': 'PropertyValue',
+                  name: '투입 전문 장비',
+                  value: service.detail.equipment.join(', '),
+                },
+              ]
+            : []),
+        ],
       },
       {
         '@type': 'BreadcrumbList',
         itemListElement: [
-          { '@type': 'ListItem', position: 1, name: '홈', item: '/' },
-          { '@type': 'ListItem', position: 2, name: service.title, item: routePath },
+          { '@type': 'ListItem', position: 1, name: '홈', item: origin ? `${origin}/` : '/' },
+          { '@type': 'ListItem', position: 2, name: service.title, item: canonicalPathOrUrl },
         ],
       },
       ...(faqEntities.length > 0 ? [{ '@type': 'FAQPage', mainEntity: faqEntities }] : []),
@@ -639,12 +758,13 @@ export function buildRegionPageSeo(
 export function buildMatrixPageSeo(
   regionName: string,
   service: ServiceItem,
-  siteData: SiteData
+  siteData: SiteData,
+  regionDetailOverride?: RegionDetail
 ): ResolvedSeoMeta {
   const { company, hero, regions } = siteData;
   const cleanRegion = regionName.trim();
   const metro = inferMetroPrefix(cleanRegion);
-  const detail = regions.details[cleanRegion];
+  const detail = regionDetailOverride ?? regions.details[cleanRegion];
   const subDistricts = detail?.subDistricts ?? [];
   const popularComplexes = detail?.popularComplexes ?? [];
   const stems = getServiceSeoStems(service.id, service.title);
@@ -654,11 +774,18 @@ export function buildMatrixPageSeo(
   const leadTime = detail?.leadTime || '당일·익일 무료 방문 견적';
   const brandSuffix = ` | ${company.name}`;
 
-  const title = clampTitle(`${metro.displayRegion} ${service.title} 전문`, brandSuffix, 58);
+  const includeGlassTerm =
+    !service.title.includes('유리창') && !primaryStem.includes('유리창');
+  const titleCore = includeGlassTerm
+    ? `${metro.displayRegion} ${service.title}·유리창청소 전문`
+    : `${metro.displayRegion} ${service.title} 전문`;
+  const title = clampTitle(titleCore, brandSuffix, 58);
   const ogTitle = clampTitle(`${metro.displayRegion} ${primaryStem} · 무료 견적`, brandSuffix, 48);
 
   const areaSnippet = subDistricts.length > 0 ? `(${subDistricts.slice(0, 3).join('·')})` : '전지역';
-  const descBody = `${metro.displayRegion} ${areaSnippet} ${service.title} 직영 출장. ${service.description} ${leadTime} · ${service.detail.priceGuide} · ${company.asPeriod}일 A/S.`;
+  const complexSnippet =
+    popularComplexes.length > 0 ? ` ${popularComplexes.slice(0, 2).join('·')} 출장.` : '';
+  const descBody = `${metro.displayRegion} ${areaSnippet} ${service.title} 직영 출장.${complexSnippet} ${service.description} ${leadTime} · ${service.detail.priceGuide} · ${company.asPeriod}일 A/S.`;
   const description = clampText(descBody, 155);
 
   const keywords = dedupeKeywords(
@@ -688,21 +815,36 @@ export function buildMatrixPageSeo(
     '';
   const routePath = getRoutePath({ type: 'matrix', regionName: cleanRegion, serviceId: service.id });
   const routeHash = `#${routePath}`;
+  const origin = siteData.siteUrl?.trim().replace(/\/+$/, '') || '';
+  const canonicalPathOrUrl = origin ? `${origin}${routePath}` : routePath;
+  const regionPathOrUrl = origin
+    ? `${origin}${getRoutePath({ type: 'region', regionName: cleanRegion })}`
+    : getRoutePath({ type: 'region', regionName: cleanRegion });
 
-  const faqEntities = (service.detail.faqList ?? []).map((f) => ({
-    '@type': 'Question',
-    name: f.q.includes(cleanRegion) ? f.q : `[${cleanRegion}] ${f.q}`,
-    acceptedAnswer: { '@type': 'Answer', text: f.a },
-  }));
+  const images = collectServiceImageUrls(service, siteData);
+  const faqEntities = buildServiceFaqEntities(service, siteData, {
+    cleanRegion,
+    subDistricts,
+    leadTime,
+  });
 
   const jsonLd: Record<string, unknown> = {
     '@context': 'https://schema.org',
     '@graph': [
       {
         '@type': 'Service',
+        '@id': `${canonicalPathOrUrl}#service`,
         name: `${metro.displayRegion} ${service.title}`,
+        alternateName: [`${cleanRegion} ${primaryStem}`, `${metro.displayRegion} ${primaryStem}`],
         serviceType: service.title,
+        category: `${cleanRegion} 유리창청소·외벽청소`,
         description,
+        url: canonicalPathOrUrl,
+        ...(images.length > 0 ? { image: images } : {}),
+        audience: {
+          '@type': 'Audience',
+          audienceType: `${cleanRegion} ${service.detail.targetAudience}`,
+        },
         areaServed: {
           '@type': 'AdministrativeArea',
           name: metro.displayRegion,
@@ -715,19 +857,58 @@ export function buildMatrixPageSeo(
           name: company.name,
           telephone: company.phone,
           priceRange: '₩₩',
+          address: {
+            '@type': 'PostalAddress',
+            streetAddress: company.address,
+            addressCountry: 'KR',
+          },
+          openingHours: company.operatingHours,
         },
+        hasOfferCatalog: {
+          '@type': 'OfferCatalog',
+          name: `${cleanRegion} ${service.title} 작업 범위`,
+          itemListElement: service.detail.scopeList.map((scope, idx) => ({
+            '@type': 'Offer',
+            position: idx + 1,
+            itemOffered: {
+              '@type': 'Service',
+              name: `${cleanRegion} ${scope}`,
+            },
+          })),
+        },
+        offers: {
+          '@type': 'Offer',
+          priceCurrency: 'KRW',
+          description: `${leadTime} · ${service.detail.priceGuide}`,
+          availability: 'https://schema.org/InStock',
+        },
+        additionalProperty: [
+          { '@type': 'PropertyValue', name: '출장 방문 일정', value: leadTime },
+          { '@type': 'PropertyValue', name: '평균 소요 시간', value: service.detail.duration },
+          { '@type': 'PropertyValue', name: '예상 견적 기준', value: service.detail.priceGuide },
+          { '@type': 'PropertyValue', name: '무상 A/S 보증', value: `${company.asPeriod}일` },
+          ...(popularComplexes.length > 0
+            ? [
+                {
+                  '@type': 'PropertyValue',
+                  name: '주요 출장 단지·상권',
+                  value: popularComplexes.join(', '),
+                },
+              ]
+            : []),
+        ],
       },
       {
         '@type': 'BreadcrumbList',
         itemListElement: [
-          { '@type': 'ListItem', position: 1, name: '홈', item: '/' },
+          { '@type': 'ListItem', position: 1, name: '홈', item: origin ? `${origin}/` : '/' },
           {
             '@type': 'ListItem',
             position: 2,
             name: cleanRegion,
-            item: getRoutePath({ type: 'region', regionName: cleanRegion }),
+            item: regionPathOrUrl,
           },
-          { '@type': 'ListItem', position: 3, name: `${cleanRegion} ${service.title}`, item: routePath },
+          { '@type': 'ListItem', position: 3, name: `${cleanRegion} ${service.title}`, item: canonicalPathOrUrl },
         ],
       },
       ...(faqEntities.length > 0 ? [{ '@type': 'FAQPage', mainEntity: faqEntities }] : []),
@@ -874,13 +1055,11 @@ export function getDefaultSeoForRoute(
   };
 }
 
-export function resolveSeoForRoute(
-  route: PageRoute,
-  siteData: SiteData = INITIAL_SITE_DATA
+function applySeoOverride(
+  defaults: ResolvedSeoMeta,
+  override: PageSeoMeta | undefined,
+  siteData: SiteData
 ): ResolvedSeoMeta {
-  const defaults = getDefaultSeoForRoute(route, siteData);
-  const override: PageSeoMeta | undefined = siteData.seo?.pages?.[defaults.pageKey];
-
   const title = override?.title?.trim() || defaults.title;
   const description = override?.description?.trim() || defaults.description;
   const keywords = override?.keywords?.trim() || defaults.keywords;
@@ -902,6 +1081,35 @@ export function resolveSeoForRoute(
   };
 }
 
+export function resolveSeoForRoute(
+  route: PageRoute,
+  siteData: SiteData = INITIAL_SITE_DATA
+): ResolvedSeoMeta {
+  const defaults = getDefaultSeoForRoute(route, siteData);
+  const override: PageSeoMeta | undefined = siteData.seo?.pages?.[defaults.pageKey];
+  return applySeoOverride(defaults, override, siteData);
+}
+
+export function resolveServiceDynamicSeo(
+  service: ServiceItem,
+  siteData: SiteData = INITIAL_SITE_DATA
+): ResolvedSeoMeta {
+  const defaults = buildServicePageSeo(service, siteData);
+  const override: PageSeoMeta | undefined = siteData.seo?.pages?.[defaults.pageKey];
+  return applySeoOverride(defaults, override, siteData);
+}
+
+export function resolveMatrixDynamicSeo(
+  regionName: string,
+  service: ServiceItem,
+  siteData: SiteData = INITIAL_SITE_DATA,
+  regionDetailOverride?: RegionDetail
+): ResolvedSeoMeta {
+  const defaults = buildMatrixPageSeo(regionName, service, siteData, regionDetailOverride);
+  const override: PageSeoMeta | undefined = siteData.seo?.pages?.[defaults.pageKey];
+  return applySeoOverride(defaults, override, siteData);
+}
+
 export function resolveRegionDynamicSeo(
   regionName: string,
   siteData: SiteData = INITIAL_SITE_DATA,
@@ -917,27 +1125,7 @@ export function resolveRegionDynamicSeo(
   const regionOverride = !matchedService
     ? siteData.seo?.pages?.[`region:${cleanRegion}`]
     : undefined;
-  const override = matrixOverride || regionOverride;
-
-  const title = override?.title?.trim() || defaults.title;
-  const description = override?.description?.trim() || defaults.description;
-  const keywords = override?.keywords?.trim() || defaults.keywords;
-  const ogTitle =
-    override?.ogTitle?.trim() ||
-    (override?.title?.trim() ? override.title.trim() : defaults.ogTitle);
-  const ogDescription = override?.ogDescription?.trim() || description;
-  const ogImage =
-    override?.ogImage?.trim() || siteData.seo?.defaultOgImage?.trim() || defaults.ogImage;
-
-  return {
-    ...defaults,
-    title,
-    description,
-    keywords,
-    ogTitle,
-    ogDescription,
-    ogImage,
-  };
+  return applySeoOverride(defaults, matrixOverride || regionOverride, siteData);
 }
 
 function setMetaTag(selector: string, attr: 'name' | 'property', key: string, content: string) {

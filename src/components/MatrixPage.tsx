@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -13,15 +13,18 @@ import {
 import { BeforeAfterComparison } from '@/src/components/BeforeAfterComparison';
 import { EditableText } from '@/src/components/admin/EditableText';
 import type { ImageEditTarget } from '@/src/components/admin/ImageEditorModal';
+import { INITIAL_SITE_DATA } from '@/src/data/clearworksData';
 import type {
   CompanyInfo,
   InquiryPayload,
   RegionDetail,
   ServiceItem,
+  SiteData,
 } from '@/src/types/clearworks';
 import {
   applyResolvedSeoMeta,
   getRoutePath,
+  resolveMatrixDynamicSeo,
   type ResolvedSeoMeta,
 } from '@/src/utils/seo';
 
@@ -31,6 +34,7 @@ interface MatrixPageProps {
   service: ServiceItem;
   allServices: ServiceItem[];
   company: CompanyInfo;
+  siteData?: SiteData;
   seoMeta?: ResolvedSeoMeta;
   isEditMode?: boolean;
   onUpdateService?: (updated: ServiceItem) => void;
@@ -48,7 +52,8 @@ export const MatrixPage: React.FC<MatrixPageProps> = ({
   service,
   allServices,
   company,
-  seoMeta,
+  siteData,
+  seoMeta: _seoMeta,
   isEditMode = false,
   onUpdateService,
   onEditImage,
@@ -65,16 +70,37 @@ export const MatrixPage: React.FC<MatrixPageProps> = ({
   );
   const [sent, setSent] = useState(false);
 
+  const seoContextSiteData = useMemo<SiteData>(() => {
+    const base = siteData ?? INITIAL_SITE_DATA;
+    return {
+      ...base,
+      company,
+      services: { ...base.services, items: allServices },
+      regions: regionDetail
+        ? {
+            ...base.regions,
+            details: {
+              ...base.regions.details,
+              [regionName]: regionDetail,
+            },
+          }
+        : base.regions,
+    };
+  }, [siteData, company, allServices, regionDetail, regionName]);
+
+  const dynamicSeoMeta = useMemo(
+    () => resolveMatrixDynamicSeo(regionName, service, seoContextSiteData, regionDetail),
+    [regionName, service, seoContextSiteData, regionDetail]
+  );
+
   useEffect(() => {
     setContent(`${regionName} ${service.title} 무료 출장 견적을 문의드립니다.`);
     setSent(false);
   }, [regionName, service.title]);
 
   useEffect(() => {
-    if (seoMeta && typeof document !== 'undefined' && document.title !== seoMeta.title) {
-      applyResolvedSeoMeta(seoMeta, { company });
-    }
-  }, [seoMeta, company]);
+    applyResolvedSeoMeta(dynamicSeoMeta, seoContextSiteData);
+  }, [dynamicSeoMeta, seoContextSiteData]);
 
   const subDistricts = regionDetail?.subDistricts ?? [`${regionName} 전지역`];
   const popularComplexes = regionDetail?.popularComplexes ?? [];

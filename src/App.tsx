@@ -1179,6 +1179,7 @@ export default function App() {
             allServices={siteData.services.items}
             regions={siteData.regions.list}
             company={siteData.company}
+            siteData={siteData}
             seoMeta={activeSeoMeta}
             isEditMode={activeEditMode}
             onUpdateService={updateFullService}
@@ -1221,6 +1222,7 @@ export default function App() {
             service={activeService}
             allServices={siteData.services.items}
             company={siteData.company}
+            siteData={siteData}
             seoMeta={activeSeoMeta}
             isEditMode={activeEditMode}
             onUpdateService={updateFullService}

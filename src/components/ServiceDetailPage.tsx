@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -14,10 +14,17 @@ import {
 import { BeforeAfterComparison } from '@/src/components/BeforeAfterComparison';
 import { EditableText } from '@/src/components/admin/EditableText';
 import type { ImageEditTarget } from '@/src/components/admin/ImageEditorModal';
-import type { CompanyInfo, InquiryPayload, ServiceItem } from '@/src/types/clearworks';
+import { INITIAL_SITE_DATA } from '@/src/data/clearworksData';
+import type {
+  CompanyInfo,
+  InquiryPayload,
+  ServiceItem,
+  SiteData,
+} from '@/src/types/clearworks';
 import {
   applyResolvedSeoMeta,
   getRoutePath,
+  resolveServiceDynamicSeo,
   type ResolvedSeoMeta,
 } from '@/src/utils/seo';
 
@@ -26,6 +33,7 @@ interface ServiceDetailPageProps {
   allServices: ServiceItem[];
   regions: string[];
   company: CompanyInfo;
+  siteData?: SiteData;
   seoMeta?: ResolvedSeoMeta;
   isEditMode: boolean;
   onUpdateService: (updated: ServiceItem) => void;
@@ -41,7 +49,8 @@ export const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({
   allServices,
   regions,
   company,
-  seoMeta,
+  siteData,
+  seoMeta: _seoMeta,
   isEditMode,
   onUpdateService,
   onEditImage,
@@ -56,16 +65,30 @@ export const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({
   const [content, setContent] = useState(`${service.title} 관련 무료 견적 문의드립니다.`);
   const [sent, setSent] = useState(false);
 
+  const seoContextSiteData = useMemo<SiteData>(
+    () =>
+      siteData ?? {
+        ...INITIAL_SITE_DATA,
+        company,
+        services: { ...INITIAL_SITE_DATA.services, items: allServices },
+        regions: { ...INITIAL_SITE_DATA.regions, list: regions },
+      },
+    [siteData, company, allServices, regions]
+  );
+
+  const dynamicSeoMeta = useMemo(
+    () => resolveServiceDynamicSeo(service, seoContextSiteData),
+    [service, seoContextSiteData]
+  );
+
   useEffect(() => {
     setContent(`${service.title} 관련 무료 견적 문의드립니다.`);
     setSent(false);
   }, [service.id, service.title]);
 
   useEffect(() => {
-    if (seoMeta && typeof document !== 'undefined' && document.title !== seoMeta.title) {
-      applyResolvedSeoMeta(seoMeta, { company });
-    }
-  }, [seoMeta, company]);
+    applyResolvedSeoMeta(dynamicSeoMeta, seoContextSiteData);
+  }, [dynamicSeoMeta, seoContextSiteData]);
 
   const otherServices = allServices.filter((s) => s.id !== service.id);
   const { detail } = service;
