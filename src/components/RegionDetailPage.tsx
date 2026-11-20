@@ -16,15 +16,23 @@ import {
   X,
 } from 'lucide-react';
 import { EditableText } from '@/src/components/admin/EditableText';
+import { INITIAL_SITE_DATA } from '@/src/data/clearworksData';
 import type {
   CompanyInfo,
   GalleryPost,
   InquiryPayload,
   RegionDetail,
   ServiceItem,
+  SiteData,
 } from '@/src/types/clearworks';
 import { resolveAssetUrl } from '@/src/utils/assetUrl';
 import { getFeaturedPostsForRegion } from '@/src/utils/galleryRegions';
+import {
+  applyResolvedSeoMeta,
+  getRoutePath,
+  resolveRegionDynamicSeo,
+  type ResolvedSeoMeta,
+} from '@/src/utils/seo';
 
 interface RegionDetailPageProps {
   regionName: string;
@@ -33,6 +41,8 @@ interface RegionDetailPageProps {
   allServices: ServiceItem[];
   galleryPosts: GalleryPost[];
   company: CompanyInfo;
+  siteData?: SiteData;
+  seoMeta?: ResolvedSeoMeta;
   isEditMode: boolean;
   onUpdateRegionDetail: (regionName: string, detail: RegionDetail) => void;
   onBack: () => void;
@@ -42,6 +52,14 @@ interface RegionDetailPageProps {
   onSubmitInquiry: (payload: InquiryPayload) => void;
 }
 
+function getInitialSelectedServiceId(allServices: ServiceItem[]): string {
+  if (typeof window === 'undefined') return '';
+  const param = new URLSearchParams(window.location.search).get('service')?.trim();
+  if (!param) return '';
+  const matched = allServices.find((s) => s.id === param || s.title === param);
+  return matched ? matched.id : '';
+}
+
 export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
   regionName,
   regionDetail,
@@ -49,6 +67,8 @@ export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
   allServices,
   galleryPosts,
   company,
+  siteData,
+  seoMeta,
   isEditMode,
   onUpdateRegionDetail,
   onBack,
@@ -57,27 +77,90 @@ export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
   onViewGalleryList,
   onSubmitInquiry,
 }) => {
-  const detail: RegionDetail = regionDetail ?? {
-    name: regionName,
-    subDistricts: [`${regionName} 1동`, `${regionName} 2동`, '중심 상권', '아파트 밀집 구역'],
-    description: `${regionName} 전지역 아파트 외창 및 상가 유리창 전문 신속 출장`,
-    leadTime: '상담 접수 후 24시간 이내 방문 견적 가능',
-    popularComplexes: [`${regionName} 랜드마크 아파트`, `${regionName} 중심 상업지구`],
-    notice: `${regionName} 지역 단체 및 공동구매 접수 시 특별 할인 적용`,
-  };
+  const detail: RegionDetail = useMemo(
+    () =>
+      regionDetail ?? {
+        name: regionName,
+        subDistricts: [`${regionName} 1동`, `${regionName} 2동`, '중심 상권', '아파트 밀집 구역'],
+        description: `${regionName} 전지역 아파트 외창 및 상가 유리창 전문 신속 출장`,
+        leadTime: '상담 접수 후 24시간 이내 방문 견적 가능',
+        popularComplexes: [`${regionName} 랜드마크 아파트`, `${regionName} 중심 상업지구`],
+        notice: `${regionName} 지역 단체 및 공동구매 접수 시 특별 할인 적용`,
+      },
+    [regionDetail, regionName]
+  );
+
+  const [selectedServiceId, setSelectedServiceId] = useState<string>(() =>
+    getInitialSelectedServiceId(allServices)
+  );
+  const selectedService = useMemo(
+    () => allServices.find((s) => s.id === selectedServiceId),
+    [allServices, selectedServiceId]
+  );
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [buildingType, setBuildingType] = useState('아파트창문청소·외창청소');
+  const [buildingType, setBuildingType] = useState(
+    selectedService?.title || allServices[0]?.title || '아파트창문청소·외창청소'
+  );
   const [content, setContent] = useState(`${regionName} 지역 유리창 청소 무료 견적 문의드립니다.`);
   const [sent, setSent] = useState(false);
   const [newSubDistrict, setNewSubDistrict] = useState('');
   const [newComplex, setNewComplex] = useState('');
 
   useEffect(() => {
-    setContent(`${regionName} 지역 유리창 청소 무료 견적 문의드립니다.`);
+    const initialId = getInitialSelectedServiceId(allServices);
+    setSelectedServiceId(initialId);
+    const matched = allServices.find((s) => s.id === initialId);
+    setBuildingType(matched?.title || allServices[0]?.title || '아파트창문청소·외창청소');
+    setContent(
+      matched
+        ? `${regionName} ${matched.title} 무료 견적 문의드립니다.`
+        : `${regionName} 지역 유리창 청소 무료 견적 문의드립니다.`
+    );
     setSent(false);
-  }, [regionName]);
+  }, [regionName, allServices]);
+
+  const seoContextSiteData = useMemo<SiteData>(() => {
+    if (siteData) return siteData;
+    return {
+      ...INITIAL_SITE_DATA,
+      company,
+      services: {
+        ...INITIAL_SITE_DATA.services,
+        items: allServices,
+      },
+      regions: {
+        ...INITIAL_SITE_DATA.regions,
+        list: allRegions ?? INITIAL_SITE_DATA.regions.list,
+        details: {
+          ...INITIAL_SITE_DATA.regions.details,
+          [regionName]: detail,
+        },
+      },
+    };
+  }, [siteData, company, allServices, allRegions, regionName, detail]);
+
+  const dynamicSeoMeta = useMemo(
+    () => resolveRegionDynamicSeo(regionName, seoContextSiteData, selectedService),
+    [regionName, seoContextSiteData, selectedService]
+  );
+
+  useEffect(() => {
+    const targetSeo = !selectedService && seoMeta ? seoMeta : dynamicSeoMeta;
+    applyResolvedSeoMeta(targetSeo, seoContextSiteData);
+  }, [dynamicSeoMeta, selectedService, seoMeta, seoContextSiteData]);
+
+  const handleSelectRegionService = (serviceId: string) => {
+    setSelectedServiceId(serviceId);
+    const matched = allServices.find((s) => s.id === serviceId);
+    if (matched) {
+      setBuildingType(matched.title);
+      setContent(`${regionName} ${matched.title} 무료 견적 문의드립니다.`);
+    } else {
+      setContent(`${regionName} 지역 유리창 청소 무료 견적 문의드립니다.`);
+    }
+  };
 
   const featuredGalleryPosts = useMemo(
     () =>
@@ -161,7 +244,9 @@ export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
             </div>
 
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-900 tracking-tight leading-snug mb-3">
-              [{regionName}] 유리창청소 전문 {company.name}
+              {selectedService
+                ? `[${regionName}] ${selectedService.title} · 유리창청소 전문 ${company.name}`
+                : `[${regionName}] 유리창청소 전문 ${company.name}`}
             </h1>
 
             <p className="text-sm sm:text-base md:text-lg text-blue-600 font-bold mb-3 leading-relaxed">
@@ -490,27 +575,101 @@ export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
         )}
 
         {/* Region x Service Matrix Links */}
-        <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 border border-slate-200 shadow-2xs">
-          <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-1">
-            {regionName} 맞춤 서비스 바로가기
-          </h3>
-          <p className="text-xs text-slate-500 mb-4">
-            원하시는 청소 유형을 선택하시면 {regionName} 전용 시공 안내를 확인하실 수 있습니다.
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {allServices.map((srv) => (
+        <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 border border-slate-200 shadow-2xs space-y-4">
+          <div>
+            <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-1">
+              {regionName} 맞춤 서비스 바로가기
+            </h3>
+            <p className="text-xs text-slate-500">
+              원하시는 청소 유형을 선택하시면 {regionName} 전용 시공 안내 및 맞춤 견적 기준을 확인하실 수 있습니다.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              onClick={() => handleSelectRegionService('')}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors cursor-pointer ${
+                !selectedServiceId
+                  ? 'bg-blue-600 text-white shadow-2xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              전체 서비스
+            </button>
+            {allServices.map((srv) => {
+              const isSelected = srv.id === selectedServiceId;
+              return (
+                <button
+                  key={srv.id}
+                  type="button"
+                  onClick={() => handleSelectRegionService(isSelected ? '' : srv.id)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors cursor-pointer ${
+                    isSelected
+                      ? 'bg-blue-600 text-white shadow-2xs'
+                      : 'bg-slate-100 text-slate-700 hover:bg-blue-50 hover:text-blue-700'
+                  }`}
+                >
+                  {srv.title}
+                </button>
+              );
+            })}
+          </div>
+
+          {selectedService && (
+            <div className="p-4 rounded-2xl bg-blue-50/80 border border-blue-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-1">
+                <div className="text-sm font-extrabold text-slate-900">
+                  {regionName} {selectedService.title}
+                </div>
+                <p className="text-xs text-slate-600">
+                  {selectedService.description} · {selectedService.detail.duration} ·{' '}
+                  <strong className="text-blue-700">{selectedService.detail.priceGuide}</strong>
+                </p>
+              </div>
               <button
-                key={srv.id}
                 type="button"
-                onClick={() => onSelectMatrix(regionName, srv.id)}
-                className="text-left p-3.5 rounded-2xl bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition-all flex items-center justify-between gap-2 cursor-pointer group"
+                onClick={() => onSelectMatrix(regionName, selectedService.id)}
+                className="self-start sm:self-auto px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
               >
-                <span className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-blue-700">
-                  {regionName} {srv.title}
-                </span>
-                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 shrink-0" />
+                <span>전용 페이지 보기</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </button>
-            ))}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {allServices.map((srv) => {
+              const isSelected = srv.id === selectedServiceId;
+              return (
+                <a
+                  key={srv.id}
+                  href={getRoutePath({ type: 'matrix', regionName, serviceId: srv.id })}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onSelectMatrix(regionName, srv.id);
+                  }}
+                  className={`text-left p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-2 cursor-pointer group ${
+                    isSelected
+                      ? 'bg-blue-50 border-blue-400 shadow-xs'
+                      : 'bg-slate-50 hover:bg-blue-50 border-slate-200 hover:border-blue-300'
+                  }`}
+                >
+                  <span
+                    className={`text-xs sm:text-sm font-bold ${
+                      isSelected ? 'text-blue-700' : 'text-slate-800 group-hover:text-blue-700'
+                    }`}
+                  >
+                    {regionName} {srv.title}
+                  </span>
+                  <ArrowRight
+                    className={`w-4 h-4 shrink-0 ${
+                      isSelected ? 'text-blue-600' : 'text-slate-400 group-hover:text-blue-600'
+                    }`}
+                  />
+                </a>
+              );
+            })}
           </div>
         </div>
 
@@ -520,7 +679,9 @@ export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
           className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 border border-slate-200 shadow-xl"
         >
           <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 mb-1">
-            {regionName} 무료 출장 견적 신청
+            {selectedService
+              ? `${regionName} ${selectedService.title} 무료 출장 견적 신청`
+              : `${regionName} 무료 출장 견적 신청`}
           </h3>
           <p className="text-xs sm:text-sm text-slate-600 mb-5">
             {regionName} 전담 팀이 신속하게 연락드려 일정과 예상 금액을 안내해 드립니다.
@@ -553,14 +714,24 @@ export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
                 />
                 <select
                   value={buildingType}
-                  onChange={(e) => setBuildingType(e.target.value)}
+                  onChange={(e) => {
+                    const nextType = e.target.value;
+                    setBuildingType(nextType);
+                    const matched = allServices.find((s) => s.title === nextType);
+                    if (matched) {
+                      setSelectedServiceId(matched.id);
+                      setContent(`${regionName} ${matched.title} 무료 견적 문의드립니다.`);
+                    } else {
+                      setSelectedServiceId('');
+                    }
+                  }}
                   className="px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="아파트창문청소·외창청소">아파트창문청소·외창청소</option>
-                  <option value="상가·매장·사무실 유리창청소">상가·매장·사무실 유리창청소</option>
-                  <option value="빌딩 외벽(로프/고소작업차)">빌딩 외벽(로프/고소작업차)</option>
-                  <option value="간판청소·어닝청소">간판청소·어닝청소</option>
-                  <option value="시트지제거·필름제거">시트지제거·필름제거</option>
+                  {allServices.map((srv) => (
+                    <option key={srv.id} value={srv.title}>
+                      {srv.title}
+                    </option>
+                  ))}
                   <option value="기타 청소문의">기타 청소문의</option>
                 </select>
               </div>

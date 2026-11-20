@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ContactSection } from '@/src/components/ContactSection';
 import { FaqSection } from '@/src/components/FaqSection';
 import { Footer } from '@/src/components/Footer';
@@ -43,7 +43,12 @@ import type {
   ServiceItem,
   SiteData,
 } from '@/src/types/clearworks';
-import { applySeoForRoute } from '@/src/utils/seo';
+import {
+  applyResolvedSeoMeta,
+  getRoutePath,
+  resolveEffectiveRoute,
+  resolveSeoForRoute,
+} from '@/src/utils/seo';
 
 const SITE_DATA_STORAGE_KEY = 'clearworks_site_data_v1';
 const INQUIRIES_STORAGE_KEY = 'clearworks_inquiries_v1';
@@ -142,25 +147,8 @@ function parseCurrentRoute(): PageRoute {
   return parseRouteSegments(pathParts);
 }
 
-function buildPathForRoute(route: PageRoute): string {
-  switch (route.type) {
-    case 'home':
-      return '/';
-    case 'service':
-      return `/service/${encodeURIComponent(route.serviceId)}`;
-    case 'region':
-      return `/region/${encodeURIComponent(route.regionName)}`;
-    case 'matrix':
-      return `/region/${encodeURIComponent(route.regionName)}/service/${encodeURIComponent(route.serviceId)}`;
-    case 'gallery_list':
-      return '/gallery';
-    case 'gallery_detail':
-      return `/gallery/${encodeURIComponent(route.postId)}`;
-  }
-}
-
 function buildHashForRoute(route: PageRoute): string {
-  const path = buildPathForRoute(route);
+  const path = getRoutePath(route);
   return path === '/' ? '' : `#${path}`;
 }
 
@@ -491,9 +479,15 @@ export default function App() {
     };
   }, [isAdminMode]);
 
+  const effectiveRoute = useMemo(() => resolveEffectiveRoute(route, siteData), [route, siteData]);
+  const activeSeoMeta = useMemo(
+    () => resolveSeoForRoute(effectiveRoute, siteData),
+    [effectiveRoute, siteData]
+  );
+
   useEffect(() => {
-    applySeoForRoute(route, siteData);
-  }, [route, siteData]);
+    applyResolvedSeoMeta(activeSeoMeta, siteData);
+  }, [activeSeoMeta, siteData]);
 
   const uploadImageToCodebase = async (dataUrl: string, nameHint?: string): Promise<string> => {
     if (!canWriteCode || !isAdminMode) return dataUrl;
@@ -519,7 +513,7 @@ export default function App() {
     if (typeof window !== 'undefined') {
       const useCleanUrls = (import.meta.env.BASE_URL || '/') === '/';
       if (useCleanUrls) {
-        const nextPath = buildPathForRoute(next);
+        const nextPath = getRoutePath(next);
         window.history.pushState(null, '', nextPath);
       } else {
         const nextHash = buildHashForRoute(next);
@@ -945,7 +939,7 @@ export default function App() {
           isEditMode={isEditMode}
           inquiryCount={inquiries.length}
           codeSyncStatus={codeSyncStatus}
-          currentRoute={route}
+          currentRoute={effectiveRoute}
           siteUrl={siteData.siteUrl}
           regions={siteData.regions.list}
           services={siteData.services.items}
@@ -969,7 +963,7 @@ export default function App() {
       <Header
         company={siteData.company}
         services={siteData.services.items}
-        currentPage={route}
+        currentPage={effectiveRoute}
         isEditMode={activeEditMode}
         isAdminMode={isAdminMode}
         onUpdateCompany={updateCompany}
@@ -1179,12 +1173,13 @@ export default function App() {
           </>
         )}
 
-        {route.type === 'service' && (
+        {effectiveRoute.type === 'service' && (
           <ServiceDetailPage
             service={activeService}
             allServices={siteData.services.items}
             regions={siteData.regions.list}
             company={siteData.company}
+            seoMeta={activeSeoMeta}
             isEditMode={activeEditMode}
             onUpdateService={updateFullService}
             onEditImage={setImageEditTarget}
@@ -1197,14 +1192,16 @@ export default function App() {
           />
         )}
 
-        {route.type === 'region' && (
+        {effectiveRoute.type === 'region' && (
           <RegionDetailPage
-            regionName={route.regionName}
-            regionDetail={siteData.regions.details[route.regionName]}
+            regionName={effectiveRoute.regionName}
+            regionDetail={siteData.regions.details[effectiveRoute.regionName]}
             allRegions={siteData.regions.list}
             allServices={siteData.services.items}
             galleryPosts={siteData.gallery.posts}
             company={siteData.company}
+            siteData={siteData}
+            seoMeta={activeSeoMeta}
             isEditMode={activeEditMode}
             onUpdateRegionDetail={updateRegionDetail}
             onBack={() => navigateTo({ type: 'home' })}
@@ -1217,13 +1214,14 @@ export default function App() {
           />
         )}
 
-        {route.type === 'matrix' && (
+        {effectiveRoute.type === 'matrix' && (
           <MatrixPage
-            regionName={route.regionName}
-            regionDetail={siteData.regions.details[route.regionName]}
+            regionName={effectiveRoute.regionName}
+            regionDetail={siteData.regions.details[effectiveRoute.regionName]}
             service={activeService}
             allServices={siteData.services.items}
             company={siteData.company}
+            seoMeta={activeSeoMeta}
             isEditMode={activeEditMode}
             onUpdateService={updateFullService}
             onEditImage={setImageEditTarget}
@@ -1237,7 +1235,7 @@ export default function App() {
           />
         )}
 
-        {route.type === 'gallery_list' && (
+        {effectiveRoute.type === 'gallery_list' && (
           <GalleryListPage
             posts={siteData.gallery.posts}
             categories={siteData.gallery.categories}
@@ -1253,7 +1251,7 @@ export default function App() {
           />
         )}
 
-        {route.type === 'gallery_detail' && activePost && (
+        {effectiveRoute.type === 'gallery_detail' && activePost && (
           <GalleryDetailPage
             post={activePost}
             allPosts={siteData.gallery.posts}
@@ -1323,7 +1321,7 @@ export default function App() {
           <SiteSettingsModal
             isOpen={settingsModalOpen}
             siteData={siteData}
-            currentRoute={route}
+            currentRoute={effectiveRoute}
             canWriteCode={canWriteCode}
             onUploadImage={uploadImageToCodebase}
             onSuggestSeoKeywords={async (payload) => {

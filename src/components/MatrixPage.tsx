@@ -4,14 +4,13 @@ import {
   ArrowRight,
   CheckCircle2,
   Clock,
-  Image as ImageIcon,
   MapPin,
   MessageCircle,
   Phone,
   Send,
   ShieldCheck,
 } from 'lucide-react';
-import { BeforeAfterSlider } from '@/src/components/BeforeAfterSlider';
+import { BeforeAfterComparison } from '@/src/components/BeforeAfterComparison';
 import { EditableText } from '@/src/components/admin/EditableText';
 import type { ImageEditTarget } from '@/src/components/admin/ImageEditorModal';
 import type {
@@ -20,6 +19,11 @@ import type {
   RegionDetail,
   ServiceItem,
 } from '@/src/types/clearworks';
+import {
+  applyResolvedSeoMeta,
+  getRoutePath,
+  type ResolvedSeoMeta,
+} from '@/src/utils/seo';
 
 interface MatrixPageProps {
   regionName: string;
@@ -27,6 +31,7 @@ interface MatrixPageProps {
   service: ServiceItem;
   allServices: ServiceItem[];
   company: CompanyInfo;
+  seoMeta?: ResolvedSeoMeta;
   isEditMode?: boolean;
   onUpdateService?: (updated: ServiceItem) => void;
   onEditImage?: (target: ImageEditTarget) => void;
@@ -43,6 +48,7 @@ export const MatrixPage: React.FC<MatrixPageProps> = ({
   service,
   allServices,
   company,
+  seoMeta,
   isEditMode = false,
   onUpdateService,
   onEditImage,
@@ -63,6 +69,12 @@ export const MatrixPage: React.FC<MatrixPageProps> = ({
     setContent(`${regionName} ${service.title} 무료 출장 견적을 문의드립니다.`);
     setSent(false);
   }, [regionName, service.title]);
+
+  useEffect(() => {
+    if (seoMeta && typeof document !== 'undefined' && document.title !== seoMeta.title) {
+      applyResolvedSeoMeta(seoMeta, { company });
+    }
+  }, [seoMeta, company]);
 
   const subDistricts = regionDetail?.subDistricts ?? [`${regionName} 전지역`];
   const popularComplexes = regionDetail?.popularComplexes ?? [];
@@ -181,48 +193,51 @@ export const MatrixPage: React.FC<MatrixPageProps> = ({
           </div>
         </div>
 
-        <div className="space-y-3">
-          {isEditMode && onEditImage && (
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() =>
-                  onEditImage({
-                    title: `[${service.title}] 청소 전(Before) 사진 변경`,
-                    currentUrl: service.detail.beforeImage,
-                    onSave: (url) => updateDetail({ beforeImage: url }),
-                  })
-                }
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-xs cursor-pointer"
-              >
-                <ImageIcon className="w-3.5 h-3.5 text-blue-400" />
-                <span>청소 전 사진 변경</span>
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  onEditImage({
-                    title: `[${service.title}] 청소 후(After) 사진 변경`,
-                    currentUrl: service.detail.afterImage,
-                    onSave: (url) => updateDetail({ afterImage: url }),
-                  })
-                }
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs cursor-pointer"
-              >
-                <ImageIcon className="w-3.5 h-3.5" />
-                <span>청소 후 사진 변경</span>
-              </button>
-            </div>
-          )}
-
-          <div className="bg-white p-2.5 sm:p-3 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-md">
-            <BeforeAfterSlider
-              beforeImage={service.detail.beforeImage}
-              afterImage={service.detail.afterImage}
-              beforeLabel="시공 전"
-              afterLabel="시공 후"
-            />
+        <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200 shadow-md space-y-4">
+          <div>
+            <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
+              {regionName} {service.title} 시공 전후 비교
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+              실제 시공 현장에서 촬영된 시공 전·후 비교 사진입니다.
+            </p>
           </div>
+
+          <BeforeAfterComparison
+            beforeImage={service.detail.beforeImage}
+            afterImage={service.detail.afterImage}
+            beforeCaption={service.detail.beforeCaption}
+            afterCaption={service.detail.afterCaption}
+            beforeAlt={`${regionName} ${service.title} 시공 전 상태`}
+            afterAlt={`${regionName} ${service.title} 시공 후 깨끗해진 상태`}
+            isEditMode={isEditMode && !!onEditImage}
+            onEditBefore={
+              onEditImage
+                ? () =>
+                    onEditImage({
+                      title: `[${service.title}] 청소 전(Before) 사진 변경`,
+                      currentUrl: service.detail.beforeImage,
+                      onSave: (url) => updateDetail({ beforeImage: url }),
+                    })
+                : undefined
+            }
+            onEditAfter={
+              onEditImage
+                ? () =>
+                    onEditImage({
+                      title: `[${service.title}] 청소 후(After) 사진 변경`,
+                      currentUrl: service.detail.afterImage,
+                      onSave: (url) => updateDetail({ afterImage: url }),
+                    })
+                : undefined
+            }
+            onSaveBeforeCaption={
+              onUpdateService ? (val) => updateDetail({ beforeCaption: val }) : undefined
+            }
+            onSaveAfterCaption={
+              onUpdateService ? (val) => updateDetail({ afterCaption: val }) : undefined
+            }
+          />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -417,17 +432,20 @@ export const MatrixPage: React.FC<MatrixPageProps> = ({
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {siblingServices.map((other) => (
-                <button
+                <a
                   key={other.id}
-                  type="button"
-                  onClick={() => onNavigateMatrix(regionName, other.id)}
+                  href={getRoutePath({ type: 'matrix', regionName, serviceId: other.id })}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onNavigateMatrix(regionName, other.id);
+                  }}
                   className="text-left p-3.5 rounded-2xl bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition-all flex items-center justify-between gap-2 cursor-pointer group"
                 >
                   <span className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-blue-700">
                     {regionName} {other.title}
                   </span>
                   <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 shrink-0" />
-                </button>
+                </a>
               ))}
             </div>
           </div>

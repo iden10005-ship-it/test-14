@@ -4,7 +4,6 @@ import {
   ArrowRight,
   CheckCircle,
   CheckCircle2,
-  Image as ImageIcon,
   MessageCircle,
   Phone,
   Plus,
@@ -12,16 +11,22 @@ import {
   Trash2,
   Wrench,
 } from 'lucide-react';
-import { BeforeAfterSlider } from '@/src/components/BeforeAfterSlider';
+import { BeforeAfterComparison } from '@/src/components/BeforeAfterComparison';
 import { EditableText } from '@/src/components/admin/EditableText';
 import type { ImageEditTarget } from '@/src/components/admin/ImageEditorModal';
 import type { CompanyInfo, InquiryPayload, ServiceItem } from '@/src/types/clearworks';
+import {
+  applyResolvedSeoMeta,
+  getRoutePath,
+  type ResolvedSeoMeta,
+} from '@/src/utils/seo';
 
 interface ServiceDetailPageProps {
   service: ServiceItem;
   allServices: ServiceItem[];
   regions: string[];
   company: CompanyInfo;
+  seoMeta?: ResolvedSeoMeta;
   isEditMode: boolean;
   onUpdateService: (updated: ServiceItem) => void;
   onEditImage: (target: ImageEditTarget) => void;
@@ -36,6 +41,7 @@ export const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({
   allServices,
   regions,
   company,
+  seoMeta,
   isEditMode,
   onUpdateService,
   onEditImage,
@@ -54,6 +60,12 @@ export const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({
     setContent(`${service.title} 관련 무료 견적 문의드립니다.`);
     setSent(false);
   }, [service.id, service.title]);
+
+  useEffect(() => {
+    if (seoMeta && typeof document !== 'undefined' && document.title !== seoMeta.title) {
+      applyResolvedSeoMeta(seoMeta, { company });
+    }
+  }, [seoMeta, company]);
 
   const otherServices = allServices.filter((s) => s.id !== service.id);
   const { detail } = service;
@@ -182,58 +194,43 @@ export const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({
         </div>
 
         {/* Before / After Comparison */}
-        <div className="space-y-3">
+        <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200 shadow-md space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
             <div>
               <h2 className="text-lg sm:text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight">
-                {service.title} 전후 비교
+                {service.title} 시공 전후 비교
               </h2>
               <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                실제 시공 현장에서 촬영된 비교 사진입니다. 슬라이더를 밀어 확인해보세요.
+                실제 시공 현장에서 촬영된 시공 전·후 비교 사진입니다.
               </p>
             </div>
+          </div>
 
-            {isEditMode && (
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    onEditImage({
-                      title: `[${service.title}] 청소 전(Before) 사진 변경`,
-                      currentUrl: detail.beforeImage,
-                      onSave: (url) => updateDetail({ beforeImage: url }),
-                    })
-                  }
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-xs cursor-pointer"
-                >
-                  <ImageIcon className="w-3.5 h-3.5 text-blue-400" />
-                  <span>청소 전 사진 변경</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    onEditImage({
-                      title: `[${service.title}] 청소 후(After) 사진 변경`,
-                      currentUrl: detail.afterImage,
-                      onSave: (url) => updateDetail({ afterImage: url }),
-                    })
-                  }
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs cursor-pointer"
-                >
-                  <ImageIcon className="w-3.5 h-3.5" />
-                  <span>청소 후 사진 변경</span>
-                </button>
-              </div>
-            )}
-          </div>
-          <div className="bg-white p-2.5 sm:p-3 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-md">
-            <BeforeAfterSlider
-              beforeImage={detail.beforeImage}
-              afterImage={detail.afterImage}
-              beforeLabel="시공 전"
-              afterLabel="시공 후"
-            />
-          </div>
+          <BeforeAfterComparison
+            beforeImage={detail.beforeImage}
+            afterImage={detail.afterImage}
+            beforeCaption={detail.beforeCaption}
+            afterCaption={detail.afterCaption}
+            beforeAlt={`${service.title} 시공 전 상태`}
+            afterAlt={`${service.title} 시공 후 깨끗해진 상태`}
+            isEditMode={isEditMode}
+            onEditBefore={() =>
+              onEditImage({
+                title: `[${service.title}] 청소 전(Before) 사진 변경`,
+                currentUrl: detail.beforeImage,
+                onSave: (url) => updateDetail({ beforeImage: url }),
+              })
+            }
+            onEditAfter={() =>
+              onEditImage({
+                title: `[${service.title}] 청소 후(After) 사진 변경`,
+                currentUrl: detail.afterImage,
+                onSave: (url) => updateDetail({ afterImage: url }),
+              })
+            }
+            onSaveBeforeCaption={(val) => updateDetail({ beforeCaption: val })}
+            onSaveAfterCaption={(val) => updateDetail({ afterCaption: val })}
+          />
         </div>
 
         {/* Scope & Equipment Grid */}
@@ -534,7 +531,7 @@ export const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({
               {regions.slice(0, 18).map((reg) => (
                 <a
                   key={reg}
-                  href={`/region/${encodeURIComponent(reg)}/service/${encodeURIComponent(service.id)}`}
+                  href={getRoutePath({ type: 'matrix', regionName: reg, serviceId: service.id })}
                   onClick={(e) => {
                     e.preventDefault();
                     onSelectRegionService(reg, service.id);

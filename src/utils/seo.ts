@@ -1,9 +1,100 @@
 import { INITIAL_SITE_DATA } from '@/src/data/clearworksData';
-import type { PageRoute, PageSeoMeta, SiteData } from '@/src/types/clearworks';
+import type { PageRoute, PageSeoMeta, ServiceItem, SiteData } from '@/src/types/clearworks';
 import { generateNaverSeoFromPost, parseSeoKeywords } from '@/src/utils/naverSeoGenerator';
 
 export const DEFAULT_HOME_KEYWORDS =
   '유리창청소, 아파트외창청소, 외벽청소, 상가유리창청소, 빌딩외벽청소, 고층유리창청소, 서울유리창청소, 경기유리창청소, 인천유리창청소, 창틀청소, 유리발수코팅, 어닝청소, 클리어웍스, 서울 건물 외벽청소 업체, 수도권 상가 유리창청소, 경기 아파트 외창청소 업체, 빌딩 외벽 고압세척, 상가 간판 어닝청소, 매장 유리 시트지 제거, 아파트 외창청소 비용 견적, 상가 유리창 정기청소 비용, 건물 외벽청소 견적 문의, 클리어웍스 유리창청소 후기';
+
+export interface ResolvedSeoMeta {
+  pageKey: string;
+  title: string;
+  description: string;
+  keywords: string;
+  ogType: 'website' | 'article';
+  ogTitle: string;
+  ogDescription: string;
+  ogImage: string;
+  geoRegion?: string;
+  geoPlacename?: string;
+  routeHash: string;
+  routePath: string;
+  jsonLd: Record<string, unknown> | null;
+}
+
+export interface MetroRegionContext {
+  raw: string;
+  metroShort: '서울' | '경기' | '인천';
+  metroFull: '서울특별시' | '경기도' | '인천광역시';
+  displayRegion: string;
+  shortAlias: string;
+  aliases: string[];
+}
+
+const SEOUL_DISTRICTS = new Set([
+  '강남구',
+  '강동구',
+  '강북구',
+  '강서구',
+  '관악구',
+  '광진구',
+  '구로구',
+  '금천구',
+  '노원구',
+  '도봉구',
+  '동대문구',
+  '동작구',
+  '마포구',
+  '서대문구',
+  '서초구',
+  '성동구',
+  '성북구',
+  '송파구',
+  '양천구',
+  '영등포구',
+  '용산구',
+  '은평구',
+  '종로구',
+  '중구',
+  '중랑구',
+]);
+
+const SERVICE_SEO_STEMS: Record<string, string[]> = {
+  'srv-1': ['아파트 외창청소', '아파트 유리창청소', '아파트창문청소', '베란다 창틀청소', '외창 물때제거'],
+  'srv-2': ['상가 유리창청소', '매장 쇼윈도청소', '사무실 유리청소', '통유리 청소', '매장 외창청소'],
+  'srv-3': ['빌딩 외벽청소', '고층 유리창청소', '외벽 고압세척', '건물 외벽청소', '로프 외벽청소'],
+  'srv-4': ['간판청소', '어닝청소', '간판 고압세척', '어닝 세척', '매장 간판청소'],
+  'srv-5': ['시트지제거', '썬팅지제거', '유리창 필름제거', '유리 본드자국 제거', '매장 시트지제거'],
+  'srv-6': ['유리 발수코팅', '유리 백화현상 제거', '조류 배설물 청소', '준공후 외창청소', '특수 유리창청소'],
+  apt: ['아파트 외창청소', '아파트 유리창청소', '아파트창문청소', '베란다 창틀청소', '외창 물때제거'],
+  shop: ['상가 유리창청소', '매장 쇼윈도청소', '사무실 유리청소', '통유리 청소', '매장 외창청소'],
+  building: ['빌딩 외벽청소', '고층 유리창청소', '외벽 고압세척', '건물 외벽청소', '로프 외벽청소'],
+  sign: ['간판청소', '어닝청소', '간판 고압세척', '어닝 세척', '매장 간판청소'],
+  film: ['시트지제거', '썬팅지제거', '유리창 필름제거', '유리 본드자국 제거', '매장 시트지제거'],
+  special: ['유리 발수코팅', '유리 백화현상 제거', '조류 배설물 청소', '준공후 외창청소', '특수 유리창청소'],
+};
+
+const DOMAIN_TERM_PATTERNS = [
+  '외창청소',
+  '유리창청소',
+  '통유리청소',
+  '창틀청소',
+  '샷시',
+  '외벽청소',
+  '고압세척',
+  '간판청소',
+  '어닝청소',
+  '시트지제거',
+  '썬팅제거',
+  '필름제거',
+  '발수코팅',
+  '물때제거',
+  '유막제거',
+  '백화제거',
+  '스카이차',
+  '로프작업',
+  '커튼월',
+  '정기관리',
+];
 
 export function getSeoPageKey(route: PageRoute): string {
   switch (route.type) {
@@ -22,38 +113,69 @@ export function getSeoPageKey(route: PageRoute): string {
   }
 }
 
-export interface ResolvedSeoMeta {
-  pageKey: string;
-  title: string;
-  description: string;
-  keywords: string;
-  ogTitle: string;
-  ogDescription: string;
-  ogImage: string;
-  routeHash: string;
-  routePath: string;
-  jsonLd: Record<string, unknown> | null;
+export function getRoutePath(route: PageRoute): string {
+  switch (route.type) {
+    case 'home':
+      return '/';
+    case 'service':
+      return `/service/${encodeURIComponent(route.serviceId)}`;
+    case 'region':
+      return `/region/${encodeURIComponent(route.regionName)}`;
+    case 'matrix':
+      return `/region/${encodeURIComponent(route.regionName)}/service/${encodeURIComponent(route.serviceId)}`;
+    case 'gallery_list':
+      return '/gallery';
+    case 'gallery_detail':
+      return `/gallery/${encodeURIComponent(route.postId)}`;
+  }
 }
 
-const SERVICE_SEO_STEMS: Record<string, string[]> = {
-  'srv-1': ['아파트 외창청소', '아파트 유리창청소', '아파트창문청소', '베란다 창틀청소', '외창 물때제거'],
-  'srv-2': ['상가 유리창청소', '매장 쇼윈도청소', '사무실 유리청소', '통유리 청소', '매장 외창청소'],
-  'srv-3': ['빌딩 외벽청소', '고층 유리창청소', '외벽 고압세척', '건물 외벽청소', '로프 외벽청소'],
-  'srv-4': ['간판청소', '어닝청소', '간판 고압세척', '어닝 세척', '매장 간판청소'],
-  'srv-5': ['시트지제거', '썬팅지제거', '유리창 필름제거', '유리 본드자국 제거', '매장 시트지제거'],
-  'srv-6': ['유리 발수코팅', '유리 백화현상 제거', '조류 배설물 청소', '준공후 외창청소', '특수 유리창청소'],
-  apt: ['아파트 외창청소', '아파트 유리창청소', '아파트창문청소', '베란다 창틀청소', '외창 물때제거'],
-  shop: ['상가 유리창청소', '매장 쇼윈도청소', '사무실 유리청소', '통유리 청소', '매장 외창청소'],
-  building: ['빌딩 외벽청소', '고층 유리창청소', '외벽 고압세척', '건물 외벽청소', '로프 외벽청소'],
-  sign: ['간판청소', '어닝청소', '간판 고압세척', '어닝 세척', '매장 간판청소'],
-  film: ['시트지제거', '썬팅지제거', '유리창 필름제거', '유리 본드자국 제거', '매장 시트지제거'],
-  special: ['유리 발수코팅', '유리 백화현상 제거', '조류 배설물 청소', '준공후 외창청소', '특수 유리창청소'],
-};
+export function getRouteDisplayPath(route: PageRoute): string {
+  switch (route.type) {
+    case 'home':
+      return '/';
+    case 'service':
+      return `/service/${route.serviceId}`;
+    case 'region':
+      return `/region/${route.regionName}`;
+    case 'matrix':
+      return `/region/${route.regionName}/service/${route.serviceId}`;
+    case 'gallery_list':
+      return '/gallery';
+    case 'gallery_detail':
+      return `/gallery/${route.postId}`;
+  }
+}
 
-function getServiceSeoStems(serviceId: string, serviceTitle: string): string[] {
+export function resolveEffectiveRoute(route: PageRoute, siteData: SiteData): PageRoute {
+  if (route.type === 'service') {
+    const matched =
+      siteData.services.items.find((s) => s.id === route.serviceId) ?? siteData.services.items[0];
+    return matched ? { type: 'service', serviceId: matched.id } : route;
+  }
+  if (route.type === 'matrix') {
+    const matched =
+      siteData.services.items.find((s) => s.id === route.serviceId) ?? siteData.services.items[0];
+    const cleanRegion = route.regionName.trim();
+    return matched
+      ? { type: 'matrix', regionName: cleanRegion, serviceId: matched.id }
+      : { ...route, regionName: cleanRegion };
+  }
+  if (route.type === 'region') {
+    return { type: 'region', regionName: route.regionName.trim() };
+  }
+  if (route.type === 'gallery_detail') {
+    const matched =
+      siteData.gallery.posts.find((p) => p.id === route.postId) ?? siteData.gallery.posts[0];
+    return matched ? { type: 'gallery_detail', postId: matched.id } : route;
+  }
+  return route;
+}
+
+export function getServiceSeoStems(serviceId: string, serviceTitle: string): string[] {
   const mapped = SERVICE_SEO_STEMS[serviceId];
   if (mapped) return mapped;
-  if (serviceTitle.includes('아파트')) return SERVICE_SEO_STEMS['srv-1'];
+  if (serviceTitle.includes('아파트') || serviceTitle.includes('외창')) return SERVICE_SEO_STEMS['srv-1'];
   if (serviceTitle.includes('매장') || serviceTitle.includes('상가') || serviceTitle.includes('사무실')) {
     return SERVICE_SEO_STEMS['srv-2'];
   }
@@ -89,13 +211,64 @@ function extractRegionAliases(regionName: string): string[] {
   return Array.from(aliases).filter((t) => t.length >= 2);
 }
 
-function dedupeKeywords(items: string[], max = 12): string {
+export function inferMetroPrefix(regionName: string): MetroRegionContext {
+  const raw = regionName.trim();
+  const aliases = extractRegionAliases(raw);
+  const lastAlias = aliases[aliases.length - 1] || raw;
+  const firstToken = raw.split(/\s+/)[0] || raw;
+
+  let metroShort: '서울' | '경기' | '인천' = '경기';
+  let metroFull: '서울특별시' | '경기도' | '인천광역시' = '경기도';
+
+  if (raw.startsWith('서울') || SEOUL_DISTRICTS.has(firstToken) || SEOUL_DISTRICTS.has(raw)) {
+    metroShort = '서울';
+    metroFull = '서울특별시';
+  } else if (raw.startsWith('인천')) {
+    metroShort = '인천';
+    metroFull = '인천광역시';
+  }
+
+  const displayRegion = raw.startsWith(metroShort) ? raw : `${metroShort} ${raw}`;
+  const shortAlias =
+    lastAlias === metroShort && aliases.length >= 2 ? aliases[aliases.length - 2] : lastAlias;
+
+  return {
+    raw,
+    metroShort,
+    metroFull,
+    displayRegion,
+    shortAlias,
+    aliases,
+  };
+}
+
+function extractServiceCorpusTerms(service: ServiceItem): string[] {
+  const combined = [
+    service.title,
+    service.description,
+    service.detail.targetAudience,
+    ...(service.detail.scopeList ?? []),
+    ...(service.detail.equipment ?? []),
+  ]
+    .join(' ')
+    .replace(/\s+/g, '');
+
+  const found: string[] = [];
+  for (const term of DOMAIN_TERM_PATTERNS) {
+    if (combined.includes(term.replace(/\s+/g, ''))) {
+      found.push(term);
+    }
+  }
+  return found;
+}
+
+function dedupeKeywords(items: string[], max = 14): string {
   const seen = new Set<string>();
   const out: string[] = [];
   for (const raw of items) {
     const clean = raw.replace(/\s+/g, ' ').trim();
     if (!clean || clean.length < 2) continue;
-    const key = clean.toLowerCase();
+    const key = clean.replace(/\s+/g, '').toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
     out.push(clean);
@@ -107,16 +280,504 @@ function dedupeKeywords(items: string[], max = 12): string {
 function clampText(text: string, maxLen: number): string {
   const clean = text.replace(/\s+/g, ' ').trim();
   if (clean.length <= maxLen) return clean;
-  return `${clean.slice(0, maxLen - 1).trim()}…`;
+  const limit = Math.max(12, maxLen - 1);
+  const sliced = clean.slice(0, limit);
+  const lastBreak = Math.max(sliced.lastIndexOf(' '), sliced.lastIndexOf('·'), sliced.lastIndexOf(','));
+  const cut = lastBreak >= Math.floor(limit * 0.6) ? sliced.slice(0, lastBreak) : sliced;
+  return `${cut.replace(/[,·|/\\-]+$/, '').trim()}…`;
+}
+
+function clampTitle(core: string, suffix: string, maxLen = 58): string {
+  const cleanCore = core.replace(/\s+/g, ' ').trim();
+  const full = `${cleanCore}${suffix}`;
+  if (full.length <= maxLen) return full;
+  const avail = Math.max(16, maxLen - suffix.length);
+  const sliced = cleanCore.slice(0, avail);
+  const lastBreak = Math.max(sliced.lastIndexOf(' '), sliced.lastIndexOf('·'));
+  const trimmedCore = (lastBreak >= Math.floor(avail * 0.55) ? sliced.slice(0, lastBreak) : sliced)
+    .replace(/[,·|/\\-]+$/, '')
+    .trim();
+  return `${trimmedCore}${suffix}`;
+}
+
+export function buildServicePageSeo(service: ServiceItem, siteData: SiteData): ResolvedSeoMeta {
+  const { company, hero, regions } = siteData;
+  const stems = getServiceSeoStems(service.id, service.title);
+  const primaryStem = stems[0] || service.title;
+  const secondaryStem = stems[1] || '유리창청소';
+  const corpusTerms = extractServiceCorpusTerms(service);
+  const sampleRegions = regions.list.slice(0, 3);
+  const brandSuffix = ` | ${company.name}`;
+
+  const title = clampTitle(`${service.title} 전문 · 서울 경기 인천`, brandSuffix, 58);
+  const ogTitle = clampTitle(`${service.title} · 무료 출장견적`, brandSuffix, 48);
+
+  const audienceText = service.detail.targetAudience
+    ? service.detail.targetAudience.split(',').slice(0, 3).join('·').trim()
+    : '';
+  const summaryBody = service.description.replace(/\.$/, '').trim();
+  const detailMeta = [service.detail.duration, service.detail.priceGuide]
+    .filter(Boolean)
+    .join(' · ');
+
+  let description = `${service.title} 전문 ${company.name}. ${summaryBody}${
+    audienceText ? ` (${audienceText})` : ''
+  }. ${detailMeta ? `${detailMeta}. ` : ''}${company.region} 무료 출장견적·${company.asPeriod}일 A/S.`;
+  description = clampText(description, 155);
+
+  const keywords = dedupeKeywords(
+    [
+      service.title,
+      ...stems,
+      ...corpusTerms,
+      `서울 ${primaryStem}`,
+      `경기 ${primaryStem}`,
+      `인천 ${primaryStem}`,
+      ...sampleRegions.map((reg) => `${reg} ${primaryStem}`),
+      `${primaryStem} 비용`,
+      `${primaryStem} 견적`,
+      `${secondaryStem} 업체`,
+      company.name,
+    ],
+    14
+  );
+
+  const ogImage =
+    siteData.seo?.defaultOgImage?.trim() ||
+    service.image ||
+    service.detail.afterImage ||
+    hero.afterImage ||
+    '';
+  const routePath = getRoutePath({ type: 'service', serviceId: service.id });
+  const routeHash = `#${routePath}`;
+
+  const faqEntities = (service.detail.faqList ?? []).map((f) => ({
+    '@type': 'Question',
+    name: f.q,
+    acceptedAnswer: { '@type': 'Answer', text: f.a },
+  }));
+
+  const jsonLd: Record<string, unknown> = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Service',
+        name: service.title,
+        serviceType: service.title,
+        description,
+        provider: {
+          '@type': 'HomeAndConstructionBusiness',
+          name: company.name,
+          telephone: company.phone,
+          priceRange: '₩₩',
+        },
+        areaServed: ['서울특별시', '경기도', '인천광역시'],
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: '홈', item: '/' },
+          { '@type': 'ListItem', position: 2, name: service.title, item: routePath },
+        ],
+      },
+      ...(faqEntities.length > 0 ? [{ '@type': 'FAQPage', mainEntity: faqEntities }] : []),
+    ],
+  };
+
+  return {
+    pageKey: `service:${service.id}`,
+    title,
+    description,
+    keywords,
+    ogType: 'website',
+    ogTitle,
+    ogDescription: description,
+    ogImage,
+    geoRegion: 'KR',
+    geoPlacename: company.region || '서울특별시 · 경기도 · 인천광역시',
+    routeHash,
+    routePath,
+    jsonLd,
+  };
+}
+
+function resolveMatchedService(
+  services: ServiceItem[],
+  selectedService?: ServiceItem | string
+): ServiceItem | undefined {
+  if (!selectedService) return undefined;
+  if (typeof selectedService !== 'string') return selectedService;
+  const query = selectedService.trim();
+  if (!query) return undefined;
+  return (
+    services.find((s) => s.id === query || s.title === query) ??
+    services.find((s) => s.title.includes(query) || query.includes(s.title))
+  );
+}
+
+export function buildRegionPageSeo(
+  regionName: string,
+  siteData: SiteData,
+  selectedService?: ServiceItem | string
+): ResolvedSeoMeta {
+  const { company, hero, services, regions } = siteData;
+  const cleanRegion = regionName.trim();
+  const metro = inferMetroPrefix(cleanRegion);
+  const detail = regions.details[cleanRegion];
+  const subDistricts = detail?.subDistricts ?? [];
+  const popularComplexes = detail?.popularComplexes ?? [];
+  const brandSuffix = ` | ${company.name}`;
+  const matchedService = resolveMatchedService(services.items, selectedService);
+  const customServiceLabel =
+    !matchedService && typeof selectedService === 'string' && selectedService.trim()
+      ? selectedService.trim()
+      : '';
+
+  const geoRegion =
+    metro.metroShort === '서울' ? 'KR-11' : metro.metroShort === '인천' ? 'KR-28' : 'KR-41';
+  const routePath = getRoutePath({ type: 'region', regionName: cleanRegion });
+  const routeHash = `#${routePath}`;
+  const leadTime = detail?.leadTime || '당일·익일 무료 방문 견적';
+
+  if (matchedService) {
+    const stems = getServiceSeoStems(matchedService.id, matchedService.title);
+    const primaryStem = stems[0] || matchedService.title;
+    const secondaryStem = stems[1] || '유리창청소';
+    const corpusTerms = extractServiceCorpusTerms(matchedService);
+    const includeGlassTerm =
+      !matchedService.title.includes('유리창') && !primaryStem.includes('유리창');
+
+    const titleCore = includeGlassTerm
+      ? `${metro.displayRegion} ${matchedService.title}·유리창청소 전문`
+      : `${metro.displayRegion} ${matchedService.title} 전문`;
+    const title = clampTitle(titleCore, brandSuffix, 58);
+    const ogTitle = clampTitle(`${metro.displayRegion} ${primaryStem} · 무료 견적`, brandSuffix, 48);
+
+    const areaList = subDistricts.length > 0 ? `(${subDistricts.slice(0, 3).join('·')})` : '전지역';
+    const complexHighlight =
+      popularComplexes.length > 0 ? ` ${popularComplexes.slice(0, 2).join('·')} 출장.` : '';
+    const descBody = `${metro.displayRegion} ${areaList} ${matchedService.title} 직영 시공.${complexHighlight} ${matchedService.description} ${leadTime} · ${matchedService.detail.priceGuide} · ${company.asPeriod}일 A/S.`;
+    const description = clampText(descBody, 155);
+
+    const keywords = dedupeKeywords(
+      [
+        `${cleanRegion} ${primaryStem}`,
+        `${metro.displayRegion} ${primaryStem}`,
+        `${cleanRegion} ${matchedService.title}`,
+        metro.shortAlias !== cleanRegion ? `${metro.shortAlias} ${primaryStem}` : '',
+        `${cleanRegion} ${secondaryStem}`,
+        `${cleanRegion} 유리창청소`,
+        ...subDistricts.slice(0, 3).map((d) => `${d} ${primaryStem}`),
+        ...popularComplexes.slice(0, 2).map((c) => `${c} ${primaryStem}`),
+        ...corpusTerms.slice(0, 2).map((term) => `${cleanRegion} ${term}`),
+        `${cleanRegion} ${primaryStem} 비용`,
+        `${cleanRegion} ${primaryStem} 견적`,
+        company.name,
+      ],
+      14
+    );
+
+    const ogImage =
+      siteData.seo?.defaultOgImage?.trim() ||
+      matchedService.image ||
+      matchedService.detail.afterImage ||
+      hero.afterImage ||
+      '';
+
+    const jsonLd: Record<string, unknown> = {
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'Service',
+          name: `${metro.displayRegion} ${matchedService.title}`,
+          serviceType: matchedService.title,
+          description,
+          areaServed: {
+            '@type': 'AdministrativeArea',
+            name: metro.displayRegion,
+            ...(subDistricts.length > 0
+              ? { containsPlace: subDistricts.map((d) => ({ '@type': 'Place', name: d })) }
+              : {}),
+          },
+          provider: {
+            '@type': 'HomeAndConstructionBusiness',
+            name: company.name,
+            telephone: company.phone,
+            priceRange: '₩₩',
+          },
+        },
+        {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: '홈', item: '/' },
+            { '@type': 'ListItem', position: 2, name: `${cleanRegion} ${matchedService.title}`, item: routePath },
+          ],
+        },
+      ],
+    };
+
+    return {
+      pageKey: `region:${cleanRegion}`,
+      title,
+      description,
+      keywords,
+      ogType: 'website',
+      ogTitle,
+      ogDescription: description,
+      ogImage,
+      geoRegion,
+      geoPlacename: metro.displayRegion,
+      routeHash,
+      routePath,
+      jsonLd,
+    };
+  }
+
+  const serviceStems = services.items
+    .slice(0, 4)
+    .map((s) => getServiceSeoStems(s.id, s.title)[0] || s.title);
+  const titleServiceTokens = dedupeKeywords(
+    [customServiceLabel, '유리창청소', ...serviceStems.slice(0, 3)].filter(Boolean),
+    3
+  ).replace(/, /g, '·');
+
+  const title = clampTitle(`${metro.displayRegion} ${titleServiceTokens} 전문`, brandSuffix, 58);
+  const ogTitle = clampTitle(
+    `${metro.displayRegion} ${customServiceLabel || '유리창청소'} · 무료 출장견적`,
+    brandSuffix,
+    48
+  );
+
+  const serviceHighlight = serviceStems.slice(0, 3).join('·') || '유리창청소·외창·외벽청소';
+
+  let description: string;
+  if (detail) {
+    const areaList = subDistricts.length > 0 ? `(${subDistricts.slice(0, 4).join('·')})` : '';
+    const complexSnippet =
+      popularComplexes.length > 0 ? ` ${popularComplexes.slice(0, 2).join('·')} 등` : '';
+    description = `${metro.displayRegion}${areaList} ${detail.description}.${complexSnippet} ${
+      customServiceLabel ? `${customServiceLabel} · ` : ''
+    }${serviceHighlight} 직영 시공, ${detail.leadTime}. 배상보험·${company.asPeriod}일 A/S.`;
+  } else {
+    description = `${metro.metroFull} ${cleanRegion} 전지역 ${
+      customServiceLabel ? `${customServiceLabel}·` : ''
+    }${serviceHighlight}·간판·어닝청소 전문 ${company.name}. ${leadTime}, 배상책임보험·${company.asPeriod}일 A/S 보장.`;
+  }
+  description = clampText(description, 155);
+
+  const keywords = dedupeKeywords(
+    [
+      `${cleanRegion} 유리창청소`,
+      `${metro.displayRegion} 유리창청소`,
+      customServiceLabel ? `${cleanRegion} ${customServiceLabel}` : '',
+      metro.shortAlias !== cleanRegion ? `${metro.shortAlias} 유리창청소` : '',
+      `${cleanRegion} 외창청소`,
+      `${cleanRegion} 외벽청소`,
+      ...services.items.slice(0, 5).map((srv) => {
+        const stem = getServiceSeoStems(srv.id, srv.title)[0] || srv.title;
+        return `${cleanRegion} ${stem}`;
+      }),
+      ...subDistricts.slice(0, 3).map((d) => `${d} 유리창청소`),
+      ...popularComplexes.slice(0, 2).map((c) => `${c} 외창청소`),
+      `${cleanRegion} 유리창청소 비용`,
+      `${cleanRegion} 청소업체`,
+      company.name,
+    ],
+    14
+  );
+
+  const ogImage = siteData.seo?.defaultOgImage?.trim() || hero.afterImage || '';
+
+  const jsonLd: Record<string, unknown> = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Service',
+        name: `${metro.displayRegion} 유리창청소 전문`,
+        description,
+        areaServed: {
+          '@type': 'AdministrativeArea',
+          name: metro.displayRegion,
+          ...(subDistricts.length > 0
+            ? { containsPlace: subDistricts.map((d) => ({ '@type': 'Place', name: d })) }
+            : {}),
+        },
+        provider: {
+          '@type': 'HomeAndConstructionBusiness',
+          name: company.name,
+          telephone: company.phone,
+          priceRange: '₩₩',
+        },
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: '홈', item: '/' },
+          { '@type': 'ListItem', position: 2, name: `${cleanRegion} 서비스 지역`, item: routePath },
+        ],
+      },
+    ],
+  };
+
+  return {
+    pageKey: `region:${cleanRegion}`,
+    title,
+    description,
+    keywords,
+    ogType: 'website',
+    ogTitle,
+    ogDescription: description,
+    ogImage,
+    geoRegion,
+    geoPlacename: metro.displayRegion,
+    routeHash,
+    routePath,
+    jsonLd,
+  };
+}
+
+export function buildMatrixPageSeo(
+  regionName: string,
+  service: ServiceItem,
+  siteData: SiteData
+): ResolvedSeoMeta {
+  const { company, hero, regions } = siteData;
+  const cleanRegion = regionName.trim();
+  const metro = inferMetroPrefix(cleanRegion);
+  const detail = regions.details[cleanRegion];
+  const subDistricts = detail?.subDistricts ?? [];
+  const popularComplexes = detail?.popularComplexes ?? [];
+  const stems = getServiceSeoStems(service.id, service.title);
+  const primaryStem = stems[0] || service.title;
+  const secondaryStem = stems[1] || '유리창청소';
+  const corpusTerms = extractServiceCorpusTerms(service);
+  const leadTime = detail?.leadTime || '당일·익일 무료 방문 견적';
+  const brandSuffix = ` | ${company.name}`;
+
+  const title = clampTitle(`${metro.displayRegion} ${service.title} 전문`, brandSuffix, 58);
+  const ogTitle = clampTitle(`${metro.displayRegion} ${primaryStem} · 무료 견적`, brandSuffix, 48);
+
+  const areaSnippet = subDistricts.length > 0 ? `(${subDistricts.slice(0, 3).join('·')})` : '전지역';
+  const descBody = `${metro.displayRegion} ${areaSnippet} ${service.title} 직영 출장. ${service.description} ${leadTime} · ${service.detail.priceGuide} · ${company.asPeriod}일 A/S.`;
+  const description = clampText(descBody, 155);
+
+  const keywords = dedupeKeywords(
+    [
+      `${cleanRegion} ${primaryStem}`,
+      `${metro.displayRegion} ${primaryStem}`,
+      `${cleanRegion} ${service.title}`,
+      metro.shortAlias !== cleanRegion ? `${metro.shortAlias} ${primaryStem}` : '',
+      `${cleanRegion} ${secondaryStem}`,
+      `${cleanRegion} 유리창청소`,
+      ...subDistricts.slice(0, 3).map((d) => `${d} ${primaryStem}`),
+      ...popularComplexes.slice(0, 2).map((c) => `${c} ${primaryStem}`),
+      ...corpusTerms.slice(0, 2).map((term) => `${cleanRegion} ${term}`),
+      `${cleanRegion} ${primaryStem} 비용`,
+      `${cleanRegion} ${primaryStem} 견적`,
+      `${cleanRegion} ${primaryStem} 업체`,
+      company.name,
+    ],
+    14
+  );
+
+  const ogImage =
+    siteData.seo?.defaultOgImage?.trim() ||
+    service.image ||
+    service.detail.afterImage ||
+    hero.afterImage ||
+    '';
+  const routePath = getRoutePath({ type: 'matrix', regionName: cleanRegion, serviceId: service.id });
+  const routeHash = `#${routePath}`;
+
+  const faqEntities = (service.detail.faqList ?? []).map((f) => ({
+    '@type': 'Question',
+    name: f.q.includes(cleanRegion) ? f.q : `[${cleanRegion}] ${f.q}`,
+    acceptedAnswer: { '@type': 'Answer', text: f.a },
+  }));
+
+  const jsonLd: Record<string, unknown> = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Service',
+        name: `${metro.displayRegion} ${service.title}`,
+        serviceType: service.title,
+        description,
+        areaServed: {
+          '@type': 'AdministrativeArea',
+          name: metro.displayRegion,
+          ...(subDistricts.length > 0
+            ? { containsPlace: subDistricts.map((d) => ({ '@type': 'Place', name: d })) }
+            : {}),
+        },
+        provider: {
+          '@type': 'HomeAndConstructionBusiness',
+          name: company.name,
+          telephone: company.phone,
+          priceRange: '₩₩',
+        },
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: '홈', item: '/' },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: cleanRegion,
+            item: getRoutePath({ type: 'region', regionName: cleanRegion }),
+          },
+          { '@type': 'ListItem', position: 3, name: `${cleanRegion} ${service.title}`, item: routePath },
+        ],
+      },
+      ...(faqEntities.length > 0 ? [{ '@type': 'FAQPage', mainEntity: faqEntities }] : []),
+    ],
+  };
+
+  const geoRegion =
+    metro.metroShort === '서울' ? 'KR-11' : metro.metroShort === '인천' ? 'KR-28' : 'KR-41';
+
+  return {
+    pageKey: `matrix:${cleanRegion}:${service.id}`,
+    title,
+    description,
+    keywords,
+    ogType: 'website',
+    ogTitle,
+    ogDescription: description,
+    ogImage,
+    geoRegion,
+    geoPlacename: metro.displayRegion,
+    routeHash,
+    routePath,
+    jsonLd,
+  };
 }
 
 export function getDefaultSeoForRoute(
   route: PageRoute,
   siteData: SiteData = INITIAL_SITE_DATA
 ): ResolvedSeoMeta {
-  const { company, hero, services, regions, gallery } = siteData;
+  const effectiveRoute = resolveEffectiveRoute(route, siteData);
+  const { company, hero, services, gallery } = siteData;
   const regionText = company.region.replace(/·/g, ' ');
-  const pageKey = getSeoPageKey(route);
+  const pageKey = getSeoPageKey(effectiveRoute);
+
+  if (effectiveRoute.type === 'service') {
+    const service =
+      services.items.find((s) => s.id === effectiveRoute.serviceId) ?? services.items[0];
+    if (service) {
+      return buildServicePageSeo(service, siteData);
+    }
+  } else if (effectiveRoute.type === 'region') {
+    return buildRegionPageSeo(effectiveRoute.regionName, siteData);
+  } else if (effectiveRoute.type === 'matrix') {
+    const service =
+      services.items.find((s) => s.id === effectiveRoute.serviceId) ?? services.items[0];
+    if (service) {
+      return buildMatrixPageSeo(effectiveRoute.regionName, service, siteData);
+    }
+  }
 
   let title = `${regionText} 유리창청소·외벽청소 전문 | ${company.name}`;
   let description = `${company.region} 아파트·상가·빌딩 유리창청소와 건물 외벽청소 전문 ${company.name}. 간판·어닝청소 고압세척, 시트지제거까지 프리미엄 청소전문업체.`;
@@ -127,194 +788,22 @@ export function getDefaultSeoForRoute(
   let routePath = '/';
   let jsonLd: Record<string, unknown> | null = null;
 
-  if (route.type === 'service') {
-    const service =
-      services.items.find((s) => s.id === route.serviceId) ?? services.items[0];
-    if (service) {
-      const stems = getServiceSeoStems(service.id, service.title);
-      title = clampText(`${service.title} 전문 · 서울 경기 인천 | ${company.name}`, 58);
-      ogTitle = clampText(`${service.title} · 무료 출장견적 | ${company.name}`, 48);
-      description = clampText(
-        `${service.detail.tagline} ${service.detail.targetAudience} 맞춤 ${service.title}. ${service.detail.duration} · ${service.detail.priceGuide}. ${company.region} 무료 출장견적.`,
-        155
-      );
-      keywords = dedupeKeywords(
-        [
-          service.title,
-          ...stems,
-          `서울 ${stems[0] || service.title}`,
-          `경기 ${stems[0] || service.title}`,
-          `인천 ${stems[0] || service.title}`,
-          `${stems[0] || service.title} 비용`,
-          `${stems[0] || service.title} 업체`,
-          company.name,
-        ],
-        12
-      );
-      ogImage =
-        siteData.seo?.defaultOgImage?.trim() || service.detail.afterImage || hero.afterImage || '';
-      routePath = `/service/${encodeURIComponent(service.id)}`;
-      routeHash = `#${routePath}`;
-
-      const faqEntities = (service.detail.faqList ?? []).map((f) => ({
-        '@type': 'Question',
-        name: f.q,
-        acceptedAnswer: { '@type': 'Answer', text: f.a },
-      }));
-      jsonLd = {
-        '@context': 'https://schema.org',
-        '@graph': [
-          {
-            '@type': 'Service',
-            name: service.title,
-            serviceType: service.title,
-            description,
-            provider: {
-              '@type': 'HomeAndConstructionBusiness',
-              name: company.name,
-              telephone: company.phone,
-              priceRange: '₩₩',
-            },
-            areaServed: ['서울특별시', '경기도', '인천광역시'],
-          },
-          ...(faqEntities.length > 0
-            ? [{ '@type': 'FAQPage', mainEntity: faqEntities }]
-            : []),
-        ],
-      };
-    }
-  } else if (route.type === 'region') {
-    const detail = regions.details[route.regionName];
-    const subDistricts = detail?.subDistricts ?? [];
-    title = clampText(`${route.regionName} 유리창청소·외창청소 전문 | ${company.name}`, 58);
-    ogTitle = clampText(`${route.regionName} 유리창청소 · 무료 출장견적 | ${company.name}`, 48);
-    description = clampText(
-      detail
-        ? `${route.regionName}(${subDistricts.slice(0, 5).join(', ')}) ${detail.description}. ${detail.leadTime}.`
-        : `${route.regionName} 전지역 아파트 외창·상가 통유리·빌딩 외벽청소 전문 ${company.name}. 당일·익일 무료 출장 견적.`,
-      155
-    );
-    keywords = dedupeKeywords(
-      [
-        `${route.regionName} 유리창청소`,
-        `${route.regionName} 외창청소`,
-        `${route.regionName} 외벽청소`,
-        `${route.regionName} 아파트 외창청소`,
-        `${route.regionName} 상가 유리창청소`,
-        `${route.regionName} 간판청소`,
-        ...subDistricts.slice(0, 3).map((d) => `${d} 유리창청소`),
-        company.name,
-      ],
-      11
-    );
-    routePath = `/region/${encodeURIComponent(route.regionName)}`;
-    routeHash = `#${routePath}`;
-    jsonLd = {
-      '@context': 'https://schema.org',
-      '@type': 'Service',
-      name: `${route.regionName} 유리창청소 전문`,
-      description,
-      areaServed: {
-        '@type': 'AdministrativeArea',
-        name: route.regionName,
-        ...(subDistricts.length > 0
-          ? { containsPlace: subDistricts.map((d) => ({ '@type': 'Place', name: d })) }
-          : {}),
-      },
-      provider: {
-        '@type': 'HomeAndConstructionBusiness',
-        name: company.name,
-        telephone: company.phone,
-        priceRange: '₩₩',
-      },
-    };
-  } else if (route.type === 'matrix') {
-    const service =
-      services.items.find((s) => s.id === route.serviceId) ?? services.items[0];
-    if (service) {
-      const detail = regions.details[route.regionName];
-      const subDistricts = detail?.subDistricts ?? [];
-      const stems = getServiceSeoStems(service.id, service.title);
-      const primaryStem = stems[0] || service.title;
-      const secondaryStem = stems[1] || '유리창청소';
-      const aliases = extractRegionAliases(route.regionName);
-      const shortAlias = aliases[aliases.length - 1] || route.regionName;
-      const leadTime = detail?.leadTime || '당일·익일 신속 방문';
-
-      title = clampText(`${route.regionName} ${service.title} 전문 | ${company.name}`, 58);
-      ogTitle = clampText(`${route.regionName} ${service.title} · 무료 출장견적 | ${company.name}`, 48);
-      description = clampText(
-        `${route.regionName}${subDistricts.length > 0 ? `(${subDistricts.slice(0, 4).join('·')})` : ''} ${service.title} 직영 출장. ${service.detail.tagline} ${leadTime} · 배상보험 가입.`,
-        155
-      );
-      keywords = dedupeKeywords(
-        [
-          `${route.regionName} ${service.title}`,
-          `${route.regionName} ${primaryStem}`,
-          `${route.regionName} ${secondaryStem}`,
-          shortAlias !== route.regionName ? `${shortAlias} ${primaryStem}` : '',
-          `${route.regionName} 유리창청소`,
-          ...subDistricts.slice(0, 3).map((d) => `${d} ${primaryStem}`),
-          `${route.regionName} ${primaryStem} 비용`,
-          `${route.regionName} ${primaryStem} 업체`,
-          stems[2] ? `${route.regionName} ${stems[2]}` : '',
-          company.name,
-        ],
-        12
-      );
-      ogImage =
-        siteData.seo?.defaultOgImage?.trim() || service.detail.afterImage || hero.afterImage || '';
-      routePath = `/region/${encodeURIComponent(route.regionName)}/service/${encodeURIComponent(service.id)}`;
-      routeHash = `#${routePath}`;
-
-      const faqEntities = (service.detail.faqList ?? []).map((f) => ({
-        '@type': 'Question',
-        name: f.q.includes(route.regionName) ? f.q : `[${route.regionName}] ${f.q}`,
-        acceptedAnswer: { '@type': 'Answer', text: f.a },
-      }));
-
-      jsonLd = {
-        '@context': 'https://schema.org',
-        '@graph': [
-          {
-            '@type': 'Service',
-            name: `${route.regionName} ${service.title}`,
-            serviceType: service.title,
-            description,
-            areaServed: {
-              '@type': 'AdministrativeArea',
-              name: route.regionName,
-              ...(subDistricts.length > 0
-                ? { containsPlace: subDistricts.map((d) => ({ '@type': 'Place', name: d })) }
-                : {}),
-            },
-            provider: {
-              '@type': 'HomeAndConstructionBusiness',
-              name: company.name,
-              telephone: company.phone,
-              priceRange: '₩₩',
-            },
-          },
-          ...(faqEntities.length > 0
-            ? [{ '@type': 'FAQPage', mainEntity: faqEntities }]
-            : []),
-        ],
-      };
-    }
-  } else if (route.type === 'gallery_list') {
+  if (effectiveRoute.type === 'gallery_list') {
     title = `현장 작업 갤러리 & 시공사례 | ${company.name}`;
     description =
       '아파트 외창, 상가 통유리, 빌딩 외벽 고소작업, 간판·어닝청소, 썬팅 시트지 제거 실제 시공 일지.';
     keywords = `${company.name} 시공사례, 유리창청소 전후, 외벽청소 후기, 아파트 외창청소 사례`;
     routePath = '/gallery';
     routeHash = '#/gallery';
-  } else if (route.type === 'gallery_detail') {
+  } else if (effectiveRoute.type === 'gallery_detail') {
     const post =
-      gallery.posts.find((p) => p.id === route.postId) ?? gallery.posts[0];
+      gallery.posts.find((p) => p.id === effectiveRoute.postId) ?? gallery.posts[0];
     if (post) {
       const autoSeo = generateNaverSeoFromPost(post, company.name);
       const useStored = post.seo && post.seo.autoSync === false;
-      title = (useStored ? post.seo?.title?.trim() : post.seo?.title?.trim() || autoSeo.title) || autoSeo.title;
+      title =
+        (useStored ? post.seo?.title?.trim() : post.seo?.title?.trim() || autoSeo.title) ||
+        autoSeo.title;
       description =
         (useStored
           ? post.seo?.description?.trim()
@@ -333,7 +822,7 @@ export function getDefaultSeoForRoute(
         siteData.seo?.defaultOgImage?.trim() ||
         hero.afterImage ||
         '';
-      routePath = `/gallery/${encodeURIComponent(post.id)}`;
+      routePath = getRoutePath({ type: 'gallery_detail', postId: post.id });
       routeHash = `#${routePath}`;
       const blockImages = (post.blocks ?? [])
         .filter((b): b is Extract<typeof b, { type: 'image' }> => b.type === 'image')
@@ -373,9 +862,12 @@ export function getDefaultSeoForRoute(
     title,
     description,
     keywords,
+    ogType: effectiveRoute.type === 'gallery_detail' ? 'article' : 'website',
     ogTitle: ogTitle || title,
     ogDescription: description,
     ogImage,
+    geoRegion: 'KR',
+    geoPlacename: company.region || '서울특별시 · 경기도 · 인천광역시',
     routeHash,
     routePath,
     jsonLd,
@@ -393,7 +885,46 @@ export function resolveSeoForRoute(
   const description = override?.description?.trim() || defaults.description;
   const keywords = override?.keywords?.trim() || defaults.keywords;
   const ogTitle =
-    override?.ogTitle?.trim() || (override?.title?.trim() ? override.title.trim() : defaults.ogTitle);
+    override?.ogTitle?.trim() ||
+    (override?.title?.trim() ? override.title.trim() : defaults.ogTitle);
+  const ogDescription = override?.ogDescription?.trim() || description;
+  const ogImage =
+    override?.ogImage?.trim() || siteData.seo?.defaultOgImage?.trim() || defaults.ogImage;
+
+  return {
+    ...defaults,
+    title,
+    description,
+    keywords,
+    ogTitle,
+    ogDescription,
+    ogImage,
+  };
+}
+
+export function resolveRegionDynamicSeo(
+  regionName: string,
+  siteData: SiteData = INITIAL_SITE_DATA,
+  selectedService?: ServiceItem | string
+): ResolvedSeoMeta {
+  const cleanRegion = regionName.trim();
+  const matchedService = resolveMatchedService(siteData.services.items, selectedService);
+  const defaults = buildRegionPageSeo(cleanRegion, siteData, matchedService ?? selectedService);
+
+  const matrixOverride = matchedService
+    ? siteData.seo?.pages?.[`matrix:${cleanRegion}:${matchedService.id}`]
+    : undefined;
+  const regionOverride = !matchedService
+    ? siteData.seo?.pages?.[`region:${cleanRegion}`]
+    : undefined;
+  const override = matrixOverride || regionOverride;
+
+  const title = override?.title?.trim() || defaults.title;
+  const description = override?.description?.trim() || defaults.description;
+  const keywords = override?.keywords?.trim() || defaults.keywords;
+  const ogTitle =
+    override?.ogTitle?.trim() ||
+    (override?.title?.trim() ? override.title.trim() : defaults.ogTitle);
   const ogDescription = override?.ogDescription?.trim() || description;
   const ogImage =
     override?.ogImage?.trim() || siteData.seo?.defaultOgImage?.trim() || defaults.ogImage;
@@ -464,17 +995,29 @@ function toAbsoluteUrl(urlOrPath: string, origin: string): string {
   return `${origin.replace(/\/+$/, '')}/${trimmed.replace(/^\/+/, '')}`;
 }
 
-export function applySeoForRoute(route: PageRoute, siteData: SiteData = INITIAL_SITE_DATA) {
+export function applyResolvedSeoMeta(
+  resolved: ResolvedSeoMeta,
+  siteData: Pick<SiteData, 'company'> & Partial<Pick<SiteData, 'siteUrl'>> = INITIAL_SITE_DATA
+): ResolvedSeoMeta {
+  if (typeof document === 'undefined') {
+    return resolved;
+  }
+
   const origin =
     siteData.siteUrl?.trim().replace(/\/+$/, '') ||
     (typeof window !== 'undefined' ? window.location.origin : '');
   const pathname = typeof window !== 'undefined' ? window.location.pathname : '/';
-  const resolved = resolveSeoForRoute(route, siteData);
 
   document.title = resolved.title;
   setMetaTag('meta[name="description"]', 'name', 'description', resolved.description);
   setMetaTag('meta[name="keywords"]', 'name', 'keywords', resolved.keywords);
-  setMetaTag('meta[property="og:site_name"]', 'property', 'og:site_name', siteData.company.name);
+  setMetaTag(
+    'meta[property="og:site_name"]',
+    'property',
+    'og:site_name',
+    siteData.company?.name || INITIAL_SITE_DATA.company.name
+  );
+  setMetaTag('meta[property="og:type"]', 'property', 'og:type', resolved.ogType);
   setMetaTag('meta[property="og:title"]', 'property', 'og:title', resolved.ogTitle);
   setMetaTag(
     'meta[property="og:description"]',
@@ -489,6 +1032,17 @@ export function applySeoForRoute(route: PageRoute, siteData: SiteData = INITIAL_
     'twitter:description',
     resolved.ogDescription
   );
+
+  if (resolved.geoRegion) {
+    setMetaTag('meta[name="geo.region"]', 'name', 'geo.region', resolved.geoRegion);
+  } else {
+    removeMetaTag('meta[name="geo.region"]');
+  }
+  if (resolved.geoPlacename) {
+    setMetaTag('meta[name="geo.placename"]', 'name', 'geo.placename', resolved.geoPlacename);
+  } else {
+    removeMetaTag('meta[name="geo.placename"]');
+  }
 
   const ogImageUrl = toAbsoluteUrl(resolved.ogImage, origin);
   if (ogImageUrl) {
@@ -506,8 +1060,18 @@ export function applySeoForRoute(route: PageRoute, siteData: SiteData = INITIAL_
   setMetaTag('meta[property="og:url"]', 'property', 'og:url', canonicalUrl);
   setCanonical(canonicalUrl);
   setArticleTags(
-    route.type === 'gallery_detail' ? parseSeoKeywords(resolved.keywords, 10) : []
+    resolved.pageKey.startsWith('gallery_detail:') ? parseSeoKeywords(resolved.keywords, 10) : []
   );
   setDynamicJsonLd(resolved.jsonLd);
+
+  return resolved;
 }
 
+export function applySeoForRoute(
+  route: PageRoute,
+  siteData: SiteData = INITIAL_SITE_DATA
+): ResolvedSeoMeta {
+  const effectiveRoute = resolveEffectiveRoute(route, siteData);
+  const resolved = resolveSeoForRoute(effectiveRoute, siteData);
+  return applyResolvedSeoMeta(resolved, siteData);
+}

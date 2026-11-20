@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   Star,
 } from 'lucide-react';
+import { AnimatedCounter } from '@/src/components/AnimatedCounter';
 import { EditableText } from '@/src/components/admin/EditableText';
 import type { ImageEditTarget } from '@/src/components/admin/ImageEditorModal';
 import { CLEARWORKS_IMAGES } from '@/src/data/clearworksData';
@@ -182,12 +183,16 @@ export const Hero: React.FC<HeroProps> = ({
                 {statIcons[idx % statIcons.length]}
               </div>
               <div className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight tabular-nums">
-                <EditableText
-                  value={stat.value}
-                  onSave={(v) => onUpdateStat(stat.id, 'value', v)}
-                  isEditMode={isEditMode}
-                  label={`${stat.label} 수치 수정`}
-                />
+                {isEditMode ? (
+                  <EditableText
+                    value={stat.value}
+                    onSave={(v) => onUpdateStat(stat.id, 'value', v)}
+                    isEditMode={isEditMode}
+                    label={`${stat.label} 수치 수정`}
+                  />
+                ) : (
+                  <AnimatedCounter value={stat.value} />
+                )}
               </div>
               <div className="text-xs sm:text-sm font-medium text-slate-500 mt-0.5">
                 <EditableText

@@ -52,6 +52,8 @@ export interface ServiceDetail {
   priceGuide: string;
   beforeImage: string;
   afterImage: string;
+  beforeCaption?: string;
+  afterCaption?: string;
   faqList?: ServiceFaq[];
 }
 

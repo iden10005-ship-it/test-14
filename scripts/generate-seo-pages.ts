@@ -53,6 +53,10 @@ function injectPageSeoHtml(
     `<meta name="keywords" content="${escapeHtmlAttr(meta.keywords)}" />`
   );
   html = html.replace(
+    /<meta\s+property="og:type"[\s\S]*?\/>/,
+    `<meta property="og:type" content="${escapeHtmlAttr(meta.ogType)}" />`
+  );
+  html = html.replace(
     /<meta\s+property="og:title"[\s\S]*?\/>/,
     `<meta property="og:title" content="${escapeHtmlAttr(meta.ogTitle)}" />`
   );
@@ -69,11 +73,13 @@ function injectPageSeoHtml(
     `<meta name="twitter:description" content="${escapeHtmlAttr(meta.ogDescription)}" />`
   );
 
-  // Remove old canonical / og:url / og:image / twitter:image if present
+  // Remove old canonical / og:url / og:image / twitter:image / geo tags if present
   html = html.replace(/\s*<link\s+rel="canonical"[^>]*>/g, '');
   html = html.replace(/\s*<meta\s+property="og:url"[^>]*>/g, '');
   html = html.replace(/\s*<meta\s+property="og:image"[^>]*>/g, '');
   html = html.replace(/\s*<meta\s+name="twitter:image"[^>]*>/g, '');
+  html = html.replace(/\s*<meta\s+name="geo\.region"[^>]*>/g, '');
+  html = html.replace(/\s*<meta\s+name="geo\.placename"[^>]*>/g, '');
   html = html.replace(/\s*<meta\s+property="article:tag"[^>]*>/g, '');
   html = html.replace(/\s*<script[^>]*id="ld-dynamic"[^>]*>[\s\S]*?<\/script>/g, '');
 
@@ -87,6 +93,10 @@ function injectPageSeoHtml(
   const extraHeadTags = [
     `<link rel="canonical" href="${escapeHtmlAttr(canonicalUrl)}" />`,
     `<meta property="og:url" content="${escapeHtmlAttr(canonicalUrl)}" />`,
+    meta.geoRegion ? `<meta name="geo.region" content="${escapeHtmlAttr(meta.geoRegion)}" />` : '',
+    meta.geoPlacename
+      ? `<meta name="geo.placename" content="${escapeHtmlAttr(meta.geoPlacename)}" />`
+      : '',
     ogImageAbs ? `<meta property="og:image" content="${escapeHtmlAttr(ogImageAbs)}" />` : '',
     ogImageAbs ? `<meta name="twitter:image" content="${escapeHtmlAttr(ogImageAbs)}" />` : '',
     ...articleTags,
