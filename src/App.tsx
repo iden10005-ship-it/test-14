@@ -641,6 +641,24 @@ export default function App() {
     }));
   };
 
+  const updateServiceImage = (id: string, url: string) => {
+    updateSiteData((prev) => ({
+      ...prev,
+      services: {
+        ...prev.services,
+        items: prev.services.items.map((s) =>
+          s.id === id
+            ? {
+                ...s,
+                image: url,
+                detail: { ...s.detail, afterImage: url },
+              }
+            : s
+        ),
+      },
+    }));
+  };
+
   const updateFullService = (updated: ServiceItem) => {
     updateSiteData((prev) => ({
       ...prev,
@@ -993,6 +1011,8 @@ export default function App() {
                 }))
               }
               onUpdateService={updateServiceField}
+              onUpdateServiceImage={updateServiceImage}
+              onEditImage={setImageEditTarget}
               onAddService={addService}
               onDeleteService={deleteService}
               onViewDetail={(serviceId) => navigateTo({ type: 'service', serviceId })}

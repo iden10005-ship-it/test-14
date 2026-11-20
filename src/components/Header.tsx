@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ChevronDown,
   ChevronRight,
@@ -11,6 +11,26 @@ import {
 } from 'lucide-react';
 import { EditableText } from '@/src/components/admin/EditableText';
 import type { CompanyInfo, PageRoute, ServiceItem } from '@/src/types/clearworks';
+
+type HomeSectionKey =
+  | 'home'
+  | 'service'
+  | 'process'
+  | 'gallery'
+  | 'price'
+  | 'faq'
+  | 'regions'
+  | 'contact';
+
+const SCROLL_SPY_SECTIONS: Array<Exclude<HomeSectionKey, 'home'>> = [
+  'service',
+  'process',
+  'gallery',
+  'price',
+  'faq',
+  'regions',
+  'contact',
+];
 
 interface HeaderProps {
   company: CompanyInfo;
@@ -44,12 +64,72 @@ export const Header: React.FC<HeaderProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [serviceDropdownOpen, setServiceDropdownOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [activeHomeSection, setActiveHomeSection] = useState<HomeSectionKey>('home');
+  const headerRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
+    onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
+
+  useEffect(() => {
+    if (currentPage.type !== 'home') {
+      setActiveHomeSection('home');
+      return;
+    }
+
+    let rafId = 0;
+
+    const updateActiveSection = () => {
+      rafId = 0;
+      if (window.scrollY < 80) {
+        setActiveHomeSection('home');
+        return;
+      }
+
+      const scrollBottom = window.innerHeight + window.scrollY;
+      const docHeight = document.documentElement.scrollHeight;
+      if (docHeight > 0 && scrollBottom >= docHeight - 40) {
+        setActiveHomeSection('contact');
+        return;
+      }
+
+      const headerBottom = headerRef.current?.getBoundingClientRect().bottom ?? 84;
+      const triggerY = Math.min(Math.max(headerBottom + 72, 130), window.innerHeight * 0.42);
+
+      let matched: HomeSectionKey = 'home';
+      for (const sectionId of SCROLL_SPY_SECTIONS) {
+        const el = document.getElementById(sectionId);
+        if (!el) continue;
+        if (el.getBoundingClientRect().top <= triggerY) {
+          matched = sectionId;
+        } else {
+          break;
+        }
+      }
+      setActiveHomeSection(matched);
+    };
+
+    const scheduleUpdate = () => {
+      if (rafId) return;
+      rafId = window.requestAnimationFrame(updateActiveSection);
+    };
+
+    updateActiveSection();
+    const timer = window.setTimeout(updateActiveSection, 60);
+
+    window.addEventListener('scroll', scheduleUpdate, { passive: true });
+    window.addEventListener('resize', scheduleUpdate, { passive: true });
+
+    return () => {
+      if (rafId) window.cancelAnimationFrame(rafId);
+      window.clearTimeout(timer);
+      window.removeEventListener('scroll', scheduleUpdate);
+      window.removeEventListener('resize', scheduleUpdate);
+    };
+  }, [currentPage.type]);
 
   const handleSectionLink = (sectionId: string) => {
     setMobileMenuOpen(false);
@@ -62,6 +142,30 @@ export const Header: React.FC<HeaderProps> = ({
     setServiceDropdownOpen(false);
     onNavigateHome();
   };
+
+  const isHomeActive = currentPage.type === 'home' && activeHomeSection === 'home';
+  const isServiceActive =
+    currentPage.type === 'service' ||
+    (currentPage.type === 'home' && activeHomeSection === 'service');
+  const isProcessActive = currentPage.type === 'home' && activeHomeSection === 'process';
+  const isGalleryActive =
+    currentPage.type === 'gallery_list' ||
+    currentPage.type === 'gallery_detail' ||
+    (currentPage.type === 'home' && activeHomeSection === 'gallery');
+  const isPriceActive = currentPage.type === 'home' && activeHomeSection === 'price';
+  const isFaqActive = currentPage.type === 'home' && activeHomeSection === 'faq';
+  const isRegionsActive =
+    currentPage.type === 'region' ||
+    currentPage.type === 'matrix' ||
+    (currentPage.type === 'home' && activeHomeSection === 'regions');
+  const isContactActive = currentPage.type === 'home' && activeHomeSection === 'contact';
+
+  const getDesktopNavClass = (active: boolean) =>
+    `px-3 py-2 text-sm font-bold rounded-xl transition-all duration-200 whitespace-nowrap shrink-0 cursor-pointer ${
+      active
+        ? 'text-blue-600 bg-blue-50/70'
+        : 'text-slate-700 hover:text-blue-600 hover:bg-slate-50'
+    }`;
 
   return (
     <>
@@ -128,6 +232,7 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Main Sticky Header */}
       <header
+        ref={headerRef}
         className={`sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/90 transition-shadow duration-200 ${
           scrolled ? 'shadow-md' : 'shadow-2xs'
         }`}
@@ -174,11 +279,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={handleGoHome}
-              className={`px-3 py-2 text-sm font-bold rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                currentPage.type === 'home'
-                  ? 'text-blue-600 bg-blue-50/70'
-                  : 'text-slate-700 hover:text-blue-600 hover:bg-slate-50'
-              }`}
+              className={getDesktopNavClass(isHomeActive)}
             >
               홈
             </button>
@@ -192,14 +293,14 @@ export const Header: React.FC<HeaderProps> = ({
                 type="button"
                 onClick={() => handleSectionLink('service')}
                 aria-expanded={serviceDropdownOpen}
-                className={`px-3 py-2 text-sm font-bold rounded-xl transition-colors flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer ${
-                  currentPage.type === 'service'
-                    ? 'text-blue-600 bg-blue-50/70'
-                    : 'text-slate-700 hover:text-blue-600 hover:bg-slate-50'
-                }`}
+                className={`${getDesktopNavClass(isServiceActive)} flex items-center gap-1`}
               >
                 <span>서비스</span>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                <ChevronDown
+                  className={`w-3.5 h-3.5 transition-colors ${
+                    isServiceActive ? 'text-blue-600' : 'text-slate-400'
+                  }`}
+                />
               </button>
 
               {serviceDropdownOpen && (
@@ -230,7 +331,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={() => handleSectionLink('process')}
-              className="px-3 py-2 text-sm font-bold text-slate-700 hover:text-blue-600 hover:bg-slate-50 rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              className={getDesktopNavClass(isProcessActive)}
             >
               작업과정
             </button>
@@ -242,11 +343,7 @@ export const Header: React.FC<HeaderProps> = ({
                 setServiceDropdownOpen(false);
                 onNavigateGalleryList();
               }}
-              className={`px-3 py-2 text-sm font-bold rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                currentPage.type === 'gallery_list' || currentPage.type === 'gallery_detail'
-                  ? 'text-blue-600 bg-blue-50/70'
-                  : 'text-slate-700 hover:text-blue-600 hover:bg-slate-50'
-              }`}
+              className={getDesktopNavClass(isGalleryActive)}
             >
               작업갤러리
             </button>
@@ -254,7 +351,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={() => handleSectionLink('price')}
-              className="px-3 py-2 text-sm font-bold text-slate-700 hover:text-blue-600 hover:bg-slate-50 rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              className={getDesktopNavClass(isPriceActive)}
             >
               가격안내
             </button>
@@ -262,7 +359,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={() => handleSectionLink('faq')}
-              className="px-3 py-2 text-sm font-bold text-slate-700 hover:text-blue-600 hover:bg-slate-50 rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              className={getDesktopNavClass(isFaqActive)}
             >
               FAQ
             </button>
@@ -270,11 +367,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={() => handleSectionLink('regions')}
-              className={`px-3 py-2 text-sm font-bold rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                currentPage.type === 'region' || currentPage.type === 'matrix'
-                  ? 'text-blue-600 bg-blue-50/70'
-                  : 'text-slate-700 hover:text-blue-600 hover:bg-slate-50'
-              }`}
+              className={getDesktopNavClass(isRegionsActive)}
             >
               서비스지역
             </button>
@@ -282,7 +375,11 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={() => handleSectionLink('contact')}
-              className="ml-1 px-4 py-2 text-sm font-bold text-blue-600 hover:text-white bg-blue-50 hover:bg-blue-600 rounded-xl transition-all border border-blue-200 hover:border-blue-600 whitespace-nowrap shrink-0 cursor-pointer"
+              className={`ml-1 px-4 py-2 text-sm font-bold rounded-xl transition-all duration-200 border whitespace-nowrap shrink-0 cursor-pointer ${
+                isContactActive
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                  : 'text-blue-600 hover:text-white bg-blue-50 hover:bg-blue-600 border-blue-200 hover:border-blue-600'
+              }`}
             >
               무료견적
             </button>
@@ -337,14 +434,22 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 type="button"
                 onClick={handleGoHome}
-                className="w-full text-left px-3.5 py-3 text-base font-bold text-slate-900 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors"
+                className={`w-full text-left px-3.5 py-3 text-base font-bold rounded-xl transition-colors ${
+                  isHomeActive
+                    ? 'text-blue-600 bg-blue-50/70'
+                    : 'text-slate-900 hover:bg-blue-50 hover:text-blue-600'
+                }`}
               >
                 홈으로
               </button>
               <button
                 type="button"
                 onClick={() => handleSectionLink('service')}
-                className="w-full text-left px-3.5 py-3 text-base font-bold text-slate-800 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors"
+                className={`w-full text-left px-3.5 py-3 text-base font-bold rounded-xl transition-colors ${
+                  isServiceActive
+                    ? 'text-blue-600 bg-blue-50/70'
+                    : 'text-slate-800 hover:bg-blue-50 hover:text-blue-600'
+                }`}
               >
                 서비스 안내
               </button>
@@ -357,7 +462,11 @@ export const Header: React.FC<HeaderProps> = ({
                       setMobileMenuOpen(false);
                       onNavigateService(srv.id);
                     }}
-                    className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-600 hover:text-blue-600 hover:bg-blue-50/60 rounded-lg flex items-center justify-between"
+                    className={`w-full text-left px-3 py-2 text-xs font-semibold rounded-lg flex items-center justify-between ${
+                      currentPage.type === 'service' && currentPage.serviceId === srv.id
+                        ? 'text-blue-600 bg-blue-50/70'
+                        : 'text-slate-600 hover:text-blue-600 hover:bg-blue-50/60'
+                    }`}
                   >
                     <span>· {srv.title}</span>
                     <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
@@ -367,7 +476,11 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 type="button"
                 onClick={() => handleSectionLink('process')}
-                className="w-full text-left px-3.5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 rounded-xl"
+                className={`w-full text-left px-3.5 py-2.5 text-sm font-semibold rounded-xl transition-colors ${
+                  isProcessActive
+                    ? 'text-blue-600 bg-blue-50/70'
+                    : 'text-slate-700 hover:bg-slate-50'
+                }`}
               >
                 작업과정
               </button>
@@ -377,35 +490,55 @@ export const Header: React.FC<HeaderProps> = ({
                   setMobileMenuOpen(false);
                   onNavigateGalleryList();
                 }}
-                className="w-full text-left px-3.5 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 rounded-xl"
+                className={`w-full text-left px-3.5 py-2.5 text-sm font-bold rounded-xl transition-colors ${
+                  isGalleryActive
+                    ? 'text-blue-600 bg-blue-50/70'
+                    : 'text-slate-700 hover:bg-slate-50'
+                }`}
               >
                 작업갤러리 (현장일지)
               </button>
               <button
                 type="button"
                 onClick={() => handleSectionLink('price')}
-                className="w-full text-left px-3.5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 rounded-xl"
+                className={`w-full text-left px-3.5 py-2.5 text-sm font-semibold rounded-xl transition-colors ${
+                  isPriceActive
+                    ? 'text-blue-600 bg-blue-50/70'
+                    : 'text-slate-700 hover:bg-slate-50'
+                }`}
               >
                 가격안내
               </button>
               <button
                 type="button"
                 onClick={() => handleSectionLink('faq')}
-                className="w-full text-left px-3.5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 rounded-xl"
+                className={`w-full text-left px-3.5 py-2.5 text-sm font-semibold rounded-xl transition-colors ${
+                  isFaqActive
+                    ? 'text-blue-600 bg-blue-50/70'
+                    : 'text-slate-700 hover:bg-slate-50'
+                }`}
               >
                 자주 묻는 질문 (FAQ)
               </button>
               <button
                 type="button"
                 onClick={() => handleSectionLink('regions')}
-                className="w-full text-left px-3.5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 rounded-xl"
+                className={`w-full text-left px-3.5 py-2.5 text-sm font-semibold rounded-xl transition-colors ${
+                  isRegionsActive
+                    ? 'text-blue-600 bg-blue-50/70'
+                    : 'text-slate-700 hover:bg-slate-50'
+                }`}
               >
                 서비스 지역 안내
               </button>
               <button
                 type="button"
                 onClick={() => handleSectionLink('contact')}
-                className="w-full text-left px-3.5 py-3 text-base font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors"
+                className={`w-full text-left px-3.5 py-3 text-base font-bold rounded-xl transition-colors ${
+                  isContactActive
+                    ? 'bg-blue-600 text-white'
+                    : 'text-blue-600 bg-blue-50 hover:bg-blue-100'
+                }`}
               >
                 무료 견적 신청하기
               </button>

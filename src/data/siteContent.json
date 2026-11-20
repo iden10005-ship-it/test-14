@@ -170,7 +170,7 @@
           "duration": "30평형 아파트 기준 2~3시간 소요",
           "priceGuide": "아파트 평형별 기준 단가 적용 (입주청소 전/후 병행 가능)",
           "beforeImage": "/images/apt_before.jpg",
-          "afterImage": "/images/apt_after.jpg"
+          "afterImage": "/images/service_sign_awning.jpg"
         }
       },
       {
@@ -193,7 +193,7 @@
           "duration": "유리 면적 10㎡ 기준 약 1~2시간",
           "priceGuide": "제거 면적(㎡) 및 본드 경화 상태에 따른 차등 산출",
           "beforeImage": "/images/store_before.jpg",
-          "afterImage": "/images/store_after.jpg"
+          "afterImage": "/images/service_film_removal.jpg"
         }
       },
       {
@@ -217,7 +217,7 @@
           "duration": "외창 청소 후 추가 작업 약 40분 ~ 1시간 소요",
           "priceGuide": "외창 청소 서비스와 함께 신청 시 패키지 특가 할인 제공",
           "beforeImage": "/images/apt_before.jpg",
-          "afterImage": "/images/apt_after.jpg"
+          "afterImage": "/images/service_special_coating.jpg"
         }
       }
     ]
@@ -1223,5 +1223,5 @@
       }
     }
   },
-  "updatedAt": "2026-11-20T04:50:00.000Z"
+  "updatedAt": "2026-11-20T05:50:00.000Z"
 }
