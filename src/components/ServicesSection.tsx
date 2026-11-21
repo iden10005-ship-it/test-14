@@ -14,6 +14,7 @@ import { EditableText } from '@/src/components/admin/EditableText';
 import type { ImageEditTarget } from '@/src/components/admin/ImageEditorModal';
 import type { ServiceIconName, ServiceItem } from '@/src/types/clearworks';
 import { resolveAssetUrl } from '@/src/utils/assetUrl';
+import { getRoutePath } from '@/src/utils/seo';
 
 interface ServicesSectionProps {
   sectionTitle: string;
@@ -215,10 +216,18 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
                 </div>
 
                 <div className="px-5 sm:px-6 pb-5 sm:pb-6 mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
-                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 group-hover:text-blue-800 transition-colors">
+                  <a
+                    href={getRoutePath({ type: 'service', serviceId: service.id })}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onViewDetail(service.id);
+                    }}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 group-hover:text-blue-800 transition-colors"
+                  >
                     <span>상세보기 및 작업범위</span>
                     <span className="group-hover:translate-x-0.5 transition-transform">→</span>
-                  </span>
+                  </a>
 
                   {isEditMode && services.length > 1 && (
                     <button

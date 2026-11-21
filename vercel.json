@@ -4,6 +4,7 @@
   "installCommand": "npm install --no-audit --no-fund",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "cleanUrls": true,
   "rewrites": [
     {
       "source": "/((?!assets/|images/|uploads/|sitemap\\.xml|robots\\.txt|favicon|apple-touch-icon\\.png|naver.*\\.html).*)",

@@ -8,6 +8,7 @@ import {
   X,
 } from 'lucide-react';
 import { EditableText } from '@/src/components/admin/EditableText';
+import { getRoutePath } from '@/src/utils/seo';
 
 interface RegionsSectionProps {
   sectionTitle: string;
@@ -103,15 +104,18 @@ export const RegionsSection: React.FC<RegionsSectionProps> = ({
               </p>
               <div className="flex flex-wrap gap-1.5 mb-4">
                 {seoulFeatured.map((district) => (
-                  <button
+                  <a
                     key={district}
-                    type="button"
-                    onClick={() => onViewRegion(district)}
+                    href={getRoutePath({ type: 'region', regionName: district })}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      onViewRegion(district);
+                    }}
                     className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-600 text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
                   >
                     <MapPin className="w-3 h-3 text-blue-500" />
                     <span>{district}</span>
-                  </button>
+                  </a>
                 ))}
               </div>
             </div>
@@ -142,15 +146,18 @@ export const RegionsSection: React.FC<RegionsSectionProps> = ({
               </p>
               <div className="flex flex-wrap gap-1.5 mb-4">
                 {gyeonggiFeatured.map((city) => (
-                  <button
+                  <a
                     key={city}
-                    type="button"
-                    onClick={() => onViewRegion(city)}
+                    href={getRoutePath({ type: 'region', regionName: city })}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      onViewRegion(city);
+                    }}
                     className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-600 text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
                   >
                     <MapPin className="w-3 h-3 text-blue-500" />
                     <span>{city}</span>
-                  </button>
+                  </a>
                 ))}
               </div>
             </div>
@@ -181,15 +188,18 @@ export const RegionsSection: React.FC<RegionsSectionProps> = ({
               </p>
               <div className="flex flex-wrap gap-1.5 mb-4">
                 {incheonFeatured.map((district) => (
-                  <button
+                  <a
                     key={district}
-                    type="button"
-                    onClick={() => onViewRegion(district)}
+                    href={getRoutePath({ type: 'region', regionName: district })}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      onViewRegion(district);
+                    }}
                     className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-600 text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
                   >
                     <MapPin className="w-3 h-3 text-blue-500" />
                     <span>{district}</span>
-                  </button>
+                  </a>
                 ))}
               </div>
             </div>
@@ -248,14 +258,22 @@ export const RegionsSection: React.FC<RegionsSectionProps> = ({
                   {regions.map((region, idx) => (
                     <span
                       key={`${region}-${idx}`}
-                      onClick={() => onViewRegion(region)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-blue-50 text-slate-800 hover:text-blue-700 text-xs font-semibold border border-slate-200/80 transition-colors cursor-pointer group"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-blue-50 text-slate-800 hover:text-blue-700 text-xs font-semibold border border-slate-200/80 transition-colors group"
                     >
-                      <MapPin className="w-3 h-3 text-blue-500 shrink-0" />
-                      <span>{region}</span>
-                      <span className="text-[10px] text-slate-300 group-hover:text-blue-600 font-extrabold">
-                        →
-                      </span>
+                      <a
+                        href={getRoutePath({ type: 'region', regionName: region })}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          onViewRegion(region);
+                        }}
+                        className="inline-flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <MapPin className="w-3 h-3 text-blue-500 shrink-0" />
+                        <span>{region}</span>
+                        <span className="text-[10px] text-slate-300 group-hover:text-blue-600 font-extrabold">
+                          →
+                        </span>
+                      </a>
                       {isEditMode && (
                         <button
                           type="button"

@@ -4,6 +4,7 @@ import { EditableText } from '@/src/components/admin/EditableText';
 import type { ImageEditTarget } from '@/src/components/admin/ImageEditorModal';
 import type { GalleryPost } from '@/src/types/clearworks';
 import { resolveAssetUrl } from '@/src/utils/assetUrl';
+import { getRoutePath } from '@/src/utils/seo';
 
 interface GallerySectionProps {
   sectionTitle: string;
@@ -66,14 +67,17 @@ export const GallerySection: React.FC<GallerySectionProps> = ({
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={onViewGalleryList}
+          <a
+            href="/gallery"
+            onClick={(e) => {
+              e.preventDefault();
+              onViewGalleryList();
+            }}
             className="self-start md:self-auto px-5 py-3 rounded-2xl bg-white hover:bg-slate-100 text-blue-600 font-extrabold text-xs sm:text-sm border border-slate-200 shadow-2xs flex items-center gap-2 transition-all hover:scale-[1.02] cursor-pointer whitespace-nowrap"
           >
             <span>전체 작업일지 보러가기</span>
             <ArrowRight className="w-4 h-4" />
-          </button>
+          </a>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
@@ -154,10 +158,18 @@ export const GallerySection: React.FC<GallerySectionProps> = ({
                 </div>
               </div>
 
-              <div className="px-6 py-3.5 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between text-xs font-bold text-blue-600 group-hover:bg-blue-50/50 transition-colors">
+              <a
+                href={getRoutePath({ type: 'gallery_detail', postId: post.id })}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onSelectPost(post.id);
+                }}
+                className="px-6 py-3.5 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between text-xs font-bold text-blue-600 group-hover:bg-blue-50/50 transition-colors"
+              >
                 <span>자세히 보기</span>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </div>
+              </a>
             </article>
           ))}
         </div>
