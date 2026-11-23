@@ -23,10 +23,7 @@ import {
   type ImageEditTarget,
 } from '@/src/components/admin/ImageEditorModal';
 import { InquiriesModal } from '@/src/components/admin/InquiriesModal';
-import {
-  SiteSettingsModal,
-  type SeoKeywordSuggestion,
-} from '@/src/components/admin/SiteSettingsModal';
+import { SiteSettingsModal } from '@/src/components/admin/SiteSettingsModal';
 import {
   CLEARWORKS_IMAGES,
   DEFAULT_SITE_DATA,
@@ -49,6 +46,10 @@ import {
   resolveEffectiveRoute,
   resolveSeoForRoute,
 } from '@/src/utils/seo';
+import {
+  analyzePageSeoKeywords,
+  type SeoKeywordSuggestion,
+} from '@/src/utils/seoKeywordSuggester';
 
 const SITE_DATA_STORAGE_KEY = 'clearworks_site_data_v1';
 const INQUIRIES_STORAGE_KEY = 'clearworks_inquiries_v1';
@@ -1327,63 +1328,41 @@ export default function App() {
             canWriteCode={canWriteCode}
             onUploadImage={uploadImageToCodebase}
             onSuggestSeoKeywords={async (payload) => {
-              if (!canWriteCode || !isAdminMode) {
-                const regionToken =
-                  payload.region.split(/[·,\s/]+/).find((t) => t.trim().length >= 2) || '서울';
-                const combined = `${payload.pageLabel} ${payload.title} ${payload.description}`;
-                const suggestions: SeoKeywordSuggestion[] = [
-                  {
-                    keyword: `${regionToken} 유리창청소`,
-                    intent: '지역검색',
-                    reason: '지역명과 핵심 서비스가 결합되어 네이버·구글 지역 검색 유입이 높습니다.',
-                  },
-                  {
-                    keyword: `${regionToken} 외벽청소 업체`,
-                    intent: '지역검색',
-                    reason: '시공 업체를 찾는 지역 고객의 비교 검색에 최적화되어 있습니다.',
-                  },
-                  {
-                    keyword: '상가 유리창청소 비용',
-                    intent: '롱테일·문의',
-                    reason: '견적 문의 직전 단계의 점주·매니저가 자주 검색하는 키워드입니다.',
-                  },
-                  {
-                    keyword: '매장 쇼윈도 청소',
-                    intent: '서비스핵심',
-                    reason: '카페·로드샵 등 고정 수요층 타겟팅에 유리합니다.',
-                  },
-                  {
-                    keyword: '고층 건물 외벽청소',
-                    intent: '서비스핵심',
-                    reason: '오피스텔·빌딩 시설 관리 담당자 검색 의도와 맞닿아 있습니다.',
-                  },
-                  {
-                    keyword: '유리창 물때 찌든때 제거',
-                    intent: '롱테일·문의',
-                    reason: '구체적인 오염 고민을 검색하는 실수요자 유입 키워드입니다.',
-                  },
-                  {
-                    keyword: '유리 발수코팅 시공',
-                    intent: '서비스핵심',
-                    reason: '추가 시공 옵션을 함께 문의하도록 유도하는 고부가 키워드입니다.',
-                  },
-                  {
-                    keyword: `${payload.companyName || '클리어웍스'} 견적문의`,
-                    intent: '브랜드·신뢰',
-                    reason: '브랜드명 직접 검색 및 신뢰도 기반 전환에 도움을 줍니다.',
-                  },
-                ];
-                if (combined.includes('썬팅') || combined.includes('스티커')) {
-                  suggestions.unshift({
-                    keyword: '유리창 썬팅 시트지 제거',
-                    intent: '서비스핵심',
-                    reason: '원상복구·이전 시즌 검색 수요가 집중되는 핵심 작업 키워드입니다.',
-                  });
+              const resolveLocalRoute = (key: string): PageRoute => {
+                if (key === 'gallery_list') return { type: 'gallery_list' };
+                if (key.startsWith('service:')) {
+                  return { type: 'service', serviceId: key.slice('service:'.length) };
                 }
+                if (key.startsWith('region:')) {
+                  return { type: 'region', regionName: key.slice('region:'.length) };
+                }
+                if (key.startsWith('matrix:')) {
+                  const rest = key.slice('matrix:'.length);
+                  const lastColon = rest.lastIndexOf(':');
+                  if (lastColon > 0) {
+                    return {
+                      type: 'matrix',
+                      regionName: rest.slice(0, lastColon),
+                      serviceId: rest.slice(lastColon + 1),
+                    };
+                  }
+                }
+                if (key.startsWith('gallery_detail:')) {
+                  return { type: 'gallery_detail', postId: key.slice('gallery_detail:'.length) };
+                }
+                return { type: 'home' };
+              };
+
+              if (!canWriteCode || !isAdminMode) {
+                const analysis = analyzePageSeoKeywords(
+                  resolveLocalRoute(payload.pageKey),
+                  siteData,
+                  { regionServiceId: payload.regionServiceId }
+                );
                 return {
                   ok: true,
                   source: 'smart-local',
-                  suggestions: suggestions.slice(0, 10),
+                  suggestions: analysis.allSuggestions,
                 };
               }
 

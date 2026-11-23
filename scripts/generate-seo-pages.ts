@@ -102,10 +102,14 @@ function injectPageSeoHtml(
     ogImageAbs ? `<meta name="twitter:image" content="${escapeHtmlAttr(ogImageAbs)}" />` : '',
     ...articleTags,
     meta.jsonLd
-      ? `<script type="application/ld+json" id="ld-dynamic">${JSON.stringify({
-          ...meta.jsonLd,
-          mainEntityOfPage: canonicalUrl,
-        })}</script>`
+      ? `<script type="application/ld+json" id="ld-dynamic">${JSON.stringify(
+          '@graph' in meta.jsonLd
+            ? meta.jsonLd
+            : {
+                ...meta.jsonLd,
+                mainEntityOfPage: canonicalUrl,
+              }
+        )}</script>`
       : '',
   ]
     .filter(Boolean)
@@ -136,15 +140,19 @@ async function main() {
   }
 
   const raw = await fs.readFile(SITE_CONTENT_PATH, 'utf-8');
-  const siteData = JSON.parse(raw) as SiteData;
+  const parsedSiteData = JSON.parse(raw) as SiteData;
   const templateHtml = await fs.readFile(DIST_INDEX_PATH, 'utf-8');
 
   const vercelProdUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
     ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
     : '';
   const baseUrl = normalizeBaseUrl(
-    process.env.SITE_URL || siteData.siteUrl || vercelProdUrl || 'https://clearworks.kr'
+    process.env.SITE_URL || parsedSiteData.siteUrl || vercelProdUrl || 'https://clearworks.kr'
   );
+  const siteData: SiteData = {
+    ...parsedSiteData,
+    siteUrl: baseUrl,
+  };
 
   // Keep #root empty across ALL routes so human visitors never see unstyled fallback text
   // flash before React mounts, while preserving route-specific <head> SEO tags and JSON-LD.

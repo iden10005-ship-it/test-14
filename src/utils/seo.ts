@@ -306,8 +306,17 @@ function clampTitle(core: string, suffix: string, maxLen = 58): string {
   return `${trimmedCore}${suffix}`;
 }
 
+function getSiteOrigin(siteData: Pick<SiteData, 'siteUrl'>): string {
+  const configured = siteData.siteUrl?.trim().replace(/\/+$/, '');
+  if (configured) return configured;
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin.replace(/\/+$/, '');
+  }
+  return '';
+}
+
 function collectServiceImageUrls(service: ServiceItem, siteData: SiteData): string[] {
-  const origin = siteData.siteUrl?.trim().replace(/\/+$/, '') || '';
+  const origin = getSiteOrigin(siteData);
   const raw = [
     service.image,
     service.detail.afterImage,
@@ -419,7 +428,7 @@ export function buildServicePageSeo(service: ServiceItem, siteData: SiteData): R
     '';
   const routePath = getRoutePath({ type: 'service', serviceId: service.id });
   const routeHash = `#${routePath}`;
-  const origin = siteData.siteUrl?.trim().replace(/\/+$/, '') || '';
+  const origin = getSiteOrigin(siteData);
   const canonicalPathOrUrl = origin ? `${origin}${routePath}` : routePath;
 
   const images = collectServiceImageUrls(service, siteData);
@@ -534,6 +543,212 @@ function resolveMatchedService(
   );
 }
 
+function buildRegionLocalBusinessNode(options: {
+  canonicalUrl: string;
+  cleanRegion: string;
+  metro: MetroRegionContext;
+  description: string;
+  images: string[];
+  subDistricts: string[];
+  popularComplexes: string[];
+  leadTime: string;
+  notice?: string;
+  siteData: SiteData;
+  matchedService?: ServiceItem;
+}): Record<string, unknown> {
+  const {
+    canonicalUrl,
+    cleanRegion,
+    metro,
+    description,
+    images,
+    subDistricts,
+    popularComplexes,
+    leadTime,
+    notice,
+    siteData,
+    matchedService,
+  } = options;
+  const { company, services } = siteData;
+  const origin = getSiteOrigin(siteData);
+  const localBusinessId = `${canonicalUrl}#localbusiness`;
+
+  const areaServedPlaces: Array<Record<string, unknown>> = [
+    { '@type': 'AdministrativeArea', name: metro.displayRegion },
+    ...(metro.displayRegion !== cleanRegion
+      ? [{ '@type': 'AdministrativeArea', name: cleanRegion }]
+      : []),
+    ...subDistricts.map((d) => ({
+      '@type': 'Place',
+      name: `${cleanRegion} ${d}`,
+    })),
+    ...popularComplexes.map((c) => ({
+      '@type': 'Place',
+      name: `${cleanRegion} ${c}`,
+    })),
+  ];
+
+  const offerItems = matchedService
+    ? matchedService.detail.scopeList.map((scope, idx) => ({
+        '@type': 'Offer',
+        position: idx + 1,
+        itemOffered: {
+          '@type': 'Service',
+          name: `${cleanRegion} ${scope}`,
+        },
+      }))
+    : services.items.map((srv, idx) => ({
+        '@type': 'Offer',
+        position: idx + 1,
+        priceCurrency: 'KRW',
+        description: srv.detail.priceGuide,
+        itemOffered: {
+          '@type': 'Service',
+          name: `${cleanRegion} ${srv.title}`,
+          description: srv.description,
+          url: origin
+            ? `${origin}${getRoutePath({ type: 'matrix', regionName: cleanRegion, serviceId: srv.id })}`
+            : getRoutePath({ type: 'matrix', regionName: cleanRegion, serviceId: srv.id }),
+        },
+      }));
+
+  const sameAsLinks = [
+    origin || undefined,
+    company.kakaoLink && company.kakaoLink.startsWith('http') && company.kakaoLink !== 'https://open.kakao.com'
+      ? company.kakaoLink
+      : undefined,
+  ].filter((v): v is string => Boolean(v));
+
+  return {
+    '@type': ['HomeAndConstructionBusiness', 'LocalBusiness'],
+    '@id': localBusinessId,
+    name: company.name,
+    alternateName: Array.from(
+      new Set([
+        `${company.name} ${cleanRegion}`,
+        `${metro.displayRegion} ${company.name}`,
+        `${metro.shortAlias} 유리창청소 ${company.name}`,
+        ...(matchedService ? [`${cleanRegion} ${matchedService.title} ${company.name}`] : []),
+      ])
+    ),
+    description,
+    url: canonicalUrl,
+    mainEntityOfPage: canonicalUrl,
+    ...(images.length > 0 ? { image: images } : {}),
+    telephone: company.phone,
+    priceRange: '₩₩',
+    currenciesAccepted: 'KRW',
+    paymentAccepted: '현금, 계좌이체, 카드결제, 세금계산서',
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: company.address,
+      addressCountry: 'KR',
+    },
+    areaServed: areaServedPlaces,
+    serviceArea: {
+      '@type': 'AdministrativeArea',
+      name:
+        subDistricts.length > 0
+          ? `${metro.displayRegion} 전지역 (${subDistricts.slice(0, 6).join(', ')})`
+          : `${metro.displayRegion} 전지역`,
+    },
+    contactPoint: {
+      '@type': 'ContactPoint',
+      telephone: company.phone,
+      contactType: 'customer service',
+      areaServed: 'KR',
+      availableLanguage: ['Korean'],
+    },
+    openingHours: company.operatingHours,
+    ...(sameAsLinks.length > 0 ? { sameAs: sameAsLinks } : {}),
+    knowsAbout: Array.from(
+      new Set([
+        '유리창청소',
+        '아파트 외창청소',
+        '상가 유리창청소',
+        '빌딩 외벽청소',
+        '간판·어닝청소 고압세척',
+        '시트지 제거',
+        '유리 발수코팅',
+        ...subDistricts.slice(0, 5),
+      ])
+    ),
+    hasOfferCatalog: {
+      '@type': 'OfferCatalog',
+      name: matchedService
+        ? `${cleanRegion} ${matchedService.title} 시공 범위`
+        : `${cleanRegion} 전문 유리창·외벽 청소 서비스`,
+      itemListElement: offerItems,
+    },
+    additionalProperty: [
+      { '@type': 'PropertyValue', name: '출장 방문 지역', value: metro.displayRegion },
+      { '@type': 'PropertyValue', name: '방문 실측 일정', value: leadTime },
+      { '@type': 'PropertyValue', name: '무상 A/S 보증', value: `${company.asPeriod}일` },
+      { '@type': 'PropertyValue', name: '배상책임보험', value: '영업배상책임보험 1억원 가입' },
+      ...(popularComplexes.length > 0
+        ? [
+            {
+              '@type': 'PropertyValue',
+              name: '주요 출장 단지·상권',
+              value: popularComplexes.join(', '),
+            },
+          ]
+        : []),
+      ...(notice ? [{ '@type': 'PropertyValue', name: '지역 안내 혜택', value: notice }] : []),
+    ],
+  };
+}
+
+function buildRegionFaqEntities(options: {
+  cleanRegion: string;
+  metro: MetroRegionContext;
+  subDistricts: string[];
+  popularComplexes: string[];
+  leadTime: string;
+  notice?: string;
+  siteData: SiteData;
+}): Array<Record<string, unknown>> {
+  const { cleanRegion, metro, subDistricts, popularComplexes, leadTime, notice, siteData } = options;
+  const { company, faq } = siteData;
+  const areaText =
+    subDistricts.length > 0 ? subDistricts.join(', ') : `${metro.displayRegion} 전지역`;
+  const complexText =
+    popularComplexes.length > 0 ? ` (${popularComplexes.slice(0, 3).join(', ')} 등)` : '';
+
+  const regionalFaqs: Array<{ q: string; a: string }> = [
+    {
+      q: `${cleanRegion} 어느 지역까지 출장 유리창청소가 가능한가요?`,
+      a: `${areaText}${complexText} 전지역 직영 전담팀이 출장하며, ${leadTime} 일정으로 무료 방문 실측 및 시공이 가능합니다.`,
+    },
+    {
+      q: `${cleanRegion} 유리창·외창청소 비용은 어떻게 산정되나요?`,
+      a: `창문 수량과 유리 면적, 오염 정도(물때·백시멘트 등), 작업 높이를 기준으로 산정됩니다. 아파트 외창은 24~34평 기준 240,000원~, 상가 통유리는 ㎡당 8,000원~ 기준이며 사진 또는 무료 방문 견적을 안내해 드립니다.`,
+    },
+    {
+      q: `${cleanRegion} 고층 작업 시 아래층 물 피해나 배상보험·A/S는 어떻게 되나요?`,
+      a: `${company.name}은(는) 고밀도 거품 도포 후 스퀴지로 즉시 회수하는 무낙수 공법과 흡수 보양 매트를 사용하며, 1억원 영업배상책임보험 가입 및 시공 후 ${company.asPeriod}일 이내 무상 A/S를 보장합니다.`,
+    },
+    ...(notice
+      ? [
+          {
+            q: `${cleanRegion} 지역 공동구매나 추가 혜택 안내가 있나요?`,
+            a: `${notice}. 자세한 할인 조건은 전화(${company.phone}) 또는 카카오톡 상담 시 바로 안내받으실 수 있습니다.`,
+          },
+        ]
+      : []),
+    ...(faq.items.slice(0, 2).map((item) => ({
+      q: item.question.includes(cleanRegion) ? item.question : `[${cleanRegion}] ${item.question}`,
+      a: item.answer,
+    }))),
+  ];
+
+  return regionalFaqs.slice(0, 5).map((item) => ({
+    '@type': 'Question',
+    name: item.q,
+    acceptedAnswer: { '@type': 'Answer', text: item.a },
+  }));
+}
+
 export function buildRegionPageSeo(
   regionName: string,
   siteData: SiteData,
@@ -556,6 +771,9 @@ export function buildRegionPageSeo(
     metro.metroShort === '서울' ? 'KR-11' : metro.metroShort === '인천' ? 'KR-28' : 'KR-41';
   const routePath = getRoutePath({ type: 'region', regionName: cleanRegion });
   const routeHash = `#${routePath}`;
+  const origin = getSiteOrigin(siteData);
+  const canonicalPathOrUrl = origin ? `${origin}${routePath}` : routePath;
+  const homePathOrUrl = origin ? `${origin}/` : '/';
   const leadTime = detail?.leadTime || '당일·익일 무료 방문 견적';
 
   if (matchedService) {
@@ -602,15 +820,38 @@ export function buildRegionPageSeo(
       matchedService.detail.afterImage ||
       hero.afterImage ||
       '';
+    const images = collectServiceImageUrls(matchedService, siteData);
+    const localBusinessNode = buildRegionLocalBusinessNode({
+      canonicalUrl: canonicalPathOrUrl,
+      cleanRegion,
+      metro,
+      description,
+      images,
+      subDistricts,
+      popularComplexes,
+      leadTime,
+      notice: detail?.notice,
+      siteData,
+      matchedService,
+    });
+    const faqEntities = buildServiceFaqEntities(matchedService, siteData, {
+      cleanRegion,
+      subDistricts,
+      leadTime,
+    });
 
     const jsonLd: Record<string, unknown> = {
       '@context': 'https://schema.org',
       '@graph': [
+        localBusinessNode,
         {
           '@type': 'Service',
+          '@id': `${canonicalPathOrUrl}#service`,
           name: `${metro.displayRegion} ${matchedService.title}`,
           serviceType: matchedService.title,
           description,
+          url: canonicalPathOrUrl,
+          ...(images.length > 0 ? { image: images } : {}),
           areaServed: {
             '@type': 'AdministrativeArea',
             name: metro.displayRegion,
@@ -619,19 +860,28 @@ export function buildRegionPageSeo(
               : {}),
           },
           provider: {
-            '@type': 'HomeAndConstructionBusiness',
-            name: company.name,
-            telephone: company.phone,
-            priceRange: '₩₩',
+            '@id': `${canonicalPathOrUrl}#localbusiness`,
+          },
+          offers: {
+            '@type': 'Offer',
+            priceCurrency: 'KRW',
+            description: `${leadTime} · ${matchedService.detail.priceGuide}`,
+            availability: 'https://schema.org/InStock',
           },
         },
         {
           '@type': 'BreadcrumbList',
           itemListElement: [
-            { '@type': 'ListItem', position: 1, name: '홈', item: '/' },
-            { '@type': 'ListItem', position: 2, name: `${cleanRegion} ${matchedService.title}`, item: routePath },
+            { '@type': 'ListItem', position: 1, name: '홈', item: homePathOrUrl },
+            {
+              '@type': 'ListItem',
+              position: 2,
+              name: `${cleanRegion} ${matchedService.title}`,
+              item: canonicalPathOrUrl,
+            },
           ],
         },
+        ...(faqEntities.length > 0 ? [{ '@type': 'FAQPage', mainEntity: faqEntities }] : []),
       ],
     };
 
@@ -706,14 +956,49 @@ export function buildRegionPageSeo(
   );
 
   const ogImage = siteData.seo?.defaultOgImage?.trim() || hero.afterImage || '';
+  const regionImages = Array.from(
+    new Set(
+      [ogImage, hero.afterImage, services.items[0]?.detail.afterImage]
+        .map((u) => (u || '').trim())
+        .filter(Boolean)
+    )
+  ).map((u) => (origin ? toAbsoluteUrl(u, origin) : u));
+
+  const localBusinessNode = buildRegionLocalBusinessNode({
+    canonicalUrl: canonicalPathOrUrl,
+    cleanRegion,
+    metro,
+    description,
+    images: regionImages,
+    subDistricts,
+    popularComplexes,
+    leadTime,
+    notice: detail?.notice,
+    siteData,
+  });
+
+  const faqEntities = buildRegionFaqEntities({
+    cleanRegion,
+    metro,
+    subDistricts,
+    popularComplexes,
+    leadTime,
+    notice: detail?.notice,
+    siteData,
+  });
 
   const jsonLd: Record<string, unknown> = {
     '@context': 'https://schema.org',
     '@graph': [
+      localBusinessNode,
       {
         '@type': 'Service',
-        name: `${metro.displayRegion} 유리창청소 전문`,
+        '@id': `${canonicalPathOrUrl}#service`,
+        name: `${metro.displayRegion} 유리창청소·외창청소 전문`,
+        serviceType: '유리창청소·외벽청소 전문 시공',
         description,
+        url: canonicalPathOrUrl,
+        ...(regionImages.length > 0 ? { image: regionImages } : {}),
         areaServed: {
           '@type': 'AdministrativeArea',
           name: metro.displayRegion,
@@ -722,19 +1007,28 @@ export function buildRegionPageSeo(
             : {}),
         },
         provider: {
-          '@type': 'HomeAndConstructionBusiness',
-          name: company.name,
-          telephone: company.phone,
-          priceRange: '₩₩',
+          '@id': `${canonicalPathOrUrl}#localbusiness`,
+        },
+        offers: {
+          '@type': 'Offer',
+          priceCurrency: 'KRW',
+          description: `${leadTime} · 무료 방문 견적 · ${company.asPeriod}일 무상 A/S`,
+          availability: 'https://schema.org/InStock',
         },
       },
       {
         '@type': 'BreadcrumbList',
         itemListElement: [
-          { '@type': 'ListItem', position: 1, name: '홈', item: '/' },
-          { '@type': 'ListItem', position: 2, name: `${cleanRegion} 서비스 지역`, item: routePath },
+          { '@type': 'ListItem', position: 1, name: '홈', item: homePathOrUrl },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: `${cleanRegion} 서비스 지역`,
+            item: canonicalPathOrUrl,
+          },
         ],
       },
+      ...(faqEntities.length > 0 ? [{ '@type': 'FAQPage', mainEntity: faqEntities }] : []),
     ],
   };
 
@@ -815,13 +1109,26 @@ export function buildMatrixPageSeo(
     '';
   const routePath = getRoutePath({ type: 'matrix', regionName: cleanRegion, serviceId: service.id });
   const routeHash = `#${routePath}`;
-  const origin = siteData.siteUrl?.trim().replace(/\/+$/, '') || '';
+  const origin = getSiteOrigin(siteData);
   const canonicalPathOrUrl = origin ? `${origin}${routePath}` : routePath;
   const regionPathOrUrl = origin
     ? `${origin}${getRoutePath({ type: 'region', regionName: cleanRegion })}`
     : getRoutePath({ type: 'region', regionName: cleanRegion });
 
   const images = collectServiceImageUrls(service, siteData);
+  const localBusinessNode = buildRegionLocalBusinessNode({
+    canonicalUrl: canonicalPathOrUrl,
+    cleanRegion,
+    metro,
+    description,
+    images,
+    subDistricts,
+    popularComplexes,
+    leadTime,
+    notice: detail?.notice,
+    siteData,
+    matchedService: service,
+  });
   const faqEntities = buildServiceFaqEntities(service, siteData, {
     cleanRegion,
     subDistricts,
@@ -831,6 +1138,7 @@ export function buildMatrixPageSeo(
   const jsonLd: Record<string, unknown> = {
     '@context': 'https://schema.org',
     '@graph': [
+      localBusinessNode,
       {
         '@type': 'Service',
         '@id': `${canonicalPathOrUrl}#service`,
@@ -853,16 +1161,7 @@ export function buildMatrixPageSeo(
             : {}),
         },
         provider: {
-          '@type': 'HomeAndConstructionBusiness',
-          name: company.name,
-          telephone: company.phone,
-          priceRange: '₩₩',
-          address: {
-            '@type': 'PostalAddress',
-            streetAddress: company.address,
-            addressCountry: 'KR',
-          },
-          openingHours: company.operatingHours,
+          '@id': `${canonicalPathOrUrl}#localbusiness`,
         },
         hasOfferCatalog: {
           '@type': 'OfferCatalog',

@@ -3,7 +3,11 @@ import { GoogleGenAI, Type } from '@google/genai';
 import fs from 'node:fs/promises';
 import http from 'node:http';
 import path from 'node:path';
-import type { SiteData } from './src/types/clearworks.ts';
+import type { PageRoute, SiteData } from './src/types/clearworks.ts';
+import {
+  analyzePageSeoKeywords,
+  type SeoKeywordSuggestion,
+} from './src/utils/seoKeywordSuggester.ts';
 import {
   buildSitemapEntries,
   generateRobotsTxt,
@@ -37,10 +41,31 @@ const PORT =
       : 3000;
 const HOST = getCliArg('--host') || '0.0.0.0';
 
-interface SuggestedKeywordItem {
-  keyword: string;
-  intent: string;
-  reason: string;
+type SuggestedKeywordItem = SeoKeywordSuggestion;
+
+function parsePageKeyToRoute(pageKey: string): PageRoute {
+  if (pageKey === 'gallery_list') return { type: 'gallery_list' };
+  if (pageKey.startsWith('service:')) {
+    return { type: 'service', serviceId: pageKey.slice('service:'.length) };
+  }
+  if (pageKey.startsWith('region:')) {
+    return { type: 'region', regionName: pageKey.slice('region:'.length) };
+  }
+  if (pageKey.startsWith('matrix:')) {
+    const rest = pageKey.slice('matrix:'.length);
+    const lastColon = rest.lastIndexOf(':');
+    if (lastColon > 0) {
+      return {
+        type: 'matrix',
+        regionName: rest.slice(0, lastColon),
+        serviceId: rest.slice(lastColon + 1),
+      };
+    }
+  }
+  if (pageKey.startsWith('gallery_detail:')) {
+    return { type: 'gallery_detail', postId: pageKey.slice('gallery_detail:'.length) };
+  }
+  return { type: 'home' };
 }
 
 function getGeminiClient(): GoogleGenAI | null {
@@ -55,91 +80,6 @@ function getGeminiClient(): GoogleGenAI | null {
       },
     },
   });
-}
-
-function buildFallbackKeywordSuggestions(input: {
-  pageLabel: string;
-  title: string;
-  description: string;
-  companyName: string;
-  region: string;
-}): SuggestedKeywordItem[] {
-  const regionTokens = input.region
-    .split(/[·,\s/]+/)
-    .map((t) => t.trim())
-    .filter(Boolean);
-  const primaryRegion = regionTokens[0] || '서울';
-  const combined = `${input.pageLabel} ${input.title} ${input.description}`;
-
-  const pool: SuggestedKeywordItem[] = [
-    {
-      keyword: `${primaryRegion} 유리창청소`,
-      intent: '지역검색',
-      reason: '구글·네이버 지역 핵심 검색량 최상위 키워드',
-    },
-    {
-      keyword: '아파트 외창청소 비용',
-      intent: '롱테일·문의',
-      reason: '견적 문의 전환율이 높은 가격 탐색형 키워드',
-    },
-    {
-      keyword: '상가 통유리청소',
-      intent: '서비스핵심',
-      reason: '매장·카페·오피스 고정 수요 검색어',
-    },
-    {
-      keyword: '고층 외벽청소 업체',
-      intent: '서비스핵심',
-      reason: '빌딩·오피스텔 B2B 발주 담당자 검색어',
-    },
-    {
-      keyword: `${primaryRegion} 외벽청소`,
-      intent: '지역검색',
-      reason: '지역명 결합 시 네이버 지도·웹사이트 상위 노출 유리',
-    },
-    {
-      keyword: '창틀 찌든때 청소',
-      intent: '롱테일·문의',
-      reason: '미세먼지·물때 고민 고객의 세부 유입 키워드',
-    },
-    {
-      keyword: '유리 발수코팅 시공',
-      intent: '서비스핵심',
-      reason: '객단가 상승 및 추가 옵션 유입 키워드',
-    },
-    {
-      keyword: '유리창청소 무료견적',
-      intent: '롱테일·문의',
-      reason: '상담 신청 직전 단계 고객이 자주 검색하는 문구',
-    },
-    {
-      keyword: input.companyName || '클리어웍스',
-      intent: '브랜드·신뢰',
-      reason: '브랜드명 직접 검색 유입 및 상호 신뢰도 강화',
-    },
-    {
-      keyword: '어닝 간판 청소',
-      intent: '서비스핵심',
-      reason: '상가 점주의 연관 검색 유입 확보',
-    },
-  ];
-
-  if (combined.includes('썬팅') || combined.includes('스티커')) {
-    pool.unshift({
-      keyword: '유리창 썬팅 시트지 제거',
-      intent: '서비스핵심',
-      reason: '상가 원상복구·이전 시즌 검색 수요 집중 키워드',
-    });
-  }
-  if (combined.includes('입주') || combined.includes('이사')) {
-    pool.unshift({
-      keyword: '입주청소 외창 별도',
-      intent: '롱테일·문의',
-      reason: '입주·이사 고객의 추가 시공 검색어',
-    });
-  }
-
-  return pool.slice(0, 10);
 }
 
 function escapeHtmlAttr(str: string): string {
@@ -530,6 +470,8 @@ async function startServer() {
         existingKeywords = '',
         companyName = current.company.name,
         region = current.company.region,
+        corpusText = '',
+        regionServiceId = '',
       } = (req.body || {}) as {
         pageKey?: string;
         pageLabel?: string;
@@ -538,42 +480,48 @@ async function startServer() {
         existingKeywords?: string;
         companyName?: string;
         region?: string;
+        corpusText?: string;
+        regionServiceId?: string;
       };
+
+      const parsedRoute = parsePageKeyToRoute(pageKey);
+      const localAnalysis = analyzePageSeoKeywords(parsedRoute, current, {
+        regionServiceId: regionServiceId || undefined,
+      });
 
       const ai = getGeminiClient();
       if (!ai) {
         res.json({
           ok: true,
           source: 'smart-local',
-          suggestions: buildFallbackKeywordSuggestions({
-            pageLabel,
-            title,
-            description,
-            companyName,
-            region,
-          }),
+          suggestions: localAnalysis.allSuggestions,
         });
         return;
       }
 
+      const groundedCorpus = (corpusText || localAnalysis.corpusSummary).trim();
       const prompt = [
         '당신은 한국 시장(구글 SEO & 네이버 검색 최적화) 전문 디지털 마케터입니다.',
-        '아래 웹페이지의 제목, 설명, 업체 정보를 분석하여 검색 노출 경쟁력과 문의 전환율을 높일 수 있는 추천 키워드 10개를 제안해 주세요.',
+        '아래 웹페이지의 실제 본문 텍스트 데이터를 정밀 분석하여, 구글과 네이버에서 실질적인 검색 트래픽과 견적 문의를 유도할 수 있는 [연관 검색어] 6개와 [롱테일 키워드] 6개(총 12개)를 제안해 주세요.',
         '',
         `- 페이지 식별자: ${pageKey}`,
         `- 페이지 구분: ${pageLabel}`,
         `- 업체명: ${companyName}`,
-        `- 서비스 지역: ${region}`,
+        `- 서비스 권역: ${region}`,
         `- 현재 페이지 제목: ${title}`,
         `- 현재 메타 설명: ${description}`,
         `- 기존 키워드: ${existingKeywords || '없음'}`,
         '',
+        '[페이지 실제 활용 본문 텍스트 데이터]',
+        groundedCorpus,
+        '',
         '규칙:',
-        '1. 한국어 실제 검색어(구글·네이버 사용자 검색 의도 반영)로 작성하세요.',
-        '2. 2~5단어 이내의 간결한 키워드만 제안하세요.',
-        '3. intent는 반드시 "지역검색", "서비스핵심", "롱테일·문의", "브랜드·신뢰" 중 하나를 사용하세요.',
-        '4. reason은 왜 이 키워드가 구글·네이버에서 경쟁력이 있는지 1문장으로 설명하세요.',
-        '5. 중복되지 않는 10개를 반환하세요.',
+        '1. 반드시 위 본문 텍스트에 등장하는 세부 동명, 아파트/상권명, 시공 범위, 사용 장비, 견적 기준, FAQ 내용을 근거로 키워드를 도출하세요.',
+        '2. group은 반드시 "related"(핵심 연관 검색어 2~3단어) 6개, "longtail"(전환율이 높은 구체적 롱테일 검색어 3~6단어) 6개로 균형 있게 구성하세요.',
+        '3. intent는 "연관검색어", "지역검색", "서비스핵심", "롱테일·문의", "브랜드·신뢰" 중 하나를 사용하세요.',
+        '4. sourceLabel에는 근거가 된 본문 항목명을 짧게 적으세요 (예: "시공 범위", "장비·공법", "세부 동명", "주요 상권", "예상 견적", "FAQ").',
+        '5. reason은 왜 이 키워드가 구글·네이버에서 트래픽과 문의 전환에 유리한지 1문장으로 설명하세요.',
+        '6. 중복되지 않는 12개를 반환하세요.',
       ].join('\n');
 
       const requestConfig = {
@@ -587,9 +535,17 @@ async function startServer() {
                 type: Type.OBJECT,
                 properties: {
                   keyword: { type: Type.STRING, description: '추천 SEO 키워드' },
+                  group: {
+                    type: Type.STRING,
+                    description: '키워드 구분 ("related" 또는 "longtail")',
+                  },
                   intent: {
                     type: Type.STRING,
-                    description: '검색 의도 (지역검색, 서비스핵심, 롱테일·문의, 브랜드·신뢰 중 택1)',
+                    description: '검색 의도 (연관검색어, 지역검색, 서비스핵심, 롱테일·문의, 브랜드·신뢰 중 택1)',
+                  },
+                  sourceLabel: {
+                    type: Type.STRING,
+                    description: '추출 근거가 된 본문 항목명',
                   },
                   reason: {
                     type: Type.STRING,
@@ -633,22 +589,20 @@ async function startServer() {
       const cleaned = Array.isArray(parsed.suggestions)
         ? parsed.suggestions
             .filter((item) => item && typeof item.keyword === 'string' && item.keyword.trim())
-            .slice(0, 12)
+            .map((item) => ({
+              keyword: item.keyword.trim(),
+              group: (item.group === 'longtail' ? 'longtail' : 'related') as 'related' | 'longtail',
+              intent: item.intent || (item.group === 'longtail' ? '롱테일·문의' : '연관검색어'),
+              sourceLabel: item.sourceLabel || 'AI 본문분석',
+              reason: item.reason || '본문 텍스트 기반으로 도출된 검색 유입 키워드입니다.',
+            }))
+            .slice(0, 14)
         : [];
 
       res.json({
         ok: true,
         source: 'gemini',
-        suggestions:
-          cleaned.length > 0
-            ? cleaned
-            : buildFallbackKeywordSuggestions({
-                pageLabel,
-                title,
-                description,
-                companyName,
-                region,
-              }),
+        suggestions: cleaned.length > 0 ? cleaned : localAnalysis.allSuggestions,
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : '키워드 추천 중 오류가 발생했습니다.';
