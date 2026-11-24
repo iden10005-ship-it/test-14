@@ -3,9 +3,9 @@ import type {
   RegionDetail,
   ServiceItem,
   SiteData,
-} from '@/src/types/clearworks';
-import { getFeaturedPostsForRegion } from '@/src/utils/galleryRegions';
-import { getServiceSeoStems, inferMetroPrefix } from '@/src/utils/seo';
+} from '../types/clearworks.ts';
+import { getFeaturedPostsForRegion } from './galleryRegions.ts';
+import { getServiceSeoStems, inferMetroPrefix } from './seo.ts';
 
 export type KeywordGroupType = 'related' | 'longtail';
 

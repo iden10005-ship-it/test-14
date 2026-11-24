@@ -1,4 +1,4 @@
-import type { GalleryBlock, GalleryPost } from '@/src/types/clearworks';
+import type { GalleryBlock, GalleryPost } from '../types/clearworks.ts';
 
 /**
  * Converts a GalleryPost into an ordered array of blog blocks (headings, paragraphs, images).

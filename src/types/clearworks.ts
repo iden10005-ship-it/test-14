@@ -29,6 +29,7 @@ export interface HeroData {
   title: string;
   subtitle: string;
   callButtonText: string;
+  smsButtonText?: string;
   kakaoButtonText: string;
   beforeAfterNotice: string;
   beforeImage: string;
@@ -130,12 +131,29 @@ export interface PricingRow {
   highlight?: boolean;
 }
 
+export type ReviewPlatform = 'kakao' | 'soomgo' | 'daangn';
+
+export interface ReviewChatMessage {
+  sender: 'customer' | 'company';
+  text: string;
+  time?: string;
+}
+
 export interface ReviewItem {
   id: string;
   content: string;
   author: string;
   rating: number;
   tag?: string;
+  subTag?: string;
+  highlights?: string[];
+  platform?: ReviewPlatform;
+  region?: string;
+  date?: string;
+  contactPhone?: string;
+  photos?: string[];
+  chatMessages?: ReviewChatMessage[];
+  serviceCategory?: string;
 }
 
 export interface FaqItem {

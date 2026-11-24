@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   Image as ImageIcon,
   MessageCircle,
+  MessageSquare,
   Phone,
   ShieldCheck,
   Star,
@@ -38,6 +39,7 @@ export const Hero: React.FC<HeroProps> = ({
 
   const rawBgUrl = hero.afterImage || CLEARWORKS_IMAGES.afterHero;
   const resolvedBgUrl = resolveAssetUrl(rawBgUrl);
+  const smsDigits = company.phone.replace(/[^0-9]/g, '');
 
   useEffect(() => {
     setBgFailed(false);
@@ -78,7 +80,7 @@ export const Hero: React.FC<HeroProps> = ({
 
         {/* Hero Copy & CTA Overlay */}
         <div className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 py-16 sm:py-20 md:py-24">
-          <div className="max-w-2xl">
+          <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-500/25 backdrop-blur-md text-sky-100 text-xs font-semibold mb-4 sm:mb-5 border border-sky-300/30 shadow-xs">
               <EditableText
                 value={hero.badgeText}
@@ -88,7 +90,7 @@ export const Hero: React.FC<HeroProps> = ({
               />
             </div>
 
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight leading-[1.18] mb-4 sm:mb-5 whitespace-pre-line drop-shadow-sm">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight leading-[1.18] mb-4 sm:mb-5 whitespace-pre-line drop-shadow-sm max-w-2xl">
               <EditableText
                 value={hero.title}
                 onSave={(v) => onUpdateHero('title', v)}
@@ -109,12 +111,12 @@ export const Hero: React.FC<HeroProps> = ({
               />
             </p>
 
-            <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3">
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2.5 sm:gap-3">
               <a
                 href={`tel:${company.phone}`}
-                className="px-6 sm:px-7 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-slate-950/40 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150 whitespace-nowrap"
+                className="px-4 sm:px-5 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm sm:text-base flex items-center justify-center gap-1.5 sm:gap-2 shadow-lg shadow-slate-950/40 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150 whitespace-nowrap"
               >
-                <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
+                <Phone className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
                 <EditableText
                   value={hero.callButtonText}
                   onSave={(v) => onUpdateHero('callButtonText', v)}
@@ -124,12 +126,25 @@ export const Hero: React.FC<HeroProps> = ({
               </a>
 
               <a
+                href={`sms:${smsDigits}`}
+                className="px-4 sm:px-5 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm sm:text-base flex items-center justify-center gap-1.5 sm:gap-2 shadow-lg shadow-slate-950/40 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150 whitespace-nowrap"
+              >
+                <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 text-emerald-100" />
+                <EditableText
+                  value={hero.smsButtonText || '문자 상담하기'}
+                  onSave={(v) => onUpdateHero('smsButtonText', v)}
+                  isEditMode={isEditMode}
+                  label="문자 버튼 문구 수정"
+                />
+              </a>
+
+              <a
                 href={company.kakaoLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-6 sm:px-7 py-3.5 rounded-xl bg-[#FEE500] hover:bg-[#FADA0A] text-[#3c1e1e] font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-slate-950/30 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150 whitespace-nowrap"
+                className="px-4 sm:px-5 py-3.5 rounded-xl bg-[#FEE500] hover:bg-[#FADA0A] text-[#3c1e1e] font-bold text-sm sm:text-base flex items-center justify-center gap-1.5 sm:gap-2 shadow-lg shadow-slate-950/30 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150 whitespace-nowrap"
               >
-                <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
+                <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 fill-current shrink-0" />
                 <EditableText
                   value={hero.kakaoButtonText}
                   onSave={(v) => onUpdateHero('kakaoButtonText', v)}
@@ -141,7 +156,7 @@ export const Hero: React.FC<HeroProps> = ({
               <button
                 type="button"
                 onClick={onScrollToContact}
-                className="px-6 py-3.5 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-md text-white font-semibold text-sm sm:text-base border border-white/35 transition-all cursor-pointer whitespace-nowrap"
+                className="px-4 sm:px-5 py-3.5 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-md text-white font-semibold text-sm sm:text-base border border-white/35 transition-all cursor-pointer whitespace-nowrap flex items-center justify-center"
               >
                 빠른 온라인 견적
               </button>

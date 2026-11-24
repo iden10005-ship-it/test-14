@@ -1,4 +1,4 @@
-import type { GalleryPost } from '@/src/types/clearworks';
+import type { GalleryPost } from '../types/clearworks.ts';
 
 export const DEFAULT_GALLERY_REGIONS: string[] = [
   '강남구',

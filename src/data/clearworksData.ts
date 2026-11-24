@@ -1,6 +1,6 @@
-import defaultSiteContent from '@/src/data/defaultSiteContent.json';
-import siteContent from '@/src/data/siteContent.json';
-import type { SiteData } from '@/src/types/clearworks';
+import defaultSiteContent from './defaultSiteContent.json' with { type: 'json' };
+import siteContent from './siteContent.json' with { type: 'json' };
+import type { SiteData } from '../types/clearworks.ts';
 
 export const CLEARWORKS_IMAGES = {
   beforeHero: '/images/hero_before.jpg',

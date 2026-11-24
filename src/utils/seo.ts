@@ -1,12 +1,12 @@
-import { INITIAL_SITE_DATA } from '@/src/data/clearworksData';
+import { INITIAL_SITE_DATA } from '../data/clearworksData.ts';
 import type {
   PageRoute,
   PageSeoMeta,
   RegionDetail,
   ServiceItem,
   SiteData,
-} from '@/src/types/clearworks';
-import { generateNaverSeoFromPost, parseSeoKeywords } from '@/src/utils/naverSeoGenerator';
+} from '../types/clearworks.ts';
+import { generateNaverSeoFromPost, parseSeoKeywords } from './naverSeoGenerator.ts';
 
 export const DEFAULT_HOME_KEYWORDS =
   '유리창청소, 아파트외창청소, 외벽청소, 상가유리창청소, 빌딩외벽청소, 고층유리창청소, 서울유리창청소, 경기유리창청소, 인천유리창청소, 창틀청소, 유리발수코팅, 어닝청소, 클리어웍스, 서울 건물 외벽청소 업체, 수도권 상가 유리창청소, 경기 아파트 외창청소 업체, 빌딩 외벽 고압세척, 상가 간판 어닝청소, 매장 유리 시트지 제거, 아파트 외창청소 비용 견적, 상가 유리창 정기청소 비용, 건물 외벽청소 견적 문의, 클리어웍스 유리창청소 후기';

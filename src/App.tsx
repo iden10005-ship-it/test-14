@@ -37,6 +37,7 @@ import type {
   InquiryPayload,
   PageRoute,
   RegionDetail,
+  ReviewItem,
   ServiceItem,
   SiteData,
 } from '@/src/types/clearworks';
@@ -819,6 +820,16 @@ export default function App() {
     }));
   };
 
+  const saveFullReview = (updated: ReviewItem) => {
+    updateSiteData((prev) => ({
+      ...prev,
+      reviews: {
+        ...prev.reviews,
+        items: prev.reviews.items.map((r) => (r.id === updated.id ? updated : r)),
+      },
+    }));
+  };
+
   const addReview = () => {
     updateSiteData((prev) => ({
       ...prev,
@@ -828,8 +839,12 @@ export default function App() {
           ...prev.reviews.items,
           {
             id: `rev-${Date.now()}`,
+            platform: 'soomgo',
             content: '시공이 꼼꼼하고 유리창이 새것처럼 투명해져서 매우 만족합니다.',
-            author: '서울시 고객님',
+            author: '김민준',
+            contactPhone: '010-4920-1837',
+            region: '서울 강남구',
+            date: '2026.05',
             rating: 5,
             tag: '유리창 청소',
           },
@@ -1100,6 +1115,7 @@ export default function App() {
                 }))
               }
               onUpdateReview={updateReview}
+              onSaveReview={saveFullReview}
               onAddReview={addReview}
               onDeleteReview={deleteReview}
             />

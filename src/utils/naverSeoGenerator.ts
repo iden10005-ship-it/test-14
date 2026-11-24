@@ -1,4 +1,4 @@
-import type { GalleryBlock, GalleryPost } from '@/src/types/clearworks';
+import type { GalleryBlock, GalleryPost } from '../types/clearworks.ts';
 
 export interface NaverSeoAnalysisInput {
   title: string;

@@ -517,7 +517,9 @@ function renderHomeSection(siteData: SiteData): string {
         <p class="text-sm sm:text-base text-slate-300 leading-relaxed">${escapeHtml(hero.subtitle).replace(/\n/g, '<br />')}</p>
         <div class="flex flex-wrap gap-3 pt-2 text-sm font-bold">
           <a href="tel:${escapeAttr(company.phone)}" class="px-5 py-3 rounded-xl bg-blue-600 text-white">${escapeHtml(hero.callButtonText)} (${escapeHtml(company.phone)})</a>
-          <a href="#service" class="px-5 py-3 rounded-xl bg-white/10 text-white">서비스 안내</a>
+          <a href="sms:${escapeAttr(company.phone.replace(/[^0-9]/g, ''))}" class="px-5 py-3 rounded-xl bg-emerald-600 text-white">${escapeHtml(hero.smsButtonText || '문자 상담하기')}</a>
+          <a href="${escapeAttr(company.kakaoLink)}" class="px-5 py-3 rounded-xl bg-[#FEE500] text-[#3c1e1e]">${escapeHtml(hero.kakaoButtonText)}</a>
+          <a href="#service" class="px-5 py-3 rounded-xl bg-white/10 text-white">빠른 온라인 견적</a>
         </div>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-6">
           ${hero.stats
@@ -612,11 +614,14 @@ function renderHomeSection(siteData: SiteData): string {
       <h2 class="text-2xl font-extrabold text-slate-900">${escapeHtml(reviews.sectionTitle)}</h2>
       <ul class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-slate-700">
         ${reviews.items
-          .slice(0, 6)
-          .map(
-            (rv) =>
-              `<li class="p-4 rounded-xl bg-slate-50 border border-slate-200">"${escapeHtml(rv.content)}" — ${escapeHtml(rv.author)}</li>`
-          )
+          .slice(0, 8)
+          .map((rv) => {
+            const rawAuthor = (rv.author || '고객').trim();
+            const maskedAuthor =
+              rawAuthor.length >= 2 ? `${rawAuthor.slice(0, 1)}**` : rawAuthor;
+            const label = [maskedAuthor, rv.region].filter(Boolean).join(' · ');
+            return `<li class="p-4 rounded-xl bg-slate-50 border border-slate-200">"${escapeHtml(rv.content)}" — ${escapeHtml(label)}</li>`;
+          })
           .join('')}
       </ul>
     </section>
