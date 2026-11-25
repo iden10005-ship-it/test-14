@@ -1,7 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { PageRoute, SiteData } from '../src/types/clearworks.ts';
-import { buildPrerenderBodyHtml } from '../src/utils/prerenderHtml.ts';
 import { parseSeoKeywords } from '../src/utils/naverSeoGenerator.ts';
 import { resolveSeoForRoute } from '../src/utils/seo.ts';
 import { normalizeBaseUrl } from '../src/utils/sitemap.ts';
@@ -116,12 +115,6 @@ function injectPageSeoHtml(
     .join('\n    ');
 
   html = html.replace('</head>', `    ${extraHeadTags}\n  </head>`);
-
-  const prerenderHtml = buildPrerenderBodyHtml(route, siteData, meta);
-  html = html.replace(
-    /<div\s+id="root">\s*<\/div>/,
-    `<div id="root">\n${prerenderHtml}\n    </div>`
-  );
 
   return html;
 }

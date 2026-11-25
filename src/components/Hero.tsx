@@ -61,6 +61,8 @@ export const Hero: React.FC<HeroProps> = ({
             src={resolvedBgUrl}
             alt="클리어웍스 서울·수도권 유리창청소 전경"
             referrerPolicy="no-referrer"
+            fetchPriority="high"
+            decoding="sync"
             onError={() => setBgFailed(true)}
             className="absolute inset-0 w-full h-full object-cover object-center scale-[1.01]"
           />

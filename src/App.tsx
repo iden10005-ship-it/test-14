@@ -56,7 +56,8 @@ import {
   WORKLOG_PROMPT_STORAGE_KEY,
 } from '@/src/utils/worklogPromptTemplate';
 
-const SITE_DATA_STORAGE_KEY = 'clearworks_site_data_v1';
+const LEGACY_SITE_DATA_STORAGE_KEY = 'clearworks_site_data_v1';
+const SITE_DATA_STORAGE_KEY = 'clearworks_site_data_v2';
 const INQUIRIES_STORAGE_KEY = 'clearworks_inquiries_v1';
 const ADMIN_SESSION_KEY = 'clearworks_admin_session_v1';
 const ADMIN_PIN_SESSION_KEY = 'clearworks_admin_pin_v1';
@@ -77,8 +78,28 @@ function parseTimeMs(iso?: string): number {
   return Number.isFinite(t) ? t : 0;
 }
 
+function clearLegacyStoredSiteData(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem(LEGACY_SITE_DATA_STORAGE_KEY);
+  } catch {
+    // Ignore storage access errors
+  }
+}
+
+function clearLocalSiteData(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem(SITE_DATA_STORAGE_KEY);
+    localStorage.removeItem(LEGACY_SITE_DATA_STORAGE_KEY);
+  } catch {
+    // Ignore storage access errors
+  }
+}
+
 function readStoredSiteData(): SiteData | null {
   if (typeof window === 'undefined') return null;
+  clearLegacyStoredSiteData();
   try {
     const raw = localStorage.getItem(SITE_DATA_STORAGE_KEY);
     if (!raw) return null;
@@ -97,6 +118,7 @@ function readStoredSiteData(): SiteData | null {
 
 function persistLocalSiteData(data: SiteData): void {
   if (typeof window === 'undefined') return;
+  clearLegacyStoredSiteData();
   try {
     localStorage.setItem(SITE_DATA_STORAGE_KEY, JSON.stringify(data));
   } catch {
@@ -109,9 +131,10 @@ function loadInitialSiteData(): SiteData {
   if (!stored) return INITIAL_SITE_DATA;
   const storedTime = parseTimeMs(stored.updatedAt);
   const initTime = parseTimeMs(INITIAL_SITE_DATA.updatedAt);
-  if (storedTime > 0 && storedTime >= initTime) {
+  if (storedTime > 0 && storedTime > initTime) {
     return stored;
   }
+  clearLocalSiteData();
   return INITIAL_SITE_DATA;
 }
 
@@ -244,6 +267,7 @@ export default function App() {
                     verifiedPinRef.current = localData.adminPin;
                     sessionStorage.setItem(ADMIN_PIN_SESSION_KEY, localData.adminPin);
                     hasPendingDiskSyncRef.current = false;
+                    clearLocalSiteData();
                     setCodeSyncStatus('saved');
                   } else if (active) {
                     verifiedPinRef.current = diskData.adminPin;
@@ -262,9 +286,11 @@ export default function App() {
             } else {
               hasUserEditedRef.current = false;
               hasPendingDiskSyncRef.current = false;
-              latestSiteDataRef.current = diskData;
-              setSiteData(diskData);
-              persistLocalSiteData(diskData);
+              clearLocalSiteData();
+              if (JSON.stringify(diskData) !== JSON.stringify(latestSiteDataRef.current)) {
+                latestSiteDataRef.current = diskData;
+                setSiteData(diskData);
+              }
               setCodeSyncStatus('saved');
 
               const storedPin = sessionStorage.getItem(ADMIN_PIN_SESSION_KEY);
@@ -338,6 +364,7 @@ export default function App() {
         verifiedPinRef.current = dataToSave.adminPin;
         hasPendingDiskSyncRef.current = false;
         hasUserEditedRef.current = false;
+        clearLocalSiteData();
         try {
           sessionStorage.setItem(ADMIN_PIN_SESSION_KEY, dataToSave.adminPin);
         } catch {
