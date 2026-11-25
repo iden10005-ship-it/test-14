@@ -9,6 +9,7 @@ interface EditableTextProps {
   multiline?: boolean;
   className?: string;
   as?: 'span' | 'div';
+  displayNode?: React.ReactNode;
 }
 
 export const EditableText: React.FC<EditableTextProps> = ({
@@ -19,6 +20,7 @@ export const EditableText: React.FC<EditableTextProps> = ({
   multiline = false,
   className = '',
   as = 'span',
+  displayNode,
 }) => {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -46,7 +48,7 @@ export const EditableText: React.FC<EditableTextProps> = ({
 
   if (!isEditMode) {
     const Tag = as;
-    return <Tag className={`${preserveNewlinesClass} ${className}`.trim()}>{value}</Tag>;
+    return <Tag className={`${preserveNewlinesClass} ${className}`.trim()}>{displayNode ?? value}</Tag>;
   }
 
   if (editing) {
@@ -186,7 +188,7 @@ export const EditableText: React.FC<EditableTextProps> = ({
       }}
       className={`${preserveNewlinesClass} ${className} relative group/edit cursor-pointer rounded-md outline-1 outline-dashed outline-blue-400/70 hover:outline-2 hover:outline-blue-600 hover:bg-blue-50/30 transition-all px-1 -mx-1`.trim()}
     >
-      {value || '(비어 있음)'}
+      {displayNode ?? (value || '(비어 있음)')}
       <span className="inline-flex items-center justify-center w-4 h-4 ml-1 rounded bg-blue-600 text-white align-middle opacity-80 group-hover/edit:opacity-100">
         <Pencil className="w-2.5 h-2.5" />
       </span>

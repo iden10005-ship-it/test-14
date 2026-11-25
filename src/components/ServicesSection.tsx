@@ -164,17 +164,40 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
                     )}
                   </div>
 
-                  <div className="p-3 sm:p-6 pb-0">
-                    <div className="flex items-center gap-1.5 sm:gap-2.5 mb-1.5 sm:mb-2.5">
-                      <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-blue-50 group-hover:bg-blue-600 flex items-center justify-center transition-colors shrink-0">
+                  <div className="px-2.5 pt-3 sm:p-6 sm:pb-0">
+                    <div className="flex items-start sm:items-center gap-1.5 sm:gap-2.5 mb-1.5 sm:mb-2.5">
+                      <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-blue-50 group-hover:bg-blue-600 flex items-center justify-center transition-colors shrink-0 mt-0.5 sm:mt-0">
                         {ICON_MAP[service.iconName]}
                       </div>
-                      <h3 className="text-[13.5px] sm:text-xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors leading-snug line-clamp-1 sm:line-clamp-none">
+                      <h3 className="min-w-0 flex-1 text-[12px] sm:text-xl font-bold tracking-tight sm:tracking-normal text-slate-900 group-hover:text-blue-600 transition-colors leading-snug break-keep">
                         <EditableText
                           value={service.title}
                           onSave={(v) => onUpdateService(service.id, 'title', v)}
                           isEditMode={isEditMode}
                           label="서비스 제목 수정"
+                          displayNode={
+                            service.id === 'srv-1' &&
+                            service.title === '아파트창문청소·외창청소' ? (
+                              <>
+                                <span className="sm:hidden">
+                                  아파트창문청소·외창
+                                  <br />
+                                  유리창청소
+                                </span>
+                                <span className="hidden sm:inline">{service.title}</span>
+                              </>
+                            ) : service.id === 'srv-2' &&
+                              service.title === '매장·사무실 유리창청소' ? (
+                              <>
+                                <span className="sm:hidden">
+                                  매장·사무실
+                                  <br />
+                                  유리창청소
+                                </span>
+                                <span className="hidden sm:inline">{service.title}</span>
+                              </>
+                            ) : undefined
+                          }
                         />
                       </h3>
                     </div>
@@ -191,7 +214,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
                   </div>
                 </div>
 
-                <div className="px-3 sm:px-6 pb-3 sm:pb-6 mt-3 sm:mt-5 pt-2.5 sm:pt-4 border-t border-slate-100 flex items-center justify-between">
+                <div className="px-2.5 sm:px-6 pb-3 sm:pb-6 mt-3 sm:mt-5 pt-2.5 sm:pt-4 border-t border-slate-100 flex items-center justify-between">
                   <a
                     href={getRoutePath({ type: 'service', serviceId: service.id })}
                     onClick={(e) => {
