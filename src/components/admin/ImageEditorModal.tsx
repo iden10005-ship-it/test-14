@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Image as ImageIcon, RotateCcw, Upload, X } from 'lucide-react';
+import { SmoothImage } from '@/src/components/SmoothImage';
 import {
   ENHANCEMENT_MODE_OPTIONS,
   formatBytes,
@@ -205,9 +206,11 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
           {/* Preview */}
           <div className="h-56 rounded-2xl bg-slate-100/90 border border-slate-200 overflow-hidden flex items-center justify-center">
             {urlInput ? (
-              <img
+              <SmoothImage
                 src={urlInput}
                 alt="미리보기"
+                wrapperClassName="relative w-full h-full overflow-hidden"
+                skeletonTone="light"
                 className={
                   target.optimizationTarget
                     ? 'w-full h-full object-contain'

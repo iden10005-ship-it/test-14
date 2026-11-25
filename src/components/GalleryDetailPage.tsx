@@ -12,6 +12,7 @@ import {
   User,
   Wrench,
 } from 'lucide-react';
+import { SmoothImage } from '@/src/components/SmoothImage';
 import { EditableText } from '@/src/components/admin/EditableText';
 import { GalleryPostModal } from '@/src/components/admin/GalleryPostModal';
 import type { ImageEditTarget } from '@/src/components/admin/ImageEditorModal';
@@ -265,10 +266,12 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
           {/* Featured Cover Photo */}
           {heroCover && (
             <div className="relative bg-slate-100/80 border-b border-slate-100">
-              <img
+              <SmoothImage
                 src={resolveAssetUrl(heroCover)}
                 alt={post.title}
-                referrerPolicy="no-referrer"
+                wrapperClassName="relative w-full overflow-hidden"
+                minSkeletonHeightClass="min-h-[240px] sm:min-h-[340px]"
+                skeletonTone="light"
                 className="w-full max-h-[600px] object-contain mx-auto"
               />
               {isEditMode && (
@@ -339,11 +342,13 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
                   className="my-2 rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 shadow-sm relative"
                 >
                   <div className="relative bg-slate-100/70">
-                    <img
+                    <SmoothImage
                       src={resolveAssetUrl(block.url)}
                       alt={block.caption || `${post.title} 시공 사진`}
-                      referrerPolicy="no-referrer"
                       loading="lazy"
+                      wrapperClassName="relative w-full overflow-hidden"
+                      minSkeletonHeightClass="min-h-[220px] sm:min-h-[320px]"
+                      skeletonTone="light"
                       className="w-full max-h-[680px] object-contain mx-auto"
                     />
                     {isEditMode && (
@@ -546,10 +551,12 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
                 >
                   <div>
                     <div className="aspect-[16/10] bg-slate-900 overflow-hidden">
-                      <img
+                      <SmoothImage
                         src={resolveAssetUrl(getPostCoverImage(rel))}
                         alt={rel.title}
-                        referrerPolicy="no-referrer"
+                        loading="lazy"
+                        wrapperClassName="w-full h-full overflow-hidden"
+                        skeletonTone="dark"
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                     </div>

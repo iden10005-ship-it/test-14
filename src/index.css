@@ -33,6 +33,49 @@
   display: none;
 }
 
+@keyframes cwSkeletonShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.cw-skeleton {
+  background: linear-gradient(
+    90deg,
+    rgb(226 232 240 / 0.85) 25%,
+    rgb(241 245 249 / 0.95) 50%,
+    rgb(226 232 240 / 0.85) 75%
+  );
+  background-size: 200% 100%;
+  animation: cwSkeletonShimmer 1.5s ease-in-out infinite;
+}
+
+.cw-skeleton-dark {
+  background: linear-gradient(
+    90deg,
+    rgb(15 23 42 / 0.95) 25%,
+    rgb(30 41 59 / 0.95) 50%,
+    rgb(15 23 42 / 0.95) 75%
+  );
+  background-size: 200% 100%;
+  animation: cwSkeletonShimmer 1.5s ease-in-out infinite;
+}
+
+.cw-img-fade {
+  opacity: 0;
+  transition:
+    opacity 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 500ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity;
+}
+
+.cw-img-fade.cw-img-loaded {
+  opacity: 1;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

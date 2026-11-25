@@ -18,6 +18,7 @@ import {
   Upload,
   X,
 } from 'lucide-react';
+import { SmoothImage } from '@/src/components/SmoothImage';
 import { CLEARWORKS_IMAGES } from '@/src/data/clearworksData';
 import type { GalleryBlock, GalleryPost, SiteData } from '@/src/types/clearworks';
 import { resolveAssetUrl } from '@/src/utils/assetUrl';
@@ -729,10 +730,12 @@ export const GalleryPostModal: React.FC<GalleryPostModalProps> = ({
                   />
                 </label>
               </div>
-              <img
+              <SmoothImage
                 src={resolveAssetUrl(coverImage)}
                 alt="대표 썸네일"
-                className="w-full h-24 object-cover rounded-xl bg-slate-200"
+                wrapperClassName="relative w-full h-24 rounded-xl overflow-hidden bg-slate-200"
+                skeletonTone="light"
+                className="w-full h-full object-cover"
               />
               {coverOptimizationNote && (
                 <p className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-2 py-1 truncate">
@@ -924,9 +927,12 @@ export const GalleryPostModal: React.FC<GalleryPostModalProps> = ({
                   {block.type === 'image' && (
                     <div className="space-y-2">
                       <div className="relative rounded-xl overflow-hidden bg-slate-100/80 border border-slate-200">
-                        <img
+                        <SmoothImage
                           src={resolveAssetUrl(block.url)}
                           alt={block.caption || '현장 사진'}
+                          wrapperClassName="relative w-full overflow-hidden"
+                          minSkeletonHeightClass="min-h-[160px]"
+                          skeletonTone="light"
                           className="w-full max-h-72 object-contain mx-auto"
                         />
                         <label className="absolute bottom-2 right-2 px-2.5 py-1.5 rounded-lg bg-slate-900/85 hover:bg-blue-600 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shadow-md">

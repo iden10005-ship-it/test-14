@@ -28,6 +28,7 @@ import {
   Upload,
   X,
 } from 'lucide-react';
+import { SmoothImage } from '@/src/components/SmoothImage';
 import type { PageRoute, PageSeoMeta, SeoSettings, SiteData } from '@/src/types/clearworks';
 import { resolveAssetUrl } from '@/src/utils/assetUrl';
 import {
@@ -3347,9 +3348,11 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
                       <div className="rounded-2xl overflow-hidden bg-white shadow-sm border border-black/5">
                         <div className="aspect-[1.91/1] bg-slate-100 relative overflow-hidden">
                           {resolvedOgImage ? (
-                            <img
+                            <SmoothImage
                               src={resolveAssetUrl(resolvedOgImage)}
                               alt="카카오톡 링크 미리보기 이미지"
+                              wrapperClassName="relative w-full h-full overflow-hidden"
+                              skeletonTone="light"
                               className="w-full h-full object-cover"
                             />
                           ) : (

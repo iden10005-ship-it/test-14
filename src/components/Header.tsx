@@ -280,7 +280,7 @@ export const Header: React.FC<HeaderProps> = ({
                 aria-expanded={serviceDropdownOpen}
                 className={`${getDesktopNavClass(isServiceActive)} flex items-center gap-1`}
               >
-                <span>서비스</span>
+                <span>서비스목록</span>
                 <ChevronDown
                   className={`w-4 h-4 transition-colors ${
                     isServiceActive ? 'text-blue-600' : 'text-slate-400'

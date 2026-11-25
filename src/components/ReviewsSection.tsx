@@ -13,6 +13,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
+import { SmoothImage } from '@/src/components/SmoothImage';
 import { EditableText } from '@/src/components/admin/EditableText';
 import type {
   ReviewChatMessage,
@@ -123,32 +124,23 @@ const ReviewImageThumb: React.FC<{
   className?: string;
   eager?: boolean;
 }> = ({ src, alt, className = '', eager = false }) => {
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    setFailed(false);
-  }, [src]);
-
-  if (failed || !src) {
-    return (
-      <div
-        className={`flex flex-col items-center justify-center bg-slate-100 text-slate-400 border border-slate-200 ${className}`}
-      >
-        <Camera className="w-5 h-5 mb-1" />
-        <span className="text-[11px] font-medium">현장 사진</span>
-      </div>
-    );
-  }
-
   return (
-    <img
+    <SmoothImage
       src={src}
       alt={alt}
-      referrerPolicy="no-referrer"
       loading={eager ? 'eager' : 'lazy'}
       decoding="async"
-      onError={() => setFailed(true)}
+      wrapperClassName="relative w-full h-full overflow-hidden"
+      skeletonTone="light"
       className={className}
+      fallback={
+        <div
+          className={`flex flex-col items-center justify-center bg-slate-100 text-slate-400 border border-slate-200 ${className}`}
+        >
+          <Camera className="w-5 h-5 mb-1" />
+          <span className="text-[11px] font-medium">현장 사진</span>
+        </div>
+      }
     />
   );
 };
@@ -1981,10 +1973,12 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
               </button>
             )}
 
-            <img
+            <SmoothImage
               src={photoLightbox.photos[photoLightbox.index]}
               alt={photoLightbox.title}
-              referrerPolicy="no-referrer"
+              wrapperClassName="relative flex items-center justify-center max-w-full max-h-[78dvh] overflow-hidden rounded-xl"
+              minSkeletonHeightClass="w-[min(86vw,520px)] min-h-[260px] sm:min-h-[360px]"
+              skeletonTone="dark"
               className="max-w-full max-h-[78dvh] rounded-xl object-contain shadow-2xl"
             />
 

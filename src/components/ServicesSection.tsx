@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
   Building2,
   Home,
@@ -10,6 +10,7 @@ import {
   Store,
   Trash2,
 } from 'lucide-react';
+import { SmoothImage } from '@/src/components/SmoothImage';
 import { EditableText } from '@/src/components/admin/EditableText';
 import type { ImageEditTarget } from '@/src/components/admin/ImageEditorModal';
 import type { ServiceIconName, ServiceItem } from '@/src/types/clearworks';
@@ -63,24 +64,6 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
   onDeleteService,
   onViewDetail,
 }) => {
-  const [failedImages, setFailedImages] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    setFailedImages((prev) => {
-      let changed = false;
-      const next: Record<string, string> = {};
-      for (const srv of services) {
-        const currentSrc = srv.image || srv.detail?.afterImage || '';
-        if (prev[srv.id] && prev[srv.id] === currentSrc) {
-          next[srv.id] = prev[srv.id];
-        } else if (prev[srv.id]) {
-          changed = true;
-        }
-      }
-      return changed ? next : prev;
-    });
-  }, [services]);
-
   return (
     <section id="service" className="py-16 md:py-28 bg-white relative">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
@@ -106,11 +89,10 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
           </p>
         </div>
 
-        <div className="flex flex-wrap items-stretch gap-6 sm:gap-7">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-7 items-stretch">
           {services.map((service) => {
             const rawImageUrl = service.image || service.detail?.afterImage || '';
             const resolvedUrl = resolveAssetUrl(rawImageUrl);
-            const hasImageError = Boolean(rawImageUrl && failedImages[service.id] === rawImageUrl);
 
             return (
               <article
@@ -124,40 +106,34 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
                 }}
                 role="button"
                 tabIndex={0}
-                className="w-full sm:w-[calc((100%-1.75rem)/2)] lg:w-[calc((100%-3.5rem)/3)] group bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 hover:border-blue-300 overflow-hidden shadow-2xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                className="group bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 hover:border-blue-300 overflow-hidden shadow-2xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
               >
                 <div>
-                  <div className="relative aspect-[16/10] bg-slate-100 overflow-hidden">
-                    {resolvedUrl && !hasImageError ? (
-                      <img
-                        src={resolvedUrl}
-                        alt={service.title}
-                        referrerPolicy="no-referrer"
-                        loading="lazy"
-                        onError={() =>
-                          setFailedImages((prev) => ({
-                            ...prev,
-                            [service.id]: rawImageUrl,
-                          }))
-                        }
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-blue-50 via-sky-50 to-slate-100 flex items-center justify-center">
-                        {FALLBACK_ICON_MAP[service.iconName]}
-                      </div>
-                    )}
+                  <div className="relative aspect-square sm:aspect-[16/10] bg-slate-100 overflow-hidden">
+                    <SmoothImage
+                      src={resolvedUrl}
+                      alt={service.title}
+                      loading="lazy"
+                      wrapperClassName="w-full h-full overflow-hidden"
+                      skeletonTone="light"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      fallback={
+                        <div className="w-full h-full bg-gradient-to-br from-blue-50 via-sky-50 to-slate-100 flex items-center justify-center">
+                          {FALLBACK_ICON_MAP[service.iconName]}
+                        </div>
+                      }
+                    />
 
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950/25 via-transparent to-transparent pointer-events-none" />
 
                     {(service.badge || isEditMode) && (
                       <div
-                        className="absolute top-3 left-3 z-10"
+                        className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10"
                         onClick={(e) => {
                           if (isEditMode) e.stopPropagation();
                         }}
                       >
-                        <span className="inline-block px-3 py-1 text-[11px] font-bold rounded-full bg-blue-600/95 backdrop-blur-xs text-white shadow-sm whitespace-nowrap">
+                        <span className="inline-block px-2 py-0.5 sm:px-3 sm:py-1 text-[10px] sm:text-[11px] font-bold rounded-full bg-blue-600/95 backdrop-blur-xs text-white shadow-sm whitespace-nowrap">
                           <EditableText
                             value={service.badge || '뱃지 추가'}
                             onSave={(v) => onUpdateService(service.id, 'badge', v)}
@@ -180,20 +156,20 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
                             onSave: (url) => onUpdateServiceImage(service.id, url),
                           });
                         }}
-                        className="absolute bottom-3 right-3 z-20 px-2.5 py-1.5 rounded-lg bg-slate-950/85 hover:bg-blue-600 text-white text-[11px] font-bold flex items-center gap-1 shadow-lg cursor-pointer"
+                        className="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 z-20 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg bg-slate-950/85 hover:bg-blue-600 text-white text-[10px] sm:text-[11px] font-bold flex items-center gap-1 shadow-lg cursor-pointer"
                       >
-                        <ImageIcon className="w-3.5 h-3.5" />
+                        <ImageIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                         <span>사진 변경</span>
                       </button>
                     )}
                   </div>
 
-                  <div className="p-5 sm:p-6 pb-0">
-                    <div className="flex items-center gap-2.5 mb-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-blue-50 group-hover:bg-blue-600 flex items-center justify-center transition-colors shrink-0">
+                  <div className="p-3 sm:p-6 pb-0">
+                    <div className="flex items-center gap-1.5 sm:gap-2.5 mb-1.5 sm:mb-2.5">
+                      <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-blue-50 group-hover:bg-blue-600 flex items-center justify-center transition-colors shrink-0">
                         {ICON_MAP[service.iconName]}
                       </div>
-                      <h3 className="text-lg sm:text-xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors leading-snug">
+                      <h3 className="text-[13.5px] sm:text-xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors leading-snug line-clamp-1 sm:line-clamp-none">
                         <EditableText
                           value={service.title}
                           onSave={(v) => onUpdateService(service.id, 'title', v)}
@@ -203,7 +179,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
                       </h3>
                     </div>
 
-                    <p className="text-sm text-slate-600 leading-relaxed">
+                    <p className="text-[11.5px] sm:text-sm text-slate-600 leading-snug sm:leading-relaxed line-clamp-2 sm:line-clamp-none">
                       <EditableText
                         value={service.description}
                         onSave={(v) => onUpdateService(service.id, 'description', v)}
@@ -215,7 +191,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
                   </div>
                 </div>
 
-                <div className="px-5 sm:px-6 pb-5 sm:pb-6 mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
+                <div className="px-3 sm:px-6 pb-3 sm:pb-6 mt-3 sm:mt-5 pt-2.5 sm:pt-4 border-t border-slate-100 flex items-center justify-between">
                   <a
                     href={getRoutePath({ type: 'service', serviceId: service.id })}
                     onClick={(e) => {
@@ -223,9 +199,10 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
                       e.stopPropagation();
                       onViewDetail(service.id);
                     }}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 group-hover:text-blue-800 transition-colors"
+                    className="inline-flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-bold text-blue-600 group-hover:text-blue-800 transition-colors"
                   >
-                    <span>상세보기 및 작업범위</span>
+                    <span className="sm:hidden">상세보기</span>
+                    <span className="hidden sm:inline">상세보기 및 작업범위</span>
                     <span className="group-hover:translate-x-0.5 transition-transform">→</span>
                   </a>
 
@@ -236,7 +213,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
                         e.stopPropagation();
                         onDeleteService(service.id);
                       }}
-                      className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1 font-medium cursor-pointer"
+                      className="text-[11px] sm:text-xs text-red-500 hover:text-red-700 flex items-center gap-1 font-medium cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       <span>삭제</span>
@@ -251,12 +228,12 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
             <button
               type="button"
               onClick={onAddService}
-              className="w-full sm:w-[calc((100%-1.75rem)/2)] lg:w-[calc((100%-3.5rem)/3)] rounded-2xl sm:rounded-3xl border-2 border-dashed border-blue-300 hover:border-blue-500 bg-blue-50/30 hover:bg-blue-50/60 p-6 flex flex-col items-center justify-center text-blue-600 gap-2 min-h-[280px] transition-all cursor-pointer group"
+              className="rounded-2xl sm:rounded-3xl border-2 border-dashed border-blue-300 hover:border-blue-500 bg-blue-50/30 hover:bg-blue-50/60 p-4 sm:p-6 flex flex-col items-center justify-center text-blue-600 gap-2 min-h-[220px] sm:min-h-[280px] transition-all cursor-pointer group"
             >
-              <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Plus className="w-6 h-6" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-blue-100 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Plus className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
-              <span className="font-bold text-sm">새 서비스 항목 추가하기</span>
+              <span className="font-bold text-xs sm:text-sm text-center">새 서비스 항목 추가하기</span>
             </button>
           )}
         </div>

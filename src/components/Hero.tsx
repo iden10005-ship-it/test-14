@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
   Award,
   CheckCircle2,
@@ -10,6 +10,7 @@ import {
   Star,
 } from 'lucide-react';
 import { AnimatedCounter } from '@/src/components/AnimatedCounter';
+import { SmoothImage } from '@/src/components/SmoothImage';
 import { EditableText } from '@/src/components/admin/EditableText';
 import type { ImageEditTarget } from '@/src/components/admin/ImageEditorModal';
 import { CLEARWORKS_IMAGES } from '@/src/data/clearworksData';
@@ -35,15 +36,9 @@ export const Hero: React.FC<HeroProps> = ({
   onEditImage,
   onScrollToContact,
 }) => {
-  const [bgFailed, setBgFailed] = useState(false);
-
   const rawBgUrl = hero.afterImage || CLEARWORKS_IMAGES.afterHero;
   const resolvedBgUrl = resolveAssetUrl(rawBgUrl);
   const smsDigits = company.phone.replace(/[^0-9]/g, '');
-
-  useEffect(() => {
-    setBgFailed(false);
-  }, [rawBgUrl]);
 
   const statIcons = [
     <CheckCircle2 key="s1" className="w-5 h-5 text-blue-600" />,
@@ -56,19 +51,18 @@ export const Hero: React.FC<HeroProps> = ({
     <section id="top" className="relative bg-slate-50/70 border-b border-slate-200/70">
       {/* Wide Full-Bleed Photo Hero Banner */}
       <div className="relative w-full overflow-hidden bg-slate-900 min-h-[320px] sm:min-h-[380px] md:min-h-[540px] flex items-center">
-        {resolvedBgUrl && !bgFailed ? (
-          <img
-            src={resolvedBgUrl}
-            alt="클리어웍스 서울·수도권 유리창청소 전경"
-            referrerPolicy="no-referrer"
-            fetchPriority="high"
-            decoding="sync"
-            onError={() => setBgFailed(true)}
-            className="absolute inset-0 w-full h-full object-cover object-center scale-[1.01]"
-          />
-        ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900" />
-        )}
+        <SmoothImage
+          src={resolvedBgUrl}
+          alt="클리어웍스 서울·수도권 유리창청소 전경"
+          fetchPriority="high"
+          decoding="sync"
+          wrapperClassName="absolute inset-0 overflow-hidden"
+          skeletonTone="dark"
+          className="w-full h-full object-cover object-center scale-[1.01]"
+          fallback={
+            <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900" />
+          }
+        />
 
         {/* Layered Atmospheric Scrim for Crisp Text Contrast */}
         <div

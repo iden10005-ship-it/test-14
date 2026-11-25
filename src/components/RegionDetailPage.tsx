@@ -15,6 +15,7 @@ import {
   Sparkles,
   X,
 } from 'lucide-react';
+import { SmoothImage } from '@/src/components/SmoothImage';
 import { EditableText } from '@/src/components/admin/EditableText';
 import { INITIAL_SITE_DATA } from '@/src/data/clearworksData';
 import type {
@@ -532,11 +533,12 @@ export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
                 >
                   <div>
                     <div className="relative aspect-[16/10] bg-slate-900 overflow-hidden">
-                      <img
+                      <SmoothImage
                         src={resolveAssetUrl(post.coverImage || post.afterImage)}
                         alt={post.title}
-                        referrerPolicy="no-referrer"
                         loading="lazy"
+                        wrapperClassName="w-full h-full overflow-hidden"
+                        skeletonTone="dark"
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                       <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1.5 z-10">

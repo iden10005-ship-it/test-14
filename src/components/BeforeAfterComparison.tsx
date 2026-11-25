@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Image as ImageIcon, Sparkles } from 'lucide-react';
+import { SmoothImage } from '@/src/components/SmoothImage';
 import { EditableText } from '@/src/components/admin/EditableText';
 import { resolveAssetUrl } from '@/src/utils/assetUrl';
 
@@ -33,19 +34,8 @@ export const BeforeAfterComparison: React.FC<BeforeAfterComparisonProps> = ({
   onSaveBeforeCaption,
   onSaveAfterCaption,
 }) => {
-  const [beforeError, setBeforeError] = useState(false);
-  const [afterError, setAfterError] = useState(false);
-
   const resolvedBefore = resolveAssetUrl(beforeImage);
   const resolvedAfter = resolveAssetUrl(afterImage);
-
-  useEffect(() => {
-    setBeforeError(false);
-  }, [beforeImage]);
-
-  useEffect(() => {
-    setAfterError(false);
-  }, [afterImage]);
 
   const resolvedBeforeCaption = beforeCaption?.trim() || DEFAULT_BEFORE_CAPTION;
   const resolvedAfterCaption = afterCaption?.trim() || DEFAULT_AFTER_CAPTION;
@@ -72,25 +62,24 @@ export const BeforeAfterComparison: React.FC<BeforeAfterComparisonProps> = ({
             isEditMode && onEditBefore ? 'cursor-pointer group' : ''
           }`}
         >
-          {resolvedBefore && !beforeError ? (
-            <img
-              src={resolvedBefore}
-              alt={beforeAlt}
-              referrerPolicy="no-referrer"
-              loading="lazy"
-              onError={() => setBeforeError(true)}
-              className={`w-full h-full object-cover ${
-                isEditMode && onEditBefore
-                  ? 'group-hover:scale-[1.02] transition-transform duration-300'
-                  : ''
-              }`}
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 flex flex-col items-center justify-center text-slate-200 p-4">
-              <ImageIcon className="w-8 h-8 mb-2 text-slate-400" />
-              <span className="text-sm font-bold">BEFORE</span>
-            </div>
-          )}
+          <SmoothImage
+            src={resolvedBefore}
+            alt={beforeAlt}
+            loading="lazy"
+            wrapperClassName="w-full h-full overflow-hidden"
+            skeletonTone="dark"
+            className={`w-full h-full object-cover ${
+              isEditMode && onEditBefore
+                ? 'group-hover:scale-[1.02] transition-transform duration-300'
+                : ''
+            }`}
+            fallback={
+              <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 flex flex-col items-center justify-center text-slate-200 p-4">
+                <ImageIcon className="w-8 h-8 mb-2 text-slate-400" />
+                <span className="text-sm font-bold">BEFORE</span>
+              </div>
+            }
+          />
 
           <div className="absolute top-3 left-3 z-10 px-3 py-1 rounded-full bg-slate-900/85 text-white text-xs font-bold backdrop-blur-xs shadow-md pointer-events-none tracking-wide">
             BEFORE
@@ -150,25 +139,24 @@ export const BeforeAfterComparison: React.FC<BeforeAfterComparisonProps> = ({
             isEditMode && onEditAfter ? 'cursor-pointer group' : ''
           }`}
         >
-          {resolvedAfter && !afterError ? (
-            <img
-              src={resolvedAfter}
-              alt={afterAlt}
-              referrerPolicy="no-referrer"
-              loading="lazy"
-              onError={() => setAfterError(true)}
-              className={`w-full h-full object-cover ${
-                isEditMode && onEditAfter
-                  ? 'group-hover:scale-[1.02] transition-transform duration-300'
-                  : ''
-              }`}
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-sky-50 to-blue-100 flex flex-col items-center justify-center text-blue-700 p-4">
-              <Sparkles className="w-8 h-8 mb-2" />
-              <span className="text-sm font-bold">AFTER</span>
-            </div>
-          )}
+          <SmoothImage
+            src={resolvedAfter}
+            alt={afterAlt}
+            loading="lazy"
+            wrapperClassName="w-full h-full overflow-hidden"
+            skeletonTone="light"
+            className={`w-full h-full object-cover ${
+              isEditMode && onEditAfter
+                ? 'group-hover:scale-[1.02] transition-transform duration-300'
+                : ''
+            }`}
+            fallback={
+              <div className="w-full h-full bg-gradient-to-br from-sky-50 to-blue-100 flex flex-col items-center justify-center text-blue-700 p-4">
+                <Sparkles className="w-8 h-8 mb-2" />
+                <span className="text-sm font-bold">AFTER</span>
+              </div>
+            }
+          />
 
           <div className="absolute top-3 right-3 z-10 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-600/95 text-white text-xs font-bold backdrop-blur-xs shadow-md pointer-events-none tracking-wide">
             <Sparkles className="w-3.5 h-3.5 shrink-0" />
