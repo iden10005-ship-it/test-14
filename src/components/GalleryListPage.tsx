@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Copy,
+  Download,
   FileText,
   Home,
   Layers,
@@ -30,6 +31,7 @@ import {
   matchesGalleryCategory,
 } from '@/src/utils/galleryCategories';
 import {
+  buildWorkLogPromptJson,
   loadWorkLogPromptTemplate,
   resetWorkLogPromptTemplate,
   saveWorkLogPromptTemplate,
@@ -85,6 +87,7 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [promptModalOpen, setPromptModalOpen] = useState(false);
   const [promptDraft, setPromptDraft] = useState('');
+  const [promptBlogUrlsInput, setPromptBlogUrlsInput] = useState('');
   const gridTopRef = useRef<HTMLDivElement | null>(null);
 
   const copyPlainText = async (text: string): Promise<boolean> => {
@@ -115,12 +118,42 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
     return ok;
   };
 
-  const handleCopyPrompt = async (overrideText?: string) => {
-    const ok = await copyPlainText(overrideText ?? promptTemplate);
+  const getPromptJsonText = (overrideText?: string, blogUrlsOverride?: string[]) =>
+    buildWorkLogPromptJson({
+      promptTemplate: overrideText ?? promptTemplate,
+      blogUrls:
+        blogUrlsOverride ??
+        promptBlogUrlsInput
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter(Boolean),
+      posts,
+      categories: resolvedCategories,
+      regions,
+      siteData,
+    });
+
+  const handleCopyPrompt = async (overrideText?: string, blogUrlsOverride?: string[]) => {
+    const jsonText = getPromptJsonText(overrideText, blogUrlsOverride);
+    const ok = await copyPlainText(jsonText);
     if (ok) {
       setCopiedPrompt(true);
       setTimeout(() => setCopiedPrompt(false), 2500);
     }
+  };
+
+  const handleDownloadPromptJson = () => {
+    const activeText = promptModalOpen && promptDraft.trim() ? promptDraft.trim() : promptTemplate;
+    const jsonText = getPromptJsonText(activeText);
+    const blob = new Blob([jsonText], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `clearworks-worklog-prompt-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleOpenPromptEditor = () => {
@@ -264,10 +297,13 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
 
             {isEditMode && (
               <div className="flex flex-col items-start md:items-end gap-2.5 self-start md:self-auto shrink-0">
-                <div className="inline-flex flex-wrap items-center gap-2 rounded-2xl bg-slate-900/75 border border-white/15 backdrop-blur-md px-3.5 py-2 text-xs shadow-lg">
+                <div
+                  className="inline-flex flex-wrap items-center gap-2 rounded-2xl bg-slate-900/75 border border-white/15 backdrop-blur-md px-3.5 py-2 text-xs shadow-lg"
+                  title="JSON 복사하기처럼 구조화된 JSON 형식으로 복사되어, 채팅창에 붙여넣으면 txt 메모장처럼 깔끔하게 첨부됩니다."
+                >
                   <span className="inline-flex items-center gap-1.5 font-bold text-slate-100">
                     <FileText className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                    <span>작업일지 프롬프트(네이버블로그 반영)</span>
+                    <span>작업일지 프롬프트(JSON)</span>
                   </span>
                   <div className="inline-flex items-center gap-1.5 pl-1 border-l border-white/20">
                     <button
@@ -284,7 +320,7 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
                       ) : (
                         <Copy className="w-3 h-3" />
                       )}
-                      <span>{copiedPrompt ? '복사됨!' : '복사'}</span>
+                      <span>{copiedPrompt ? 'JSON 복사됨!' : '복사'}</span>
                     </button>
                     <span className="text-white/30 select-none" aria-hidden="true">
                       |
@@ -607,10 +643,10 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
                     </div>
                     <div>
                       <h3 className="text-base font-extrabold text-slate-900">
-                        작업일지 프롬프트 편집 (네이버블로그 반영)
+                        작업일지 프롬프트 편집 (JSON 복사 지원)
                       </h3>
                       <p className="text-[11px] text-slate-500">
-                        원하는 기준이나 문구를 수정·저장해두면 [복사] 버튼 클릭 시 수정된 전체 내용이 복사됩니다.
+                        복사 시 현재 사이트 카테고리·지역·기존 글 목록과 함께 구조화된 JSON으로 묶여, 채팅창에 붙여넣으면 txt 파일처럼 깔끔하게 첨부됩니다.
                       </p>
                     </div>
                   </div>
@@ -623,22 +659,45 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
                   </button>
                 </div>
 
+                <div className="mb-3 shrink-0">
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    함께 보낼 네이버 블로그 URL (선택 · 한 줄에 하나씩 입력 시 JSON에 바로 포함됨)
+                  </label>
+                  <textarea
+                    value={promptBlogUrlsInput}
+                    onChange={(e) => setPromptBlogUrlsInput(e.target.value)}
+                    rows={2}
+                    placeholder="https://blog.naver.com/induce12926/..."
+                    className="w-full px-3.5 py-2 text-xs font-mono bg-blue-50/40 border border-blue-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+                  />
+                </div>
+
                 <textarea
                   value={promptDraft}
                   onChange={(e) => setPromptDraft(e.target.value)}
-                  rows={16}
+                  rows={14}
                   className="w-full flex-1 px-4 py-3 text-xs sm:text-[13px] leading-relaxed font-mono bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
                 />
 
                 <div className="flex flex-wrap items-center justify-between gap-2 pt-4 mt-4 border-t border-slate-100 shrink-0">
-                  <button
-                    type="button"
-                    onClick={handleResetPrompt}
-                    className="px-3 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 inline-flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    <span>기본 프롬프트 복원</span>
-                  </button>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={handleResetPrompt}
+                      className="px-3 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 inline-flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>기본 프롬프트 복원</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDownloadPromptJson}
+                      className="px-3 py-2 rounded-xl text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 inline-flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>JSON 파일 저장</span>
+                    </button>
+                  </div>
 
                   <div className="flex flex-wrap items-center gap-2 ml-auto">
                     <button
@@ -663,7 +722,7 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
                       className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-md cursor-pointer"
                     >
                       <Copy className="w-3.5 h-3.5" />
-                      <span>저장 후 복사하기</span>
+                      <span>저장 후 JSON 복사</span>
                     </button>
                   </div>
                 </div>

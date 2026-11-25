@@ -1,3 +1,6 @@
+import type { GalleryPost, SiteData } from '@/src/types/clearworks';
+import { GALLERY_IMAGE_GUIDELINES } from '@/src/utils/imageOptimizer';
+
 export const WORKLOG_PROMPT_STORAGE_KEY = 'clearworks_worklog_master_prompt_v1';
 
 export const DEFAULT_WORKLOG_PROMPT_TEMPLATE = `아래 네이버 블로그 포스팅(들)의 본문과 사진을 분석해서, '클리어웍스' 작업갤러리 형식에 맞춰 새로운 현장 작업일지를 추가하고 프리뷰까지 반영해줘.
@@ -64,6 +67,142 @@ export const DEFAULT_WORKLOG_PROMPT_TEMPLATE = `아래 네이버 블로그 포�
 [블로그 원본 링크]
 (여기에 네이버 블로그 URL 1개 또는 여러 개 입력)
 ==================================================`;
+
+export interface BuildWorkLogPromptJsonInput {
+  promptTemplate: string;
+  blogUrls?: string[];
+  posts?: GalleryPost[];
+  categories?: string[];
+  regions?: string[];
+  siteData?: SiteData;
+}
+
+function getNextSuggestedPostId(posts: GalleryPost[]): string {
+  let maxNum = posts.length;
+  for (const post of posts) {
+    const match = /^post-(\d+)$/.exec(post.id.trim());
+    if (match) {
+      const num = Number(match[1]);
+      if (Number.isFinite(num) && num > maxNum) {
+        maxNum = num;
+      }
+    }
+  }
+  return `post-${maxNum + 1}`;
+}
+
+export function buildWorkLogPromptJson({
+  promptTemplate,
+  blogUrls = [],
+  posts = [],
+  categories = [],
+  regions = [],
+  siteData,
+}: BuildWorkLogPromptJsonInput): string {
+  const cleanedUrls = blogUrls.map((u) => u.trim()).filter(Boolean);
+  const samplePost = posts[0];
+
+  const payload = {
+    schema: 'clearworks.worklog.prompt/v2',
+    generatedAt: new Date().toISOString(),
+    requestSummary:
+      '함께 전달된 네이버 블로그 URL의 본문과 사진을 분석해 클리어웍스 작업갤러리(src/data/siteContent.json 및 defaultSiteContent.json)에 새 작업일지를 추가하고, 워터마크를 제거한 원본 비율 현장 이미지를 저장한 뒤 프리뷰·사이트맵까지 반영해주세요.',
+    blogUrls:
+      cleanedUrls.length > 0
+        ? cleanedUrls
+        : ['(이 JSON 첨부와 함께 채팅창에 입력한 네이버 블로그 URL들을 참고해주세요)'],
+    instructions: {
+      lines: promptTemplate.split('\n'),
+    },
+    siteContext: {
+      brandName: siteData?.company.name || '클리어웍스',
+      serviceArea: siteData?.company.region || '서울·수도권',
+      validCategories:
+        categories.length > 0
+          ? categories
+          : siteData?.gallery.categories || [
+              '아파트·주택',
+              '상가·매장',
+              '빌딩',
+              '간판·어닝청소',
+              '시트지제거',
+              '기타',
+            ],
+      validRegions:
+        regions.length > 0 ? regions : siteData?.regions.list || [],
+      nextSuggestedPostId: getNextSuggestedPostId(posts),
+      existingPostsCount: posts.length,
+      existingPostsSummary: posts.map((post) => ({
+        id: post.id,
+        category: post.category,
+        region: post.region,
+        date: post.date,
+        title: post.title,
+        excerpt: post.excerpt,
+        tags: post.tags,
+      })),
+    },
+    imageGuidelines: GALLERY_IMAGE_GUIDELINES,
+    targetGalleryPostSchema: {
+      id: 'post-N (nextSuggestedPostId 참고)',
+      title: '[지역명 + 핵심 작업 키워드 — 고객이 얻는 결과/차별점]',
+      category: 'validCategories 중 가장 정확한 1개 선택',
+      region: '시/구 상세 지역명 (예: 서울 중구, 경기 수원 영통구)',
+      date: 'YYYY-MM-DD',
+      author: '클리어웍스 시공팀',
+      excerpt: '목록 카드 2줄 요약 (핵심 오염 원인 + 공법 + 결과 요약)',
+      coverImage: '/images/gallery/파일명.jpg (전체 현장감이 드러나는 대표 완성 컷)',
+      beforeImage: '/images/gallery/파일명.jpg (오염 상태가 강조된 시공 전 컷)',
+      afterImage: '/images/gallery/파일명.jpg (시공 후 전체 전경 컷)',
+      tags: ['지역키워드', '작업키워드', '특화공법키워드'],
+      equipmentUsed: ['현장에서 실제 사용한 전문 장비 및 약품'],
+      keyPoints: ['핵심 시공 포인트 3~4개'],
+      content: '전체 요약 본문 텍스트',
+      blocks: [
+        { id: 'b1', type: 'heading', text: '소제목 1 (고객 불안/질문 공감)' },
+        { id: 'b2', type: 'text', text: '최소 3줄 이상의 밀도 있는 현장 서술' },
+        {
+          id: 'b3',
+          type: 'image',
+          url: '/images/gallery/파일명.jpg',
+          caption: '사진 전후 상황 및 현장 설명',
+        },
+      ],
+      seo: {
+        title: '검색 최적화 제목',
+        description: '검색 스니펫용 핵심 요약',
+        ogTitle: '공유용 제목',
+        keywords: '지역+서비스 핵심 키워드 콤마 구분',
+        autoSync: true,
+      },
+    },
+    referencePostSample: samplePost
+      ? {
+          id: samplePost.id,
+          category: samplePost.category,
+          region: samplePost.region,
+          title: samplePost.title,
+          excerpt: samplePost.excerpt,
+          tags: samplePost.tags,
+          equipmentUsed: samplePost.equipmentUsed,
+          keyPoints: samplePost.keyPoints,
+          blockPattern: (samplePost.blocks || []).map((b) =>
+            b.type === 'image'
+              ? { type: b.type, caption: b.caption || '' }
+              : { type: b.type, preview: b.text.slice(0, 90) }
+          ),
+        }
+      : null,
+    requiredCompletionReport: [
+      '1) 카테고리 · 지역 & 참고한 블로그 원본 링크 (글 번호 포함)',
+      '2) 작성한 작업일지 제목',
+      '3) 반영한 핵심 기술 차별화 포인트 & 고객 문의 유도 패턴 요약',
+      '4) 실제 첨부한 작업 전후 비교 사진 내역 및 각 사진 설명 (총 장수, 워터마크 제거 여부, 대표 썸네일 지정)',
+    ],
+  };
+
+  return `${JSON.stringify(payload, null, 2)}\n`;
+}
 
 export function loadWorkLogPromptTemplate(): string {
   if (typeof window === 'undefined') return DEFAULT_WORKLOG_PROMPT_TEMPLATE;
