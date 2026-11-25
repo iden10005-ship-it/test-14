@@ -24,21 +24,13 @@
   font-variant-numeric: tabular-nums;
 }
 
-@keyframes cw-review-marquee {
-  0% {
-    transform: translate3d(0, 0, 0);
-  }
-  100% {
-    transform: translate3d(-50%, 0, 0);
-  }
+.cw-no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-.cw-review-marquee-track {
-  display: flex;
-  align-items: flex-start;
-  width: max-content;
-  will-change: transform;
-  animation: cw-review-marquee 76s linear infinite;
+.cw-no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

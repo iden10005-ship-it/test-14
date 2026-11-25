@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Camera,
   ChevronLeft,
@@ -198,6 +198,35 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
   const [draft, setDraft] = useState<ReviewItem | null>(null);
   const [pendingAddOpen, setPendingAddOpen] = useState(false);
 
+  // 홈 고객후기 가로 스크롤: rAF 서브픽셀 자동 스크롤 + 모바일 손가락 터치 스크롤 동시 지원
+  const marqueeScrollRef = useRef<HTMLDivElement | null>(null);
+  const marqueeTrackARef = useRef<HTMLDivElement | null>(null);
+  const autoScrollPosRef = useRef<number>(0);
+  const isUserScrollingMarqueeRef = useRef<boolean>(false);
+  const resumeMarqueeTimerRef = useRef<number | null>(null);
+  const marqueeTouchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const marqueeDidSwipeRef = useRef<boolean>(false);
+
+  // 후기 팝업: 모바일 좌우 스와이프(3슬라이드 트랙) 상태
+  const popupTrackWrapperRef = useRef<HTMLDivElement | null>(null);
+  const [swipeDragX, setSwipeDragX] = useState<number>(0);
+  const [isSwipeAnimating, setIsSwipeAnimating] = useState<boolean>(false);
+  const swipeFinishTimerRef = useRef<number | null>(null);
+  const popupTouchRef = useRef<{
+    startX: number;
+    startY: number;
+    startTime: number;
+    lockedAxis: 'x' | 'y' | null;
+    dragX: number;
+    containerWidth: number;
+  } | null>(null);
+
+  // 사진 크게 보기 라이트박스: 좌우 스와이프
+  const lightboxTouchRef = useRef<{
+    startX: number;
+    startY: number;
+  } | null>(null);
+
   const activeReview = activeIndex !== null ? reviews[activeIndex] ?? null : null;
 
   useEffect(() => {
@@ -221,6 +250,108 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
       setPendingAddOpen(false);
     }
   }, [pendingAddOpen, reviews]);
+
+  // 홈 하단 고객후기 연속 가로 스크롤 (prefers-reduced-motion / 모바일 환경 무관하게 동작 + 터치 스크롤 허용)
+  useEffect(() => {
+    if (reviews.length === 0) return;
+    let rafId = 0;
+    let lastTime = performance.now();
+
+    const step = (now: number) => {
+      const dt = Math.min((now - lastTime) / 1000, 0.05);
+      lastTime = now;
+
+      const container = marqueeScrollRef.current;
+      const trackA = marqueeTrackARef.current;
+
+      if (
+        container &&
+        trackA &&
+        activeIndex === null &&
+        !isUserScrollingMarqueeRef.current
+      ) {
+        const halfWidth = trackA.offsetWidth;
+        if (halfWidth > 0) {
+          // 서브픽셀 누적기로 모바일 DPR 정수 반올림에 의한 멈춤 현상 방지
+          autoScrollPosRef.current += 42 * dt;
+          if (autoScrollPosRef.current >= halfWidth) {
+            autoScrollPosRef.current -= halfWidth;
+          }
+          container.scrollLeft = autoScrollPosRef.current;
+        }
+      }
+
+      rafId = window.requestAnimationFrame(step);
+    };
+
+    rafId = window.requestAnimationFrame(step);
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      if (resumeMarqueeTimerRef.current !== null) {
+        window.clearTimeout(resumeMarqueeTimerRef.current);
+      }
+    };
+  }, [reviews.length, activeIndex]);
+
+  const scheduleResumeMarquee = useCallback(() => {
+    if (resumeMarqueeTimerRef.current !== null) {
+      window.clearTimeout(resumeMarqueeTimerRef.current);
+    }
+    resumeMarqueeTimerRef.current = window.setTimeout(() => {
+      const container = marqueeScrollRef.current;
+      const trackA = marqueeTrackARef.current;
+      if (container && trackA) {
+        const halfWidth = trackA.offsetWidth;
+        if (halfWidth > 0) {
+          const normalized = ((container.scrollLeft % halfWidth) + halfWidth) % halfWidth;
+          if (Math.abs(container.scrollLeft - normalized) > 1) {
+            container.scrollLeft = normalized;
+          }
+          autoScrollPosRef.current = normalized;
+        }
+      }
+      isUserScrollingMarqueeRef.current = false;
+    }, 900);
+  }, []);
+
+  const animatePopupToDirection = useCallback(
+    (dir: 'prev' | 'next') => {
+      if (reviews.length <= 1 || isPopupEditing) return;
+      if (swipeFinishTimerRef.current !== null) {
+        window.clearTimeout(swipeFinishTimerRef.current);
+      }
+      const width = popupTrackWrapperRef.current?.clientWidth || 360;
+      setIsSwipeAnimating(true);
+      setSwipeDragX(dir === 'next' ? -width : width);
+
+      swipeFinishTimerRef.current = window.setTimeout(() => {
+        setActiveIndex((prev) => {
+          if (prev === null) return 0;
+          return dir === 'next'
+            ? (prev + 1) % reviews.length
+            : (prev - 1 + reviews.length) % reviews.length;
+        });
+        setIsSwipeAnimating(false);
+        setSwipeDragX(0);
+        swipeFinishTimerRef.current = null;
+      }, 220);
+    },
+    [reviews.length, isPopupEditing]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (swipeFinishTimerRef.current !== null) {
+        window.clearTimeout(swipeFinishTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    setSwipeDragX(0);
+    setIsSwipeAnimating(false);
+    popupTouchRef.current = null;
+  }, [activeIndex]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -254,28 +385,26 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
       if (isPopupEditing) return;
       if (e.key === 'ArrowLeft') {
         e.preventDefault();
-        setActiveIndex((prev) =>
-          prev === null ? null : (prev - 1 + reviews.length) % reviews.length
-        );
+        animatePopupToDirection('prev');
       } else if (e.key === 'ArrowRight') {
         e.preventDefault();
-        setActiveIndex((prev) => (prev === null ? null : (prev + 1) % reviews.length));
+        animatePopupToDirection('next');
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeIndex, reviews.length, isPopupEditing, photoLightbox]);
+  }, [activeIndex, isPopupEditing, photoLightbox, animatePopupToDirection]);
 
   const handlePrev = () => {
     if (reviews.length === 0) return;
-    setActiveIndex((prev) =>
-      prev === null ? 0 : (prev - 1 + reviews.length) % reviews.length
-    );
+    if (reviews.length === 1) return;
+    animatePopupToDirection('prev');
   };
 
   const handleNext = () => {
     if (reviews.length === 0) return;
-    setActiveIndex((prev) => (prev === null ? 0 : (prev + 1) % reviews.length));
+    if (reviews.length === 1) return;
+    animatePopupToDirection('next');
   };
 
   const handleStartEditInPopup = () => {
@@ -529,7 +658,10 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
           key={`${keyPrefix}-${review.id}-${rawIndex}`}
           role="button"
           tabIndex={0}
-          onClick={() => setActiveIndex(index)}
+          onClick={() => {
+            if (marqueeDidSwipeRef.current) return;
+            setActiveIndex(index);
+          }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
@@ -673,7 +805,10 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
           key={`${keyPrefix}-${review.id}-${rawIndex}`}
           role="button"
           tabIndex={0}
-          onClick={() => setActiveIndex(index)}
+          onClick={() => {
+            if (marqueeDidSwipeRef.current) return;
+            setActiveIndex(index);
+          }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
@@ -705,7 +840,10 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
         key={`${keyPrefix}-${review.id}-${rawIndex}`}
         role="button"
         tabIndex={0}
-        onClick={() => setActiveIndex(index)}
+        onClick={() => {
+          if (marqueeDidSwipeRef.current) return;
+          setActiveIndex(index);
+        }}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
@@ -818,8 +956,8 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
         </div>
       </div>
 
-      {/* 바로편집 모드에서도 동일하게 마우스오버 시 멈추지 않고 계속 천천히 가로 스크롤 */}
-      <div className="relative w-full overflow-hidden py-2">
+      {/* 모바일 터치 가로 스크롤 + 연속 자동 스크롤 하이브리드 후기 스트립 */}
+      <div className="relative w-full py-2">
         <div
           aria-hidden="true"
           className="pointer-events-none hidden sm:block absolute inset-y-0 left-0 w-16 md:w-28 bg-gradient-to-r from-slate-50 via-slate-50/75 to-transparent z-10"
@@ -828,12 +966,61 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
           aria-hidden="true"
           className="pointer-events-none hidden sm:block absolute inset-y-0 right-0 w-16 md:w-28 bg-gradient-to-l from-slate-50 via-slate-50/75 to-transparent z-10"
         />
-        <div className="cw-review-marquee-track items-start">
-          <div className="flex items-start gap-4 pr-4">
-            {reviews.map((review, idx) => renderMarqueeCard(review, idx, 'track-a'))}
-          </div>
-          <div className="flex items-start gap-4 pr-4" aria-hidden="true">
-            {reviews.map((review, idx) => renderMarqueeCard(review, idx, 'track-b'))}
+        <div
+          ref={marqueeScrollRef}
+          onTouchStart={(e) => {
+            isUserScrollingMarqueeRef.current = true;
+            marqueeDidSwipeRef.current = false;
+            if (resumeMarqueeTimerRef.current !== null) {
+              window.clearTimeout(resumeMarqueeTimerRef.current);
+            }
+            const t = e.touches[0];
+            if (t) {
+              marqueeTouchStartRef.current = { x: t.clientX, y: t.clientY };
+            }
+            if (marqueeScrollRef.current && marqueeTrackARef.current) {
+              const halfWidth = marqueeTrackARef.current.offsetWidth;
+              if (halfWidth > 0 && marqueeScrollRef.current.scrollLeft < 24) {
+                marqueeScrollRef.current.scrollLeft += halfWidth;
+              }
+              autoScrollPosRef.current = marqueeScrollRef.current.scrollLeft;
+            }
+          }}
+          onTouchMove={(e) => {
+            const t = e.touches[0];
+            const start = marqueeTouchStartRef.current;
+            if (t && start && Math.abs(t.clientX - start.x) > 8) {
+              marqueeDidSwipeRef.current = true;
+            }
+          }}
+          onTouchEnd={() => {
+            marqueeTouchStartRef.current = null;
+            scheduleResumeMarquee();
+            window.setTimeout(() => {
+              marqueeDidSwipeRef.current = false;
+            }, 60);
+          }}
+          onTouchCancel={() => {
+            marqueeTouchStartRef.current = null;
+            marqueeDidSwipeRef.current = false;
+            scheduleResumeMarquee();
+          }}
+          onScroll={() => {
+            if (isUserScrollingMarqueeRef.current && marqueeScrollRef.current) {
+              autoScrollPosRef.current = marqueeScrollRef.current.scrollLeft;
+              scheduleResumeMarquee();
+            }
+          }}
+          style={{ touchAction: 'pan-x pan-y', WebkitOverflowScrolling: 'touch' }}
+          className="w-full overflow-x-auto cw-no-scrollbar"
+        >
+          <div className="flex items-start w-max">
+            <div ref={marqueeTrackARef} className="flex items-start gap-4 pr-4">
+              {reviews.map((review, idx) => renderMarqueeCard(review, idx, 'track-a'))}
+            </div>
+            <div className="flex items-start gap-4 pr-4" aria-hidden="true">
+              {reviews.map((review, idx) => renderMarqueeCard(review, idx, 'track-b'))}
+            </div>
           </div>
         </div>
       </div>
@@ -1228,206 +1415,323 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                 </div>
               ) : (
                 (() => {
-                  const platform = getPlatform(activeReview, activeIndex);
-                  const photos = activeReview.photos || [];
-                  const chatMessages = activeReview.chatMessages || [];
-                  const verifyCount =
-                    DAANGN_VERIFY_COUNTS[activeIndex % DAANGN_VERIFY_COUNTS.length];
-                  const avatarTone = AVATAR_TONES[activeIndex % AVATAR_TONES.length];
+                  const renderPopupReviewBody = (targetReview: ReviewItem, targetIdx: number) => {
+                    const platform = getPlatform(targetReview, targetIdx);
+                    const photos = targetReview.photos || [];
+                    const chatMessages = targetReview.chatMessages || [];
+                    const verifyCount =
+                      DAANGN_VERIFY_COUNTS[targetIdx % DAANGN_VERIFY_COUNTS.length];
+                    const avatarTone = AVATAR_TONES[targetIdx % AVATAR_TONES.length];
 
-                  // 1. 카카오톡 팝업: 세로로 긴 모바일 카톡 화면 (하단 시공항목/전체대화 문구 없음)
-                  if (platform === 'kakao') {
-                    const kakaoPhone = getKakaoPhone(activeReview, activeIndex);
-                    const messages =
-                      chatMessages.length > 0
-                        ? chatMessages
-                        : [
-                            {
-                              sender: 'customer' as const,
-                              text: activeReview.content,
-                              time: '오후 2:18',
-                            },
-                            {
-                              sender: 'company' as const,
-                              text: '소중한 후기 감사합니다! 앞으로도 꼼꼼한 시공으로 보답하겠습니다.',
-                              time: '오후 2:24',
-                            },
-                          ];
+                    // 1. 카카오톡 팝업
+                    if (platform === 'kakao') {
+                      const kakaoPhone = getKakaoPhone(targetReview, targetIdx);
+                      const messages =
+                        chatMessages.length > 0
+                          ? chatMessages
+                          : [
+                              {
+                                sender: 'customer' as const,
+                                text: targetReview.content,
+                                time: '오후 2:18',
+                              },
+                              {
+                                sender: 'company' as const,
+                                text: '소중한 후기 감사합니다! 앞으로도 꼼꼼한 시공으로 보답하겠습니다.',
+                                time: '오후 2:24',
+                              },
+                            ];
 
-                    return (
-                      <div className="flex-1 min-h-0 flex flex-col bg-[#bacee0] overflow-hidden">
-                        {/* 카톡방 상단 바 */}
-                        <div className="shrink-0 bg-[#a9bdce] px-4 py-2.5 border-b border-black/5 flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <ChevronLeft className="w-4 h-4 text-slate-700 shrink-0" />
-                            <div className="min-w-0">
-                              <div className="text-[13.5px] font-bold text-slate-900 flex items-center gap-1">
-                                <BlurredCustomerName name={activeReview.author} />
-                                <span>고객님</span>
-                              </div>
-                              <div className="text-[11px] text-slate-700">
-                                <BlurredPhoneNumber phone={kakaoPhone} /> ·{' '}
-                                {activeReview.region || '수도권'}
+                      return (
+                        <div className="w-full h-full flex flex-col bg-[#bacee0] overflow-hidden">
+                          {/* 카톡방 상단 바 */}
+                          <div className="shrink-0 bg-[#a9bdce] px-4 py-2.5 border-b border-black/5 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <ChevronLeft className="w-4 h-4 text-slate-700 shrink-0" />
+                              <div className="min-w-0">
+                                <div className="text-[13.5px] font-bold text-slate-900 flex items-center gap-1">
+                                  <BlurredCustomerName name={targetReview.author} />
+                                  <span>고객님</span>
+                                </div>
+                                <div className="text-[11px] text-slate-700">
+                                  <BlurredPhoneNumber phone={kakaoPhone} /> ·{' '}
+                                  {targetReview.region || '수도권'}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                          <div className="flex items-center gap-2.5 text-slate-700 shrink-0">
-                            <Search className="w-4 h-4" />
-                            <Menu className="w-4 h-4" />
-                          </div>
-                        </div>
-
-                        <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-3">
-                          <div className="text-center">
-                            <span className="inline-block text-[11px] font-medium text-slate-700 bg-black/10 rounded-full px-3 py-1 tabular-nums">
-                              {activeReview.date || '2026.05'} ·{' '}
-                              {activeReview.region || '수도권 방문 시공'}
-                            </span>
+                            <div className="flex items-center gap-2.5 text-slate-700 shrink-0">
+                              <Search className="w-4 h-4" />
+                              <Menu className="w-4 h-4" />
+                            </div>
                           </div>
 
-                          {messages.map((msg, idx) => {
-                            if (msg.sender === 'customer') {
-                              const showAvatar =
-                                idx === 0 || messages[idx - 1]?.sender !== 'customer';
+                          <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-3">
+                            <div className="text-center">
+                              <span className="inline-block text-[11px] font-medium text-slate-700 bg-black/10 rounded-full px-3 py-1 tabular-nums">
+                                {targetReview.date || '2026.05'} ·{' '}
+                                {targetReview.region || '수도권 방문 시공'}
+                              </span>
+                            </div>
+
+                            {messages.map((msg, idx) => {
+                              if (msg.sender === 'customer') {
+                                const showAvatar =
+                                  idx === 0 || messages[idx - 1]?.sender !== 'customer';
+
+                                return (
+                                  <div
+                                    key={idx}
+                                    className={`flex items-start gap-2 max-w-[90%] ${
+                                      showAvatar ? '' : 'pl-11'
+                                    }`}
+                                  >
+                                    {showAvatar && <KakaoDefaultAvatar size="md" />}
+                                    <div className="min-w-0 flex-1">
+                                      {showAvatar && (
+                                        <div className="text-[11px] font-medium text-slate-700 mb-1 leading-none">
+                                          <BlurredCustomerName name={targetReview.author} />
+                                          <span> 고객님</span>
+                                        </div>
+                                      )}
+                                      <div className="flex items-end gap-2">
+                                        <div className="relative min-w-0">
+                                          {showAvatar && (
+                                            <span
+                                              className="absolute -left-1 top-2 w-2.5 h-2.5 bg-white rotate-45 rounded-[1px]"
+                                              aria-hidden="true"
+                                            />
+                                          )}
+                                          <div className="relative bg-white text-slate-900 rounded-2xl rounded-tl-[4px] px-3.5 py-2.5 text-[13.5px] leading-relaxed shadow-xs">
+                                            {msg.text}
+                                          </div>
+                                        </div>
+                                        <span className="text-[10px] text-slate-700 shrink-0 tabular-nums">
+                                          {msg.time || '오후 2:18'}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              }
 
                               return (
                                 <div
                                   key={idx}
-                                  className={`flex items-start gap-2 max-w-[90%] ${
-                                    showAvatar ? '' : 'pl-11'
-                                  }`}
+                                  className="flex items-end justify-end gap-2 ml-auto max-w-[88%]"
                                 >
-                                  {showAvatar && <KakaoDefaultAvatar size="md" />}
-                                  <div className="min-w-0 flex-1">
-                                    {showAvatar && (
-                                      <div className="text-[11px] font-medium text-slate-700 mb-1 leading-none">
-                                        <BlurredCustomerName name={activeReview.author} />
-                                        <span> 고객님</span>
-                                      </div>
-                                    )}
-                                    <div className="flex items-end gap-2">
-                                      <div className="relative min-w-0">
-                                        {showAvatar && (
-                                          <span
-                                            className="absolute -left-1 top-2 w-2.5 h-2.5 bg-white rotate-45 rounded-[1px]"
-                                            aria-hidden="true"
-                                          />
-                                        )}
-                                        <div className="relative bg-white text-slate-900 rounded-2xl rounded-tl-[4px] px-3.5 py-2.5 text-[13.5px] leading-relaxed shadow-xs">
-                                          {msg.text}
-                                        </div>
-                                      </div>
-                                      <span className="text-[10px] text-slate-700 shrink-0 tabular-nums">
-                                        {msg.time || '오후 2:18'}
-                                      </span>
+                                  <span className="text-[10px] text-slate-700 shrink-0 tabular-nums">
+                                    {msg.time || '오후 2:24'}
+                                  </span>
+                                  <div className="relative min-w-0">
+                                    <span
+                                      className="absolute -right-1 top-2 w-2.5 h-2.5 bg-[#FEE500] rotate-45 rounded-[1px]"
+                                      aria-hidden="true"
+                                    />
+                                    <div className="relative bg-[#FEE500] text-[#191919] rounded-2xl rounded-tr-[4px] px-3.5 py-2.5 text-[13.5px] leading-relaxed shadow-xs">
+                                      {msg.text}
                                     </div>
                                   </div>
                                 </div>
                               );
-                            }
+                            })}
 
-                            return (
+                            {photos.length > 0 && (
+                              <div className="pt-2 pl-11 flex flex-wrap gap-2">
+                                {photos.map((photo, pIdx) => (
+                                  <button
+                                    key={pIdx}
+                                    type="button"
+                                    onClick={(e) =>
+                                      openPhotoPopup(e, photos, pIdx, '카카오톡 첨부 사진')
+                                    }
+                                    className="w-28 h-24 rounded-xl overflow-hidden border border-white/90 bg-white shadow-xs cursor-zoom-in"
+                                  >
+                                    <ReviewImageThumb
+                                      src={photo}
+                                      alt={`카카오톡 첨부 사진 ${pIdx + 1}`}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* 카톡 하단 입력창 */}
+                          <div className="shrink-0 bg-white border-t border-black/5 px-3.5 py-2.5 flex items-center gap-2">
+                            <div className="w-7 h-7 rounded bg-slate-100 text-slate-500 flex items-center justify-center shrink-0">
+                              <Plus className="w-4 h-4" />
+                            </div>
+                            <div className="flex-1 text-xs text-slate-400">메시지 입력</div>
+                            <div className="w-7 h-7 rounded bg-[#FEE500] text-[#3A1D1D] flex items-center justify-center shrink-0">
+                              <Send className="w-3.5 h-3.5" />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // 2. 당근 팝업
+                    if (platform === 'daangn') {
+                      return (
+                        <div className="w-full h-full overflow-y-auto bg-[#F2F3F6] px-3.5 sm:px-4 py-6 flex flex-col">
+                          <div className="my-auto bg-white rounded-2xl border border-slate-200/90 shadow-xs p-4 sm:p-5 space-y-3.5">
+                            <div className="flex items-start gap-3">
                               <div
-                                key={idx}
-                                className="flex items-end justify-end gap-2 ml-auto max-w-[88%]"
+                                className={`w-10 h-10 rounded-full border flex items-center justify-center text-sm font-extrabold shrink-0 ${avatarTone}`}
                               >
-                                <span className="text-[10px] text-slate-700 shrink-0 tabular-nums">
-                                  {msg.time || '오후 2:24'}
-                                </span>
-                                <div className="relative min-w-0">
-                                  <span
-                                    className="absolute -right-1 top-2 w-2.5 h-2.5 bg-[#FEE500] rotate-45 rounded-[1px]"
-                                    aria-hidden="true"
-                                  />
-                                  <div className="relative bg-[#FEE500] text-[#191919] rounded-2xl rounded-tr-[4px] px-3.5 py-2.5 text-[13.5px] leading-relaxed shadow-xs">
-                                    {msg.text}
-                                  </div>
+                                {(targetReview.author || '당').slice(0, 1)}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="text-[15px] font-bold text-[#212124]">
+                                  <BlurredCustomerName name={targetReview.author} />
+                                </div>
+                                <div className="text-xs text-[#868B94] mt-0.5 tabular-nums">
+                                  {targetReview.region || '경기도 안양시'} 인증 {verifyCount}회 ·{' '}
+                                  {targetReview.date || '6개월 전 작성'}
                                 </div>
                               </div>
-                            );
-                          })}
-
-                          {photos.length > 0 && (
-                            <div className="pt-2 pl-11 flex flex-wrap gap-2">
-                              {photos.map((photo, pIdx) => (
-                                <button
-                                  key={pIdx}
-                                  type="button"
-                                  onClick={(e) =>
-                                    openPhotoPopup(e, photos, pIdx, '카카오톡 첨부 사진')
-                                  }
-                                  className="w-28 h-24 rounded-xl overflow-hidden border border-white/90 bg-white shadow-xs cursor-zoom-in"
-                                >
-                                  <ReviewImageThumb
-                                    src={photo}
-                                    alt={`카카오톡 첨부 사진 ${pIdx + 1}`}
-                                    className="w-full h-full object-cover"
-                                  />
-                                </button>
-                              ))}
                             </div>
-                          )}
-                        </div>
 
-                        {/* 카톡 하단 입력창 */}
-                        <div className="shrink-0 bg-white border-t border-black/5 px-3.5 py-2.5 flex items-center gap-2">
-                          <div className="w-7 h-7 rounded bg-slate-100 text-slate-500 flex items-center justify-center shrink-0">
-                            <Plus className="w-4 h-4" />
-                          </div>
-                          <div className="flex-1 text-xs text-slate-400">메시지 입력</div>
-                          <div className="w-7 h-7 rounded bg-[#FEE500] text-[#3A1D1D] flex items-center justify-center shrink-0">
-                            <Send className="w-3.5 h-3.5" />
+                            {renderDaangnPhotosStrip(photos, targetReview.tag, true)}
+
+                            <div className="inline-flex items-center gap-1 pt-0.5">
+                              <Star className="w-4 h-4 text-[#FF6F0F] fill-[#FF6F0F]" />
+                              <span className="text-sm font-extrabold text-[#212124] tabular-nums">
+                                {(targetReview.rating || 5).toFixed(1)}
+                              </span>
+                            </div>
+
+                            <p className="text-[14px] text-[#212124] leading-[1.65] whitespace-pre-line">
+                              {targetReview.content}
+                            </p>
                           </div>
                         </div>
-                      </div>
-                    );
-                  }
+                      );
+                    }
 
-                  // 2. 당근 팝업: 위아래 여백이 있는 실제 당근 후기 레이아웃 (사진 클릭 시 사진 팝업)
-                  if (platform === 'daangn') {
+                    // 3. 숨고 팝업
                     return (
-                      <div className="flex-1 min-h-0 overflow-y-auto bg-[#F2F3F6] px-3.5 sm:px-4 py-6 flex flex-col">
-                        <div className="my-auto bg-white rounded-2xl border border-slate-200/90 shadow-xs p-4 sm:p-5 space-y-3.5">
-                          <div className="flex items-start gap-3">
-                            <div
-                              className={`w-10 h-10 rounded-full border flex items-center justify-center text-sm font-extrabold shrink-0 ${avatarTone}`}
-                            >
-                              {(activeReview.author || '당').slice(0, 1)}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="text-[15px] font-bold text-[#212124]">
-                                <BlurredCustomerName name={activeReview.author} />
-                              </div>
-                              <div className="text-xs text-[#868B94] mt-0.5 tabular-nums">
-                                {activeReview.region || '경기도 안양시'} 인증 {verifyCount}회 ·{' '}
-                                {activeReview.date || '6개월 전 작성'}
-                              </div>
-                            </div>
-                          </div>
-
-                          {renderDaangnPhotosStrip(photos, activeReview.tag, true)}
-
-                          <div className="inline-flex items-center gap-1 pt-0.5">
-                            <Star className="w-4 h-4 text-[#FF6F0F] fill-[#FF6F0F]" />
-                            <span className="text-sm font-extrabold text-[#212124] tabular-nums">
-                              {(activeReview.rating || 5).toFixed(1)}
-                            </span>
-                          </div>
-
-                          <p className="text-[14px] text-[#212124] leading-[1.65] whitespace-pre-line">
-                            {activeReview.content}
-                          </p>
+                      <div className="w-full h-full overflow-y-auto bg-[#F4F6F8] px-3.5 sm:px-4 py-6 flex flex-col">
+                        <div className="my-auto bg-white rounded-2xl border border-slate-200/90 shadow-xs p-4 sm:p-5">
+                          {renderSoomgoCardContent(targetReview, targetIdx, true)}
                         </div>
                       </div>
                     );
-                  }
+                  };
 
-                  // 3. 숨고 팝업: 위아래 여백 배치 + 실제 숨고 캡처형 카드 1:1 재현 (사진 클릭 시 사진 팝업)
+                  const hasMultiple = reviews.length > 1;
+                  const prevIdx = (activeIndex - 1 + reviews.length) % reviews.length;
+                  const nextIdx = (activeIndex + 1) % reviews.length;
+
                   return (
-                    <div className="flex-1 min-h-0 overflow-y-auto bg-[#F4F6F8] px-3.5 sm:px-4 py-6 flex flex-col">
-                      <div className="my-auto bg-white rounded-2xl border border-slate-200/90 shadow-xs p-4 sm:p-5">
-                        {renderSoomgoCardContent(activeReview, activeIndex, true)}
-                      </div>
+                    <div
+                      ref={popupTrackWrapperRef}
+                      onTouchStart={(e) => {
+                        if (!hasMultiple || isSwipeAnimating) return;
+                        const t = e.touches[0];
+                        if (!t) return;
+                        popupTouchRef.current = {
+                          startX: t.clientX,
+                          startY: t.clientY,
+                          startTime: performance.now(),
+                          lockedAxis: null,
+                          dragX: 0,
+                          containerWidth: popupTrackWrapperRef.current?.clientWidth || 360,
+                        };
+                      }}
+                      onTouchMove={(e) => {
+                        const state = popupTouchRef.current;
+                        if (!state || !hasMultiple || isSwipeAnimating) return;
+                        const t = e.touches[0];
+                        if (!t) return;
+
+                        const dx = t.clientX - state.startX;
+                        const dy = t.clientY - state.startY;
+
+                        if (!state.lockedAxis) {
+                          if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+                          state.lockedAxis =
+                            Math.abs(dx) > Math.abs(dy) * 1.15 ? 'x' : 'y';
+                        }
+
+                        if (state.lockedAxis === 'x') {
+                          state.dragX = dx;
+                          setSwipeDragX(dx);
+                        }
+                      }}
+                      onTouchEnd={() => {
+                        const state = popupTouchRef.current;
+                        popupTouchRef.current = null;
+                        if (!state || state.lockedAxis !== 'x' || !hasMultiple) return;
+
+                        const elapsed = Math.max(performance.now() - state.startTime, 16);
+                        const velocity = state.dragX / elapsed;
+                        const threshold = Math.min(72, state.containerWidth * 0.16);
+
+                        if (
+                          state.dragX < -threshold ||
+                          (velocity < -0.35 && state.dragX < -18)
+                        ) {
+                          animatePopupToDirection('next');
+                        } else if (
+                          state.dragX > threshold ||
+                          (velocity > 0.35 && state.dragX > 18)
+                        ) {
+                          animatePopupToDirection('prev');
+                        } else {
+                          setIsSwipeAnimating(true);
+                          setSwipeDragX(0);
+                          if (swipeFinishTimerRef.current !== null) {
+                            window.clearTimeout(swipeFinishTimerRef.current);
+                          }
+                          swipeFinishTimerRef.current = window.setTimeout(() => {
+                            setIsSwipeAnimating(false);
+                            swipeFinishTimerRef.current = null;
+                          }, 200);
+                        }
+                      }}
+                      onTouchCancel={() => {
+                        popupTouchRef.current = null;
+                        setIsSwipeAnimating(true);
+                        setSwipeDragX(0);
+                        if (swipeFinishTimerRef.current !== null) {
+                          window.clearTimeout(swipeFinishTimerRef.current);
+                        }
+                        swipeFinishTimerRef.current = window.setTimeout(() => {
+                          setIsSwipeAnimating(false);
+                          swipeFinishTimerRef.current = null;
+                        }, 200);
+                      }}
+                      style={{ touchAction: 'pan-y' }}
+                      className="flex-1 min-h-0 relative overflow-hidden"
+                    >
+                      {hasMultiple ? (
+                        <div
+                          className={`flex w-full h-full ${
+                            isSwipeAnimating
+                              ? 'transition-transform duration-[220ms] ease-out'
+                              : ''
+                          }`}
+                          style={{
+                            transform: `translate3d(calc(-100% + ${swipeDragX}px), 0, 0)`,
+                          }}
+                        >
+                          <div className="w-full h-full shrink-0">
+                            {renderPopupReviewBody(reviews[prevIdx], prevIdx)}
+                          </div>
+                          <div className="w-full h-full shrink-0">
+                            {renderPopupReviewBody(activeReview, activeIndex)}
+                          </div>
+                          <div className="w-full h-full shrink-0">
+                            {renderPopupReviewBody(reviews[nextIdx], nextIdx)}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="w-full h-full">
+                          {renderPopupReviewBody(activeReview, activeIndex)}
+                        </div>
+                      )}
                     </div>
                   );
                 })()
@@ -1444,8 +1748,15 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                   <ChevronLeft className="w-4 h-4" />
                   <span>이전 후기</span>
                 </button>
-                <div className="text-xs font-bold text-slate-500 tabular-nums">
-                  {activeIndex + 1} / {reviews.length}
+                <div className="text-center">
+                  <div className="text-xs font-bold text-slate-500 tabular-nums">
+                    {activeIndex + 1} / {reviews.length}
+                  </div>
+                  {!isPopupEditing && reviews.length > 1 && (
+                    <div className="sm:hidden text-[10px] font-medium text-slate-400 leading-tight mt-0.5">
+                      좌우로 밀어 넘기기
+                    </div>
+                  )}
                 </div>
                 <button
                   type="button"
@@ -1494,10 +1805,36 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
             </button>
           </div>
 
-          {/* 중앙 사진 뷰 */}
+          {/* 중앙 사진 뷰 (모바일 좌우 스와이프 지원) */}
           <div
             className="relative flex-1 w-full max-w-3xl min-h-0 flex items-center justify-center my-3"
             onClick={(e) => e.stopPropagation()}
+            onTouchStart={(e) => {
+              const t = e.touches[0];
+              if (t) lightboxTouchRef.current = { startX: t.clientX, startY: t.clientY };
+            }}
+            onTouchEnd={(e) => {
+              const start = lightboxTouchRef.current;
+              lightboxTouchRef.current = null;
+              if (!start || photoLightbox.photos.length <= 1) return;
+              const t = e.changedTouches[0];
+              if (!t) return;
+              const dx = t.clientX - start.startX;
+              const dy = t.clientY - start.startY;
+              if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
+                setPhotoLightbox((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        index:
+                          dx < 0
+                            ? (prev.index + 1) % prev.photos.length
+                            : (prev.index - 1 + prev.photos.length) % prev.photos.length,
+                      }
+                    : null
+                );
+              }
+            }}
           >
             {photoLightbox.photos.length > 1 && (
               <button
