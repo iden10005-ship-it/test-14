@@ -220,6 +220,16 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
   const currentPopupSlotRef = useRef<number>(1);
   const popupScrollSettleTimerRef = useRef<number | null>(null);
 
+  // 안드로이드 뒤로가기(백버튼) 2단계 팝업 스택 관리: 홈 -> 후기팝업(1) -> 사진팝업(2)
+  const hasReviewHistoryRef = useRef<boolean>(false);
+  const hasPhotoHistoryRef = useRef<boolean>(false);
+  const ignorePopstateCountRef = useRef<number>(0);
+  const savedHomeScrollYRef = useRef<number>(0);
+  const activeIndexRef = useRef<number | null>(activeIndex);
+  const photoLightboxRef = useRef(photoLightbox);
+  activeIndexRef.current = activeIndex;
+  photoLightboxRef.current = photoLightbox;
+
   // 사진 크게 보기 라이트박스: 좌우 스와이프
   const lightboxTouchRef = useRef<{
     startX: number;
@@ -227,6 +237,39 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
   } | null>(null);
 
   const activeReview = activeIndex !== null ? reviews[activeIndex] ?? null : null;
+
+  const openReviewPopup = useCallback((index: number) => {
+    if (typeof window !== 'undefined' && activeIndexRef.current === null) {
+      savedHomeScrollYRef.current = window.scrollY;
+      if (!hasReviewHistoryRef.current) {
+        hasReviewHistoryRef.current = true;
+        window.history.pushState(
+          { ...(window.history.state || {}), cwModalStage: 'review' },
+          '',
+          window.location.href
+        );
+      }
+    }
+    setActiveIndex(index);
+  }, []);
+
+  const closeReviewPopup = useCallback(() => {
+    setActiveIndex(null);
+    if (typeof window !== 'undefined' && hasReviewHistoryRef.current) {
+      hasReviewHistoryRef.current = false;
+      ignorePopstateCountRef.current += 1;
+      window.history.back();
+    }
+  }, []);
+
+  const closePhotoLightbox = useCallback(() => {
+    setPhotoLightbox(null);
+    if (typeof window !== 'undefined' && hasPhotoHistoryRef.current) {
+      hasPhotoHistoryRef.current = false;
+      ignorePopstateCountRef.current += 1;
+      window.history.back();
+    }
+  }, []);
 
   useEffect(() => {
     if (activeIndex === null) {
@@ -245,12 +288,42 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
   useEffect(() => {
     if (pendingAddOpen && reviews.length > 0) {
       const lastIdx = reviews.length - 1;
-      setActiveIndex(lastIdx);
+      openReviewPopup(lastIdx);
       setDraft({ ...reviews[lastIdx] });
       setIsPopupEditing(true);
       setPendingAddOpen(false);
     }
-  }, [pendingAddOpen, reviews]);
+  }, [pendingAddOpen, reviews, openReviewPopup]);
+
+  // 안드로이드/모바일 브라우저 뒤로가기(<) 1단계씩 팝업 닫기 (페이지 이탈·스크롤 초기화 방지)
+  useEffect(() => {
+    const handlePopState = () => {
+      if (ignorePopstateCountRef.current > 0) {
+        ignorePopstateCountRef.current -= 1;
+        return;
+      }
+
+      if (photoLightboxRef.current !== null) {
+        hasPhotoHistoryRef.current = false;
+        setPhotoLightbox(null);
+        return;
+      }
+
+      if (activeIndexRef.current !== null) {
+        hasReviewHistoryRef.current = false;
+        setActiveIndex(null);
+        const targetScrollY = savedHomeScrollYRef.current;
+        window.requestAnimationFrame(() => {
+          if (Math.abs(window.scrollY - targetScrollY) > 12) {
+            window.scrollTo(0, targetScrollY);
+          }
+        });
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   const isModalOpen = activeIndex !== null;
 
@@ -358,6 +431,38 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
     };
   }, []);
 
+  const normalizeCloneBoundary = useCallback(() => {
+    const target = popupScrollRef.current;
+    if (!target || reviews.length <= 1) return;
+    const w = target.clientWidth;
+    if (w <= 0) return;
+
+    const settledSlot = Math.round(target.scrollLeft / w);
+    if (Math.abs(target.scrollLeft - settledSlot * w) <= Math.max(6, w * 0.03)) {
+      if (settledSlot <= 0) {
+        currentPopupSlotRef.current = reviews.length;
+        target.scrollLeft = reviews.length * w;
+      } else if (settledSlot >= reviews.length + 1) {
+        currentPopupSlotRef.current = 1;
+        target.scrollLeft = w;
+      }
+    }
+  }, [reviews.length]);
+
+  useEffect(() => {
+    if (!isModalOpen || isPopupEditing || reviews.length <= 1) return;
+    const el = popupScrollRef.current;
+    if (!el) return;
+
+    const onScrollEnd = () => {
+      normalizeCloneBoundary();
+    };
+    el.addEventListener('scrollend', onScrollEnd);
+    return () => {
+      el.removeEventListener('scrollend', onScrollEnd);
+    };
+  }, [isModalOpen, isPopupEditing, reviews.length, normalizeCloneBoundary]);
+
   const animatePopupToDirection = useCallback(
     (dir: 'prev' | 'next') => {
       if (reviews.length <= 1 || isPopupEditing) return;
@@ -387,7 +492,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (photoLightbox) {
         if (e.key === 'Escape') {
-          setPhotoLightbox(null);
+          closePhotoLightbox();
         } else if (e.key === 'ArrowLeft' && photoLightbox.photos.length > 1) {
           e.preventDefault();
           setPhotoLightbox((prev) =>
@@ -409,7 +514,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
 
       if (activeIndex === null) return;
       if (e.key === 'Escape') {
-        setActiveIndex(null);
+        closeReviewPopup();
         return;
       }
       if (isPopupEditing) return;
@@ -423,7 +528,14 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeIndex, isPopupEditing, photoLightbox, animatePopupToDirection]);
+  }, [
+    activeIndex,
+    isPopupEditing,
+    photoLightbox,
+    animatePopupToDirection,
+    closePhotoLightbox,
+    closeReviewPopup,
+  ]);
 
   const handlePrev = () => {
     if (reviews.length <= 1) return;
@@ -476,7 +588,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
   const handleDeleteInPopup = () => {
     if (!activeReview || reviews.length <= 1) return;
     onDeleteReview(activeReview.id);
-    setActiveIndex(null);
+    closeReviewPopup();
   };
 
   const openPhotoPopup = (
@@ -487,6 +599,14 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
   ) => {
     e.stopPropagation();
     if (!photos.length) return;
+    if (typeof window !== 'undefined' && !hasPhotoHistoryRef.current) {
+      hasPhotoHistoryRef.current = true;
+      window.history.pushState(
+        { ...(window.history.state || {}), cwModalStage: 'photo' },
+        '',
+        window.location.href
+      );
+    }
     setPhotoLightbox({ photos, index, title });
   };
 
@@ -691,12 +811,12 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
           tabIndex={0}
           onClick={() => {
             if (marqueeDidSwipeRef.current) return;
-            setActiveIndex(index);
+            openReviewPopup(index);
           }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
-              setActiveIndex(index);
+              openReviewPopup(index);
             }
           }}
           aria-label={`카카오톡 고객 후기 ${index + 1} 눌러서 보기`}
@@ -838,12 +958,12 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
           tabIndex={0}
           onClick={() => {
             if (marqueeDidSwipeRef.current) return;
-            setActiveIndex(index);
+            openReviewPopup(index);
           }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
-              setActiveIndex(index);
+              openReviewPopup(index);
             }
           }}
           aria-label={`숨고 고객 후기 ${index + 1} 눌러서 보기`}
@@ -873,12 +993,12 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
         tabIndex={0}
         onClick={() => {
           if (marqueeDidSwipeRef.current) return;
-          setActiveIndex(index);
+          openReviewPopup(index);
         }}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            setActiveIndex(index);
+            openReviewPopup(index);
           }
         }}
         aria-label={`당근마켓 고객 후기 ${index + 1} 눌러서 보기`}
@@ -1059,14 +1179,14 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
       {/* 모바일 최적화 및 데스크톱 고정 세로 비율 후기 팝업 */}
       {activeReview && activeIndex !== null && (
         <div
-          className="fixed inset-0 z-[100] bg-slate-950/80 flex items-center justify-center p-4 sm:p-6"
+          className="fixed inset-0 z-[100] bg-slate-950/80 flex items-center justify-center p-2.5 sm:p-6"
           role="dialog"
           aria-modal="true"
           aria-label="고객 후기 상세 보기"
-          onClick={() => setActiveIndex(null)}
+          onClick={closeReviewPopup}
         >
           <div
-            className="relative w-[calc(100vw-2rem)] max-w-[390px] sm:max-w-none sm:w-[420px] h-[min(78dvh,560px)] sm:h-[680px]"
+            className="relative w-[calc(100vw-1.25rem)] max-w-[404px] sm:max-w-none sm:w-[420px] h-[min(90dvh,680px)] sm:h-[690px]"
             onClick={(e) => e.stopPropagation()}
           >
             {/* 데스크톱 사이드 좌우 화살표 */}
@@ -1145,7 +1265,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                   )}
                   <button
                     type="button"
-                    onClick={() => setActiveIndex(null)}
+                    onClick={closeReviewPopup}
                     aria-label="후기 팝업 닫기"
                     className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 text-xs font-bold cursor-pointer transition-colors"
                   >
@@ -1476,7 +1596,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                       return (
                         <div className="w-full h-full flex flex-col bg-[#bacee0] overflow-hidden">
                           {/* 카톡방 상단 바 */}
-                          <div className="shrink-0 bg-[#a9bdce] px-4 py-2.5 border-b border-black/5 flex items-center justify-between gap-2">
+                          <div className="shrink-0 bg-[#a9bdce] px-3.5 sm:px-4 py-2 sm:py-2.5 border-b border-black/5 flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2 min-w-0">
                               <ChevronLeft className="w-4 h-4 text-slate-700 shrink-0" />
                               <div className="min-w-0">
@@ -1496,9 +1616,9 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                             </div>
                           </div>
 
-                          <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain px-4 py-4 space-y-3">
+                          <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain px-3.5 sm:px-4 py-2.5 sm:py-3.5 space-y-2 sm:space-y-2.5">
                             <div className="text-center">
-                              <span className="inline-block text-[11px] font-medium text-slate-700 bg-black/10 rounded-full px-3 py-1 tabular-nums">
+                              <span className="inline-block text-[10.5px] sm:text-[11px] font-medium text-slate-700 bg-black/10 rounded-full px-2.5 sm:px-3 py-0.5 sm:py-1 tabular-nums">
                                 {targetReview.date || '2026.05'} ·{' '}
                                 {targetReview.region || '수도권 방문 시공'}
                               </span>
@@ -1532,7 +1652,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                                               aria-hidden="true"
                                             />
                                           )}
-                                          <div className="relative bg-white text-slate-900 rounded-2xl rounded-tl-[4px] px-3.5 py-2.5 text-[13.5px] leading-relaxed shadow-xs">
+                                          <div className="relative bg-white text-slate-900 rounded-2xl rounded-tl-[4px] px-3 py-2 sm:px-3.5 sm:py-2.5 text-[13px] sm:text-[13.5px] leading-[1.45] sm:leading-relaxed shadow-xs">
                                             {msg.text}
                                           </div>
                                         </div>
@@ -1558,7 +1678,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                                       className="absolute -right-1 top-2 w-2.5 h-2.5 bg-[#FEE500] rotate-45 rounded-[1px]"
                                       aria-hidden="true"
                                     />
-                                    <div className="relative bg-[#FEE500] text-[#191919] rounded-2xl rounded-tr-[4px] px-3.5 py-2.5 text-[13.5px] leading-relaxed shadow-xs">
+                                    <div className="relative bg-[#FEE500] text-[#191919] rounded-2xl rounded-tr-[4px] px-3 py-2 sm:px-3.5 sm:py-2.5 text-[13px] sm:text-[13.5px] leading-[1.45] sm:leading-relaxed shadow-xs">
                                       {msg.text}
                                     </div>
                                   </div>
@@ -1567,7 +1687,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                             })}
 
                             {photos.length > 0 && (
-                              <div className="pt-2 pl-11 flex flex-wrap gap-2">
+                              <div className="pt-1 sm:pt-1.5 pl-11 flex flex-wrap gap-2">
                                 {photos.map((photo, pIdx) => (
                                   <button
                                     key={pIdx}
@@ -1575,7 +1695,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                                     onClick={(e) =>
                                       openPhotoPopup(e, photos, pIdx, '카카오톡 첨부 사진')
                                     }
-                                    className="w-28 h-24 rounded-xl overflow-hidden border border-white/90 bg-white shadow-xs cursor-zoom-in"
+                                    className="w-24 h-20 sm:w-28 sm:h-24 rounded-xl overflow-hidden border border-white/90 bg-white shadow-xs cursor-zoom-in"
                                   >
                                     <ReviewImageThumb
                                       src={photo}
@@ -1590,12 +1710,12 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                           </div>
 
                           {/* 카톡 하단 입력창 */}
-                          <div className="shrink-0 bg-white border-t border-black/5 px-3.5 py-2.5 flex items-center gap-2">
-                            <div className="w-7 h-7 rounded bg-slate-100 text-slate-500 flex items-center justify-center shrink-0">
+                          <div className="shrink-0 bg-white border-t border-black/5 px-3.5 py-2 flex items-center gap-2">
+                            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded bg-slate-100 text-slate-500 flex items-center justify-center shrink-0">
                               <Plus className="w-4 h-4" />
                             </div>
                             <div className="flex-1 text-xs text-slate-400">메시지 입력</div>
-                            <div className="w-7 h-7 rounded bg-[#FEE500] text-[#3A1D1D] flex items-center justify-center shrink-0">
+                            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded bg-[#FEE500] text-[#3A1D1D] flex items-center justify-center shrink-0">
                               <Send className="w-3.5 h-3.5" />
                             </div>
                           </div>
@@ -1682,6 +1802,24 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                   return (
                     <div
                       ref={popupScrollRef}
+                      onTouchStart={() => {
+                        if (!hasMultiple) return;
+                        const el = popupScrollRef.current;
+                        if (!el) return;
+                        const w = el.clientWidth;
+                        if (w <= 0) return;
+
+                        // 직전 스와이프가 클론 끝단(0 또는 N+1)에 걸쳐 있으면 터치 시작과 동시에 본 슬라이드로 즉시 보정해 16->1, 1->16 무한 순환 보장
+                        if (el.scrollLeft <= 0.5 * w) {
+                          const targetLeft = el.scrollLeft + reviews.length * w;
+                          currentPopupSlotRef.current = Math.round(targetLeft / w);
+                          el.scrollLeft = targetLeft;
+                        } else if (el.scrollLeft >= (reviews.length + 0.5) * w) {
+                          const targetLeft = el.scrollLeft - reviews.length * w;
+                          currentPopupSlotRef.current = Math.round(targetLeft / w);
+                          el.scrollLeft = targetLeft;
+                        }
+                      }}
                       onScroll={(e) => {
                         if (!hasMultiple) return;
                         const el = e.currentTarget;
@@ -1704,25 +1842,11 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                           window.clearTimeout(popupScrollSettleTimerRef.current);
                         }
                         popupScrollSettleTimerRef.current = window.setTimeout(() => {
-                          const target = popupScrollRef.current;
-                          if (!target) return;
-                          const w = target.clientWidth;
-                          if (w <= 0) return;
-                          const settledSlot = Math.round(target.scrollLeft / w);
-                          // 스냅이 완전히 멈춘 경우에만 양 끝 클론을 본 슬라이드로 무음 이동
-                          if (Math.abs(target.scrollLeft - settledSlot * w) <= 2) {
-                            if (settledSlot <= 0) {
-                              currentPopupSlotRef.current = reviews.length;
-                              target.scrollLeft = reviews.length * w;
-                            } else if (settledSlot >= reviews.length + 1) {
-                              currentPopupSlotRef.current = 1;
-                              target.scrollLeft = w;
-                            }
-                          }
-                        }, 110);
+                          normalizeCloneBoundary();
+                        }, 90);
                       }}
                       style={{ touchAction: 'pan-x pan-y', WebkitOverflowScrolling: 'touch' }}
-                      className="flex-1 min-h-0 flex w-full overflow-x-auto snap-x snap-mandatory cw-no-scrollbar"
+                      className="flex-1 min-h-0 flex w-full overflow-x-auto overscroll-x-contain snap-x snap-mandatory cw-no-scrollbar"
                     >
                       {slides.map((slide) => (
                         <div
@@ -1773,14 +1897,14 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
         </div>
       )}
 
-      {/* 후기 첨부 사진 전용 팝업 (닫기 버튼으로 이전 화면 복귀) */}
+      {/* 후기 첨부 사진 전용 팝업 (닫기 버튼 및 뒤로가기로 이전 화면 복귀) */}
       {photoLightbox && (
         <div
           className="fixed inset-0 z-[120] bg-slate-950/92 flex flex-col items-center justify-between p-4 sm:p-6"
           role="dialog"
           aria-modal="true"
           aria-label="첨부 사진 크게 보기"
-          onClick={() => setPhotoLightbox(null)}
+          onClick={closePhotoLightbox}
         >
           {/* 상단 닫기 헤더 */}
           <div
@@ -1797,7 +1921,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
             </div>
             <button
               type="button"
-              onClick={() => setPhotoLightbox(null)}
+              onClick={closePhotoLightbox}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white text-slate-900 hover:bg-slate-100 text-xs sm:text-sm font-bold cursor-pointer shadow-lg shrink-0"
             >
               <X className="w-4 h-4" />
