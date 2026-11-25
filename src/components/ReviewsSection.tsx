@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   Camera,
   ChevronLeft,
@@ -82,7 +82,10 @@ const BlurredCustomerName: React.FC<{ name: string; className?: string }> = ({
   return (
     <span className={`inline-flex items-center ${className}`}>
       <span>{surname}</span>
-      <span className="blur-[4px] select-none inline-block px-0.5" aria-hidden="true">
+      <span
+        className="blur-[4px] transform-gpu will-change-transform select-none inline-block px-0.5"
+        aria-hidden="true"
+      >
         {givenName}
       </span>
     </span>
@@ -104,7 +107,10 @@ const BlurredPhoneNumber: React.FC<{ phone: string; className?: string }> = ({
   return (
     <span className={`inline-flex items-center tabular-nums ${className}`}>
       <span>{prefix}-</span>
-      <span className="blur-[4px] select-none inline-block px-0.5" aria-hidden="true">
+      <span
+        className="blur-[4px] transform-gpu will-change-transform select-none inline-block px-0.5"
+        aria-hidden="true"
+      >
         {blurredDigits}
       </span>
     </span>
@@ -115,7 +121,8 @@ const ReviewImageThumb: React.FC<{
   src: string;
   alt: string;
   className?: string;
-}> = ({ src, alt, className = '' }) => {
+  eager?: boolean;
+}> = ({ src, alt, className = '', eager = false }) => {
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
@@ -138,7 +145,7 @@ const ReviewImageThumb: React.FC<{
       src={src}
       alt={alt}
       referrerPolicy="no-referrer"
-      loading="lazy"
+      loading={eager ? 'eager' : 'lazy'}
       decoding="async"
       onError={() => setFailed(true)}
       className={className}
@@ -207,19 +214,11 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
   const marqueeTouchStartRef = useRef<{ x: number; y: number } | null>(null);
   const marqueeDidSwipeRef = useRef<boolean>(false);
 
-  // 후기 팝업: 모바일 좌우 스와이프(3슬라이드 트랙) 상태
-  const popupTrackWrapperRef = useRef<HTMLDivElement | null>(null);
-  const [swipeDragX, setSwipeDragX] = useState<number>(0);
-  const [isSwipeAnimating, setIsSwipeAnimating] = useState<boolean>(false);
-  const swipeFinishTimerRef = useRef<number | null>(null);
-  const popupTouchRef = useRef<{
-    startX: number;
-    startY: number;
-    startTime: number;
-    lockedAxis: 'x' | 'y' | null;
-    dragX: number;
-    containerWidth: number;
-  } | null>(null);
+  // 후기 팝업: 모바일/데스크톱 네이티브 scroll-snap 좌우 스와이프(깜빡임 제거)
+  const popupScrollRef = useRef<HTMLDivElement | null>(null);
+  const wasPopupTrackOpenRef = useRef<boolean>(false);
+  const currentPopupSlotRef = useRef<number>(1);
+  const popupScrollSettleTimerRef = useRef<number | null>(null);
 
   // 사진 크게 보기 라이트박스: 좌우 스와이프
   const lightboxTouchRef = useRef<{
@@ -230,8 +229,10 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
   const activeReview = activeIndex !== null ? reviews[activeIndex] ?? null : null;
 
   useEffect(() => {
-    setIsPopupEditing(false);
-    setDraft(null);
+    if (activeIndex === null) {
+      setIsPopupEditing(false);
+      setDraft(null);
+    }
   }, [activeIndex]);
 
   useEffect(() => {
@@ -251,6 +252,8 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
     }
   }, [pendingAddOpen, reviews]);
 
+  const isModalOpen = activeIndex !== null;
+
   // 홈 하단 고객후기 연속 가로 스크롤 (prefers-reduced-motion / 모바일 환경 무관하게 동작 + 터치 스크롤 허용)
   useEffect(() => {
     if (reviews.length === 0) return;
@@ -267,7 +270,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
       if (
         container &&
         trackA &&
-        activeIndex === null &&
+        !isModalOpen &&
         !isUserScrollingMarqueeRef.current
       ) {
         const halfWidth = trackA.offsetWidth;
@@ -291,7 +294,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
         window.clearTimeout(resumeMarqueeTimerRef.current);
       }
     };
-  }, [reviews.length, activeIndex]);
+  }, [reviews.length, isModalOpen]);
 
   const scheduleResumeMarquee = useCallback(() => {
     if (resumeMarqueeTimerRef.current !== null) {
@@ -314,44 +317,71 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
     }, 900);
   }, []);
 
-  const animatePopupToDirection = useCallback(
-    (dir: 'prev' | 'next') => {
-      if (reviews.length <= 1 || isPopupEditing) return;
-      if (swipeFinishTimerRef.current !== null) {
-        window.clearTimeout(swipeFinishTimerRef.current);
+  // 팝업이 열리거나 편집 종료 후 복귀할 때만 초기 슬라이드 위치 즉시 정렬
+  useLayoutEffect(() => {
+    const isTrackVisible = activeIndex !== null && !isPopupEditing;
+    if (isTrackVisible && !wasPopupTrackOpenRef.current) {
+      const el = popupScrollRef.current;
+      if (el) {
+        const width = el.clientWidth;
+        const targetSlot = reviews.length > 1 ? activeIndex + 1 : 0;
+        currentPopupSlotRef.current = targetSlot;
+        if (width > 0) {
+          el.scrollLeft = targetSlot * width;
+        }
       }
-      const width = popupTrackWrapperRef.current?.clientWidth || 360;
-      setIsSwipeAnimating(true);
-      setSwipeDragX(dir === 'next' ? -width : width);
+    }
+    wasPopupTrackOpenRef.current = isTrackVisible;
+  }, [activeIndex, isPopupEditing, reviews.length]);
 
-      swipeFinishTimerRef.current = window.setTimeout(() => {
-        setActiveIndex((prev) => {
-          if (prev === null) return 0;
-          return dir === 'next'
-            ? (prev + 1) % reviews.length
-            : (prev - 1 + reviews.length) % reviews.length;
-        });
-        setIsSwipeAnimating(false);
-        setSwipeDragX(0);
-        swipeFinishTimerRef.current = null;
-      }, 220);
-    },
-    [reviews.length, isPopupEditing]
-  );
+  // 기기 회전/리사이즈 시 현재 후기 슬라이드 위치 유지
+  useEffect(() => {
+    if (!isModalOpen || isPopupEditing) return;
+    const el = popupScrollRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+
+    const observer = new ResizeObserver(() => {
+      const width = el.clientWidth;
+      if (width > 0) {
+        el.scrollLeft = currentPopupSlotRef.current * width;
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [isModalOpen, isPopupEditing]);
 
   useEffect(() => {
     return () => {
-      if (swipeFinishTimerRef.current !== null) {
-        window.clearTimeout(swipeFinishTimerRef.current);
+      if (popupScrollSettleTimerRef.current !== null) {
+        window.clearTimeout(popupScrollSettleTimerRef.current);
       }
     };
   }, []);
 
-  useEffect(() => {
-    setSwipeDragX(0);
-    setIsSwipeAnimating(false);
-    popupTouchRef.current = null;
-  }, [activeIndex]);
+  const animatePopupToDirection = useCallback(
+    (dir: 'prev' | 'next') => {
+      if (reviews.length <= 1 || isPopupEditing) return;
+      const el = popupScrollRef.current;
+      if (!el) return;
+      const width = el.clientWidth;
+      if (width <= 0) return;
+
+      // 클론 끝단(0 또는 N+1)에 머물러 있으면 먼저 본 슬라이드로 무음 정렬
+      let currentSlot = Math.round(el.scrollLeft / width);
+      if (currentSlot <= 0) {
+        currentSlot = reviews.length;
+        el.scrollLeft = currentSlot * width;
+      } else if (currentSlot >= reviews.length + 1) {
+        currentSlot = 1;
+        el.scrollLeft = currentSlot * width;
+      }
+
+      const nextSlot = dir === 'next' ? currentSlot + 1 : currentSlot - 1;
+      currentPopupSlotRef.current = nextSlot;
+      el.scrollTo({ left: nextSlot * width, behavior: 'smooth' });
+    },
+    [reviews.length, isPopupEditing]
+  );
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -396,14 +426,12 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
   }, [activeIndex, isPopupEditing, photoLightbox, animatePopupToDirection]);
 
   const handlePrev = () => {
-    if (reviews.length === 0) return;
-    if (reviews.length === 1) return;
+    if (reviews.length <= 1) return;
     animatePopupToDirection('prev');
   };
 
   const handleNext = () => {
-    if (reviews.length === 0) return;
-    if (reviews.length === 1) return;
+    if (reviews.length <= 1) return;
     animatePopupToDirection('next');
   };
 
@@ -465,7 +493,8 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
   const renderDaangnPhotosStrip = (
     photos: string[],
     tag: string | undefined,
-    clickable: boolean
+    clickable: boolean,
+    eagerImages = false
   ) => {
     if (!photos.length) return null;
     const shown = photos.slice(0, 3);
@@ -493,6 +522,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
             <ReviewImageThumb
               src={photo}
               alt={`${tag || '당근 후기'} 사진 ${pIdx + 1}`}
+              eager={eagerImages}
               className="w-full h-full object-cover"
             />
             {pIdx === shown.length - 1 && photos.length > shown.length && (
@@ -562,6 +592,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                 <ReviewImageThumb
                   src={photo}
                   alt={`${review.tag || '숨고 후기'} 사진 ${pIdx + 1}`}
+                  eager={isPopupMode}
                   className="w-full h-full object-cover"
                 />
                 <span className="absolute bottom-1 left-1 px-1 py-0.2 rounded bg-black/70 text-white text-[9px] font-bold">
@@ -1028,7 +1059,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
       {/* 모바일 최적화 및 데스크톱 고정 세로 비율 후기 팝업 */}
       {activeReview && activeIndex !== null && (
         <div
-          className="fixed inset-0 z-[100] bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6"
+          className="fixed inset-0 z-[100] bg-slate-950/80 flex items-center justify-center p-4 sm:p-6"
           role="dialog"
           aria-modal="true"
           aria-label="고객 후기 상세 보기"
@@ -1465,7 +1496,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                             </div>
                           </div>
 
-                          <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-3">
+                          <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain px-4 py-4 space-y-3">
                             <div className="text-center">
                               <span className="inline-block text-[11px] font-medium text-slate-700 bg-black/10 rounded-full px-3 py-1 tabular-nums">
                                 {targetReview.date || '2026.05'} ·{' '}
@@ -1549,6 +1580,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                                     <ReviewImageThumb
                                       src={photo}
                                       alt={`카카오톡 첨부 사진 ${pIdx + 1}`}
+                                      eager
                                       className="w-full h-full object-cover"
                                     />
                                   </button>
@@ -1574,7 +1606,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                     // 2. 당근 팝업
                     if (platform === 'daangn') {
                       return (
-                        <div className="w-full h-full overflow-y-auto bg-[#F2F3F6] px-3.5 sm:px-4 py-6 flex flex-col">
+                        <div className="w-full h-full overflow-y-auto overscroll-y-contain bg-[#F2F3F6] px-3.5 sm:px-4 py-6 flex flex-col">
                           <div className="my-auto bg-white rounded-2xl border border-slate-200/90 shadow-xs p-4 sm:p-5 space-y-3.5">
                             <div className="flex items-start gap-3">
                               <div
@@ -1593,7 +1625,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                               </div>
                             </div>
 
-                            {renderDaangnPhotosStrip(photos, targetReview.tag, true)}
+                            {renderDaangnPhotosStrip(photos, targetReview.tag, true, true)}
 
                             <div className="inline-flex items-center gap-1 pt-0.5">
                               <Star className="w-4 h-4 text-[#FF6F0F] fill-[#FF6F0F]" />
@@ -1612,7 +1644,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
 
                     // 3. 숨고 팝업
                     return (
-                      <div className="w-full h-full overflow-y-auto bg-[#F4F6F8] px-3.5 sm:px-4 py-6 flex flex-col">
+                      <div className="w-full h-full overflow-y-auto overscroll-y-contain bg-[#F4F6F8] px-3.5 sm:px-4 py-6 flex flex-col">
                         <div className="my-auto bg-white rounded-2xl border border-slate-200/90 shadow-xs p-4 sm:p-5">
                           {renderSoomgoCardContent(targetReview, targetIdx, true)}
                         </div>
@@ -1621,117 +1653,85 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                   };
 
                   const hasMultiple = reviews.length > 1;
-                  const prevIdx = (activeIndex - 1 + reviews.length) % reviews.length;
-                  const nextIdx = (activeIndex + 1) % reviews.length;
+                  const slides = hasMultiple
+                    ? [
+                        {
+                          slotKey: `clone-prev-${reviews[reviews.length - 1].id}`,
+                          review: reviews[reviews.length - 1],
+                          realIndex: reviews.length - 1,
+                        },
+                        ...reviews.map((review, idx) => ({
+                          slotKey: `slide-${review.id}`,
+                          review,
+                          realIndex: idx,
+                        })),
+                        {
+                          slotKey: `clone-next-${reviews[0].id}`,
+                          review: reviews[0],
+                          realIndex: 0,
+                        },
+                      ]
+                    : [
+                        {
+                          slotKey: `slide-${activeReview.id}`,
+                          review: activeReview,
+                          realIndex: activeIndex,
+                        },
+                      ];
 
                   return (
                     <div
-                      ref={popupTrackWrapperRef}
-                      onTouchStart={(e) => {
-                        if (!hasMultiple || isSwipeAnimating) return;
-                        const t = e.touches[0];
-                        if (!t) return;
-                        popupTouchRef.current = {
-                          startX: t.clientX,
-                          startY: t.clientY,
-                          startTime: performance.now(),
-                          lockedAxis: null,
-                          dragX: 0,
-                          containerWidth: popupTrackWrapperRef.current?.clientWidth || 360,
-                        };
-                      }}
-                      onTouchMove={(e) => {
-                        const state = popupTouchRef.current;
-                        if (!state || !hasMultiple || isSwipeAnimating) return;
-                        const t = e.touches[0];
-                        if (!t) return;
+                      ref={popupScrollRef}
+                      onScroll={(e) => {
+                        if (!hasMultiple) return;
+                        const el = e.currentTarget;
+                        const width = el.clientWidth;
+                        if (width <= 0) return;
 
-                        const dx = t.clientX - state.startX;
-                        const dy = t.clientY - state.startY;
+                        const rawSlot = Math.round(el.scrollLeft / width);
+                        currentPopupSlotRef.current = rawSlot;
 
-                        if (!state.lockedAxis) {
-                          if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-                          state.lockedAxis =
-                            Math.abs(dx) > Math.abs(dy) * 1.15 ? 'x' : 'y';
+                        const mappedIdx =
+                          rawSlot <= 0
+                            ? reviews.length - 1
+                            : rawSlot >= reviews.length + 1
+                            ? 0
+                            : rawSlot - 1;
+
+                        setActiveIndex((prev) => (prev === mappedIdx ? prev : mappedIdx));
+
+                        if (popupScrollSettleTimerRef.current !== null) {
+                          window.clearTimeout(popupScrollSettleTimerRef.current);
                         }
-
-                        if (state.lockedAxis === 'x') {
-                          state.dragX = dx;
-                          setSwipeDragX(dx);
-                        }
-                      }}
-                      onTouchEnd={() => {
-                        const state = popupTouchRef.current;
-                        popupTouchRef.current = null;
-                        if (!state || state.lockedAxis !== 'x' || !hasMultiple) return;
-
-                        const elapsed = Math.max(performance.now() - state.startTime, 16);
-                        const velocity = state.dragX / elapsed;
-                        const threshold = Math.min(72, state.containerWidth * 0.16);
-
-                        if (
-                          state.dragX < -threshold ||
-                          (velocity < -0.35 && state.dragX < -18)
-                        ) {
-                          animatePopupToDirection('next');
-                        } else if (
-                          state.dragX > threshold ||
-                          (velocity > 0.35 && state.dragX > 18)
-                        ) {
-                          animatePopupToDirection('prev');
-                        } else {
-                          setIsSwipeAnimating(true);
-                          setSwipeDragX(0);
-                          if (swipeFinishTimerRef.current !== null) {
-                            window.clearTimeout(swipeFinishTimerRef.current);
+                        popupScrollSettleTimerRef.current = window.setTimeout(() => {
+                          const target = popupScrollRef.current;
+                          if (!target) return;
+                          const w = target.clientWidth;
+                          if (w <= 0) return;
+                          const settledSlot = Math.round(target.scrollLeft / w);
+                          // 스냅이 완전히 멈춘 경우에만 양 끝 클론을 본 슬라이드로 무음 이동
+                          if (Math.abs(target.scrollLeft - settledSlot * w) <= 2) {
+                            if (settledSlot <= 0) {
+                              currentPopupSlotRef.current = reviews.length;
+                              target.scrollLeft = reviews.length * w;
+                            } else if (settledSlot >= reviews.length + 1) {
+                              currentPopupSlotRef.current = 1;
+                              target.scrollLeft = w;
+                            }
                           }
-                          swipeFinishTimerRef.current = window.setTimeout(() => {
-                            setIsSwipeAnimating(false);
-                            swipeFinishTimerRef.current = null;
-                          }, 200);
-                        }
+                        }, 110);
                       }}
-                      onTouchCancel={() => {
-                        popupTouchRef.current = null;
-                        setIsSwipeAnimating(true);
-                        setSwipeDragX(0);
-                        if (swipeFinishTimerRef.current !== null) {
-                          window.clearTimeout(swipeFinishTimerRef.current);
-                        }
-                        swipeFinishTimerRef.current = window.setTimeout(() => {
-                          setIsSwipeAnimating(false);
-                          swipeFinishTimerRef.current = null;
-                        }, 200);
-                      }}
-                      style={{ touchAction: 'pan-y' }}
-                      className="flex-1 min-h-0 relative overflow-hidden"
+                      style={{ touchAction: 'pan-x pan-y', WebkitOverflowScrolling: 'touch' }}
+                      className="flex-1 min-h-0 flex w-full overflow-x-auto snap-x snap-mandatory cw-no-scrollbar"
                     >
-                      {hasMultiple ? (
+                      {slides.map((slide) => (
                         <div
-                          className={`flex w-full h-full ${
-                            isSwipeAnimating
-                              ? 'transition-transform duration-[220ms] ease-out'
-                              : ''
-                          }`}
-                          style={{
-                            transform: `translate3d(calc(-100% + ${swipeDragX}px), 0, 0)`,
-                          }}
+                          key={slide.slotKey}
+                          className="w-full h-full shrink-0 snap-start snap-always overflow-hidden"
                         >
-                          <div className="w-full h-full shrink-0">
-                            {renderPopupReviewBody(reviews[prevIdx], prevIdx)}
-                          </div>
-                          <div className="w-full h-full shrink-0">
-                            {renderPopupReviewBody(activeReview, activeIndex)}
-                          </div>
-                          <div className="w-full h-full shrink-0">
-                            {renderPopupReviewBody(reviews[nextIdx], nextIdx)}
-                          </div>
+                          {renderPopupReviewBody(slide.review, slide.realIndex)}
                         </div>
-                      ) : (
-                        <div className="w-full h-full">
-                          {renderPopupReviewBody(activeReview, activeIndex)}
-                        </div>
-                      )}
+                      ))}
                     </div>
                   );
                 })()
@@ -1776,7 +1776,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
       {/* 후기 첨부 사진 전용 팝업 (닫기 버튼으로 이전 화면 복귀) */}
       {photoLightbox && (
         <div
-          className="fixed inset-0 z-[120] bg-slate-950/90 backdrop-blur-xs flex flex-col items-center justify-between p-4 sm:p-6"
+          className="fixed inset-0 z-[120] bg-slate-950/92 flex flex-col items-center justify-between p-4 sm:p-6"
           role="dialog"
           aria-modal="true"
           aria-label="첨부 사진 크게 보기"
