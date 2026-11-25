@@ -208,7 +208,7 @@ export const GalleryPostModal: React.FC<GalleryPostModalProps> = ({
       setCategory(resolvedCategories[0] || '아파트·주택');
       setRegion(availableRegions[0] || '강남구');
       setDate(formatted);
-      setAuthor('클리어웍스 현장팀');
+      setAuthor('클리어웍스 마스터');
       setExcerpt('');
       setCoverImage(CLEARWORKS_IMAGES.aptAfter);
       const starterBlocks: GalleryBlock[] = [
@@ -478,7 +478,7 @@ export const GalleryPostModal: React.FC<GalleryPostModalProps> = ({
       category,
       region: region.trim() || '서울·수도권',
       date: date.trim() || new Date().toISOString().slice(0, 10).replace(/-/g, '.'),
-      author: author.trim() || '클리어웍스 현장팀',
+      author: author.trim() || '클리어웍스 마스터',
       excerpt: resolvedExcerpt,
       coverImage: resolvedCover,
       beforeImage: imageBlocks[0]?.url || resolvedCover,
