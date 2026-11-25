@@ -35,6 +35,7 @@
 
 .cw-review-marquee-track {
   display: flex;
+  align-items: flex-start;
   width: max-content;
   will-change: transform;
   animation: cw-review-marquee 76s linear infinite;

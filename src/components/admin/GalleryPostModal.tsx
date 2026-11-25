@@ -28,8 +28,13 @@ import {
 } from '@/src/utils/galleryBlocks';
 import {
   buildWorkLogImageFilename,
+  ENHANCEMENT_MODE_OPTIONS,
   formatBytes,
+  GALLERY_IMAGE_GUIDELINES,
   optimizeWorkLogImage,
+  WATERMARK_TRIM_OPTIONS,
+  type ImageEnhancementMode,
+  type WatermarkTrimPreset,
 } from '@/src/utils/imageOptimizer';
 import {
   getGalleryCategories,
@@ -121,6 +126,9 @@ export const GalleryPostModal: React.FC<GalleryPostModalProps> = ({
   const [tagsText, setTagsText] = useState('유리창청소, 외창청소');
   const [uploadingImage, setUploadingImage] = useState(false);
   const [coverOptimizationNote, setCoverOptimizationNote] = useState('');
+  const [watermarkTrim, setWatermarkTrim] = useState<WatermarkTrimPreset>('none');
+  const [enhancementMode, setEnhancementMode] = useState<ImageEnhancementMode>('natural');
+  const [showImageGuideline, setShowImageGuideline] = useState(false);
   const [seoAutoSync, setSeoAutoSync] = useState(true);
   const [seoTitle, setSeoTitle] = useState('');
   const [seoDescription, setSeoDescription] = useState('');
@@ -257,11 +265,19 @@ export const GalleryPostModal: React.FC<GalleryPostModalProps> = ({
   const compressAndUpload = async (
     file: File
   ): Promise<{ url: string; filename: string; sizeInfo: string }> => {
-    const optimized = await optimizeWorkLogImage(file, {
-      region,
-      category,
-      title,
-    });
+    const optimized = await optimizeWorkLogImage(
+      file,
+      {
+        region,
+        category,
+        title,
+      },
+      240 * 1024,
+      {
+        watermarkTrim,
+        enhancementMode,
+      }
+    );
 
     if (!optimized.dataUrl) {
       return { url: '', filename: optimized.filename, sizeInfo: '' };
@@ -275,10 +291,14 @@ export const GalleryPostModal: React.FC<GalleryPostModalProps> = ({
           )
         : 0;
 
-    const sizeInfo =
+    const bytesPart =
       optimized.originalBytes > optimized.compressedBytes
         ? `${formatBytes(optimized.originalBytes)} → ${formatBytes(optimized.compressedBytes)} (${ratio}% 절감)`
         : `${formatBytes(optimized.compressedBytes)} (웹 최적화)`;
+    const notesPart = optimized.appliedNotes?.length
+      ? `${optimized.appliedNotes.join(' · ')} · `
+      : '';
+    const sizeInfo = `${notesPart}${bytesPart}`;
 
     if (onUploadImage) {
       const uploadedUrl = await onUploadImage(optimized.dataUrl, optimized.filename);
@@ -743,13 +763,89 @@ export const GalleryPostModal: React.FC<GalleryPostModalProps> = ({
                   블로그 본문 구성 (글 · 소제목 · 사진)
                 </label>
                 <p className="text-[10px] text-emerald-700 font-semibold mt-0.5">
-                  사진 업로드 시 자동 웹 최적화 압축(최대 1280px · 220KB 이하) 및{' '}
-                  <span className="font-bold">{expectedImageName}</span> 형식으로 자동 변환됩니다.
+                  사진 업로드 시 원본 비율 유지(최대 1440px · 240KB 이하) ·{' '}
+                  <span className="font-bold">{expectedImageName}</span> 자동 변환 및 선택된 가이드라인 보정이 적용됩니다.
                 </p>
               </div>
               <span className="text-[11px] text-slate-400">
                 총 {blocks.length}개 블록
               </span>
+            </div>
+
+            {/* Image Guideline & Auto-Optimization Settings */}
+            <div className="rounded-2xl border border-blue-200/90 bg-blue-50/40 p-3.5 space-y-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-[11px] font-extrabold text-slate-900">
+                  업로드 사진 자동 최적화 설정 (워터마크 제거 · 원본 비율 유지 · 오염 강조)
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowImageGuideline((prev) => !prev)}
+                  className="text-[11px] font-bold text-blue-700 hover:underline cursor-pointer"
+                >
+                  {showImageGuideline ? '편집 가이드라인 닫기 ▲' : '편집 가이드라인 보기 ▼'}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 mb-1">
+                    하단 워터마크 · 연락처 제거
+                  </label>
+                  <select
+                    value={watermarkTrim}
+                    onChange={(e) => setWatermarkTrim(e.target.value as WatermarkTrimPreset)}
+                    className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-xl font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {WATERMARK_TRIM_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 mb-1">
+                    현장 사진 보정 모드
+                  </label>
+                  <select
+                    value={enhancementMode}
+                    onChange={(e) => setEnhancementMode(e.target.value as ImageEnhancementMode)}
+                    className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-xl font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {ENHANCEMENT_MODE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {showImageGuideline && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-blue-200/70">
+                  {GALLERY_IMAGE_GUIDELINES.map((rule) => (
+                    <div
+                      key={rule.id}
+                      className="p-2.5 rounded-xl bg-white border border-slate-200/80 space-y-1"
+                    >
+                      <div className="text-[11px] font-extrabold text-blue-800">
+                        {rule.title}
+                      </div>
+                      <p className="text-[10px] text-slate-600 leading-relaxed">
+                        {rule.summary}
+                      </p>
+                      <ul className="space-y-0.5 pt-0.5">
+                        {rule.checklist.map((item, idx) => (
+                          <li key={idx} className="text-[10px] text-slate-500 leading-snug">
+                            • {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="space-y-3">
@@ -827,11 +923,11 @@ export const GalleryPostModal: React.FC<GalleryPostModalProps> = ({
 
                   {block.type === 'image' && (
                     <div className="space-y-2">
-                      <div className="relative rounded-xl overflow-hidden bg-slate-100 border border-slate-200">
+                      <div className="relative rounded-xl overflow-hidden bg-slate-100/80 border border-slate-200">
                         <img
                           src={resolveAssetUrl(block.url)}
                           alt={block.caption || '현장 사진'}
-                          className="w-full max-h-56 object-cover"
+                          className="w-full max-h-72 object-contain mx-auto"
                         />
                         <label className="absolute bottom-2 right-2 px-2.5 py-1.5 rounded-lg bg-slate-900/85 hover:bg-blue-600 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shadow-md">
                           <Upload className="w-3 h-3" />

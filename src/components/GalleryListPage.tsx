@@ -7,17 +7,20 @@ import {
   ChevronLeft,
   ChevronRight,
   Copy,
+  FileText,
   Home,
   Layers,
   LayoutGrid,
   MapPin,
   Pencil,
   Plus,
+  RotateCcw,
   ShieldCheck,
   Sparkles,
   Store,
   Trash2,
   Wrench,
+  X,
 } from 'lucide-react';
 import { GalleryPostModal } from '@/src/components/admin/GalleryPostModal';
 import type { GalleryPost, SiteData } from '@/src/types/clearworks';
@@ -26,6 +29,11 @@ import {
   getGalleryCategories,
   matchesGalleryCategory,
 } from '@/src/utils/galleryCategories';
+import {
+  loadWorkLogPromptTemplate,
+  resetWorkLogPromptTemplate,
+  saveWorkLogPromptTemplate,
+} from '@/src/utils/worklogPromptTemplate';
 
 interface GalleryListPageProps {
   posts: GalleryPost[];
@@ -71,20 +79,15 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
   const [editingPost, setEditingPost] = useState<GalleryPost | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [copiedListJson, setCopiedListJson] = useState(false);
+  const [promptTemplate, setPromptTemplate] = useState<string>(() =>
+    loadWorkLogPromptTemplate()
+  );
+  const [copiedPrompt, setCopiedPrompt] = useState(false);
+  const [promptModalOpen, setPromptModalOpen] = useState(false);
+  const [promptDraft, setPromptDraft] = useState('');
   const gridTopRef = useRef<HTMLDivElement | null>(null);
 
-  const handleCopyListJson = async () => {
-    const payload = siteData
-      ? {
-          ...siteData,
-          gallery: {
-            ...siteData.gallery,
-            posts,
-          },
-          updatedAt: new Date().toISOString(),
-        }
-      : { posts };
-    const text = `${JSON.stringify(payload, null, 2)}\n`;
+  const copyPlainText = async (text: string): Promise<boolean> => {
     let ok = false;
     try {
       if (navigator.clipboard?.writeText) {
@@ -109,6 +112,52 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
         ok = false;
       }
     }
+    return ok;
+  };
+
+  const handleCopyPrompt = async (overrideText?: string) => {
+    const ok = await copyPlainText(overrideText ?? promptTemplate);
+    if (ok) {
+      setCopiedPrompt(true);
+      setTimeout(() => setCopiedPrompt(false), 2500);
+    }
+  };
+
+  const handleOpenPromptEditor = () => {
+    setPromptDraft(promptTemplate);
+    setPromptModalOpen(true);
+  };
+
+  const handleSavePrompt = (copyAfterSave = false) => {
+    const cleaned = promptDraft.trim();
+    if (!cleaned) return;
+    saveWorkLogPromptTemplate(cleaned);
+    setPromptTemplate(cleaned);
+    setPromptModalOpen(false);
+    if (copyAfterSave) {
+      void handleCopyPrompt(cleaned);
+    }
+  };
+
+  const handleResetPrompt = () => {
+    const restored = resetWorkLogPromptTemplate();
+    setPromptDraft(restored);
+    setPromptTemplate(restored);
+  };
+
+  const handleCopyListJson = async () => {
+    const payload = siteData
+      ? {
+          ...siteData,
+          gallery: {
+            ...siteData.gallery,
+            posts,
+          },
+          updatedAt: new Date().toISOString(),
+        }
+      : { posts };
+    const text = `${JSON.stringify(payload, null, 2)}\n`;
+    const ok = await copyPlainText(text);
     if (ok) {
       setCopiedListJson(true);
       setTimeout(() => setCopiedListJson(false), 2500);
@@ -214,35 +263,73 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
             </div>
 
             {isEditMode && (
-              <div className="flex flex-wrap items-center gap-2 self-start md:self-auto shrink-0">
-                <button
-                  type="button"
-                  onClick={handleCopyListJson}
-                  title="삭제/수정된 현재 갤러리 목록을 포함한 전체 JSON을 복사합니다"
-                  className={`px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold shadow-lg flex items-center gap-1.5 cursor-pointer whitespace-nowrap transition-colors ${
-                    copiedListJson
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-indigo-600 hover:bg-indigo-500 text-white'
-                  }`}
-                >
-                  {copiedListJson ? (
-                    <Check className="w-4 h-4" />
-                  ) : (
-                    <Copy className="w-4 h-4" />
-                  )}
-                  <span>{copiedListJson ? 'JSON 복사 완료!' : 'JSON 복사하기'}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingPost(null);
-                    setModalOpen(true);
-                  }}
-                  className="px-5 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-bold shadow-lg flex items-center gap-2 cursor-pointer whitespace-nowrap"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>새 작업일지 작성하기</span>
-                </button>
+              <div className="flex flex-col items-start md:items-end gap-2.5 self-start md:self-auto shrink-0">
+                <div className="inline-flex flex-wrap items-center gap-2 rounded-2xl bg-slate-900/75 border border-white/15 backdrop-blur-md px-3.5 py-2 text-xs shadow-lg">
+                  <span className="inline-flex items-center gap-1.5 font-bold text-slate-100">
+                    <FileText className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                    <span>작업일지 프롬프트(네이버블로그 반영)</span>
+                  </span>
+                  <div className="inline-flex items-center gap-1.5 pl-1 border-l border-white/20">
+                    <button
+                      type="button"
+                      onClick={() => void handleCopyPrompt()}
+                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg font-extrabold cursor-pointer transition-colors ${
+                        copiedPrompt
+                          ? 'bg-emerald-500 text-white'
+                          : 'text-sky-300 hover:text-white hover:bg-white/10'
+                      }`}
+                    >
+                      {copiedPrompt ? (
+                        <Check className="w-3 h-3" />
+                      ) : (
+                        <Copy className="w-3 h-3" />
+                      )}
+                      <span>{copiedPrompt ? '복사됨!' : '복사'}</span>
+                    </button>
+                    <span className="text-white/30 select-none" aria-hidden="true">
+                      |
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleOpenPromptEditor}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg font-bold text-slate-200 hover:text-white hover:bg-white/10 cursor-pointer transition-colors"
+                    >
+                      <Pencil className="w-3 h-3" />
+                      <span>편집</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleCopyListJson}
+                    title="삭제/수정된 현재 갤러리 목록을 포함한 전체 JSON을 복사합니다"
+                    className={`px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold shadow-lg flex items-center gap-1.5 cursor-pointer whitespace-nowrap transition-colors ${
+                      copiedListJson
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                    }`}
+                  >
+                    {copiedListJson ? (
+                      <Check className="w-4 h-4" />
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
+                    <span>{copiedListJson ? 'JSON 복사 완료!' : 'JSON 복사하기'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingPost(null);
+                      setModalOpen(true);
+                    }}
+                    className="px-5 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-bold shadow-lg flex items-center gap-2 cursor-pointer whitespace-nowrap"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>새 작업일지 작성하기</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -483,25 +570,107 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
       </div>
 
       {isEditMode && (
-        <GalleryPostModal
-          isOpen={modalOpen}
-          editingPost={editingPost}
-          categories={resolvedCategories}
-          regions={regions}
-          siteData={siteData}
-          onUploadImage={onUploadImage}
-          onClose={() => {
-            setModalOpen(false);
-            setEditingPost(null);
-          }}
-          onSave={(saved) => {
-            if (editingPost || posts.some((p) => p.id === saved.id)) {
-              onUpdatePost(saved);
-            } else {
-              onAddPost(saved);
-            }
-          }}
-        />
+        <>
+          <GalleryPostModal
+            isOpen={modalOpen}
+            editingPost={editingPost}
+            categories={resolvedCategories}
+            regions={regions}
+            siteData={siteData}
+            onUploadImage={onUploadImage}
+            onClose={() => {
+              setModalOpen(false);
+              setEditingPost(null);
+            }}
+            onSave={(saved) => {
+              if (editingPost || posts.some((p) => p.id === saved.id)) {
+                onUpdatePost(saved);
+              } else {
+                onAddPost(saved);
+              }
+            }}
+          />
+
+          {promptModalOpen && (
+            <div
+              className="fixed inset-0 z-[110] bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4"
+              onClick={() => setPromptModalOpen(false)}
+            >
+              <div
+                className="bg-white rounded-3xl max-w-3xl w-full p-5 sm:p-6 shadow-2xl border border-slate-200 max-h-[90vh] flex flex-col"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 mb-4 shrink-0">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                      <FileText className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-extrabold text-slate-900">
+                        작업일지 프롬프트 편집 (네이버블로그 반영)
+                      </h3>
+                      <p className="text-[11px] text-slate-500">
+                        원하는 기준이나 문구를 수정·저장해두면 [복사] 버튼 클릭 시 수정된 전체 내용이 복사됩니다.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPromptModalOpen(false)}
+                    className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <textarea
+                  value={promptDraft}
+                  onChange={(e) => setPromptDraft(e.target.value)}
+                  rows={16}
+                  className="w-full flex-1 px-4 py-3 text-xs sm:text-[13px] leading-relaxed font-mono bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+                />
+
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-4 mt-4 border-t border-slate-100 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleResetPrompt}
+                    className="px-3 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 inline-flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>기본 프롬프트 복원</span>
+                  </button>
+
+                  <div className="flex flex-wrap items-center gap-2 ml-auto">
+                    <button
+                      type="button"
+                      onClick={() => setPromptModalOpen(false)}
+                      className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer"
+                    >
+                      취소
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!promptDraft.trim()}
+                      onClick={() => handleSavePrompt(false)}
+                      className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-white text-xs font-bold cursor-pointer"
+                    >
+                      저장하기
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!promptDraft.trim()}
+                      onClick={() => handleSavePrompt(true)}
+                      className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-md cursor-pointer"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>저장 후 복사하기</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -467,8 +467,8 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
             isPopupMode
               ? 'whitespace-pre-line'
               : photos.length > 0
-              ? 'line-clamp-4'
-              : 'line-clamp-6'
+              ? 'line-clamp-5'
+              : 'line-clamp-7'
           }`}
         >
           {review.content}
@@ -511,11 +511,11 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
               },
             ];
 
-      // 채팅 길이에 따라 짧은 후기는 콤팩트하게, 긴 후기는 최대 4개 말풍선(~516px)까지 자연스럽게 노출
-      const maxCharBudget = photos.length > 0 ? 155 : 205;
+      // 채팅 길이에 따라 짧은 후기는 콤팩트하게, 긴 후기는 이전보다 약 10% 더 길게 가변 수용
+      const maxCharBudget = photos.length > 0 ? 175 : 230;
       const previewMessages: ReviewChatMessage[] = [];
       let usedChars = 0;
-      for (const m of rawMessages.slice(0, 4)) {
+      for (const m of rawMessages.slice(0, 5)) {
         const len = (m.text || '').length;
         if (previewMessages.length >= 2 && usedChars + len > maxCharBudget) {
           break;
@@ -537,7 +537,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
             }
           }}
           aria-label={`카카오톡 고객 후기 ${index + 1} 눌러서 보기`}
-          className="shrink-0 w-[284px] sm:w-[308px] max-h-[516px] mx-2.5 rounded-2xl overflow-hidden border border-slate-200/90 bg-[#bacee0] shadow-xs hover:shadow-xl transition-shadow text-left flex flex-col cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="shrink-0 w-[284px] sm:w-[308px] max-h-none rounded-2xl overflow-hidden border border-slate-200/90 bg-[#bacee0] shadow-xs hover:shadow-xl transition-shadow text-left flex flex-col cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           {/* 카톡 상단 채팅방 헤더 */}
           <div className="bg-[#a9bdce] border-b border-black/5 px-3.5 py-2.5 flex items-center justify-between shrink-0">
@@ -559,8 +559,8 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
             </div>
           </div>
 
-          {/* 카톡 대화 본문 (말풍선 line-clamp 없이 온전하게 렌더링) */}
-          <div className="flex-1 min-h-0 px-3 py-3.5 flex flex-col justify-start overflow-hidden">
+          {/* 카톡 대화 본문 (가변 높이 + 말풍선 깨짐 방지) */}
+          <div className="px-3 py-3.5 flex flex-col justify-start">
             <div className="space-y-2.5">
               <div className="text-center">
                 <span className="inline-block text-[10px] text-slate-700 bg-black/10 rounded-full px-2.5 py-0.5 tabular-nums">
@@ -596,7 +596,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                                 aria-hidden="true"
                               />
                             )}
-                            <span className="relative z-10">{msg.text}</span>
+                            <span className="relative z-10 line-clamp-4">{msg.text}</span>
                           </div>
                           <span className="text-[9px] text-slate-600 shrink-0 tabular-nums leading-none pb-0.5">
                             {msg.time || '오후 2:18'}
@@ -620,7 +620,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                         className="absolute -right-1 top-1.5 w-2 h-2 bg-[#FEE500] rotate-45 rounded-[1px] pointer-events-none"
                         aria-hidden="true"
                       />
-                      <span className="relative z-10">{msg.text}</span>
+                      <span className="relative z-10 line-clamp-4">{msg.text}</span>
                     </div>
                   </div>
                 );
@@ -681,7 +681,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
             }
           }}
           aria-label={`숨고 고객 후기 ${index + 1} 눌러서 보기`}
-          className="shrink-0 w-[284px] sm:w-[308px] mx-2.5 rounded-2xl overflow-hidden border border-slate-200/90 bg-white shadow-xs hover:shadow-xl transition-shadow text-left flex flex-col cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#2F6FE4]"
+          className="shrink-0 w-[284px] sm:w-[308px] max-h-none rounded-2xl overflow-hidden border border-slate-200/90 bg-white shadow-xs hover:shadow-xl transition-shadow text-left flex flex-col cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#2F6FE4]"
         >
           <div className="p-4 sm:p-5 pb-3.5 flex flex-col">
             <div>
@@ -713,7 +713,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
           }
         }}
         aria-label={`당근마켓 고객 후기 ${index + 1} 눌러서 보기`}
-        className="shrink-0 w-[284px] sm:w-[308px] mx-2.5 rounded-2xl overflow-hidden border border-slate-200/90 bg-white shadow-xs hover:shadow-xl transition-shadow text-left flex flex-col cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#FF6F0F]"
+        className="shrink-0 w-[284px] sm:w-[308px] max-h-none rounded-2xl overflow-hidden border border-slate-200/90 bg-white shadow-xs hover:shadow-xl transition-shadow text-left flex flex-col cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#FF6F0F]"
       >
         <div className="p-4 sm:p-5 pb-3.5 flex flex-col">
           <div className="space-y-3">
@@ -749,7 +749,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
             {/* 실제 당근 본문 */}
             <p
               className={`text-[13px] text-[#212124] leading-[1.6] ${
-                photos.length > 0 ? 'line-clamp-5' : 'line-clamp-[9]'
+                photos.length > 0 ? 'line-clamp-6' : 'line-clamp-[10]'
               }`}
             >
               {review.content}
@@ -828,11 +828,11 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
           aria-hidden="true"
           className="pointer-events-none hidden sm:block absolute inset-y-0 right-0 w-16 md:w-28 bg-gradient-to-l from-slate-50 via-slate-50/75 to-transparent z-10"
         />
-        <div className="cw-review-marquee-track">
-          <div className="flex items-center">
+        <div className="cw-review-marquee-track items-start">
+          <div className="flex items-start gap-4 pr-4">
             {reviews.map((review, idx) => renderMarqueeCard(review, idx, 'track-a'))}
           </div>
-          <div className="flex items-center" aria-hidden="true">
+          <div className="flex items-start gap-4 pr-4" aria-hidden="true">
             {reviews.map((review, idx) => renderMarqueeCard(review, idx, 'track-b'))}
           </div>
         </div>

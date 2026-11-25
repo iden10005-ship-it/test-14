@@ -106,7 +106,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-7">
+        <div className="flex flex-wrap items-stretch gap-6 sm:gap-7">
           {services.map((service) => {
             const rawImageUrl = service.image || service.detail?.afterImage || '';
             const resolvedUrl = resolveAssetUrl(rawImageUrl);
@@ -124,7 +124,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
                 }}
                 role="button"
                 tabIndex={0}
-                className="group bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 hover:border-blue-300 overflow-hidden shadow-2xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                className="w-full sm:w-[calc((100%-1.75rem)/2)] lg:w-[calc((100%-3.5rem)/3)] group bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 hover:border-blue-300 overflow-hidden shadow-2xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
               >
                 <div>
                   <div className="relative aspect-[16/10] bg-slate-100 overflow-hidden">
@@ -251,7 +251,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
             <button
               type="button"
               onClick={onAddService}
-              className="rounded-2xl sm:rounded-3xl border-2 border-dashed border-blue-300 hover:border-blue-500 bg-blue-50/30 hover:bg-blue-50/60 p-6 flex flex-col items-center justify-center text-blue-600 gap-2 min-h-[280px] transition-all cursor-pointer group"
+              className="w-full sm:w-[calc((100%-1.75rem)/2)] lg:w-[calc((100%-3.5rem)/3)] rounded-2xl sm:rounded-3xl border-2 border-dashed border-blue-300 hover:border-blue-500 bg-blue-50/30 hover:bg-blue-50/60 p-6 flex flex-col items-center justify-center text-blue-600 gap-2 min-h-[280px] transition-all cursor-pointer group"
             >
               <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center group-hover:scale-110 transition-transform">
                 <Plus className="w-6 h-6" />

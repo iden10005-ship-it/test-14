@@ -1,8 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Image as ImageIcon, RotateCcw, Upload, X } from 'lucide-react';
 import {
+  ENHANCEMENT_MODE_OPTIONS,
   formatBytes,
+  GALLERY_IMAGE_GUIDELINES,
   optimizeWorkLogImage,
+  WATERMARK_TRIM_OPTIONS,
+  type ImageEnhancementMode,
+  type WatermarkTrimPreset,
   type WorkLogImageNameInput,
 } from '@/src/utils/imageOptimizer';
 
@@ -57,26 +62,37 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
   const [error, setError] = useState('');
   const [uploading, setUploading] = useState(false);
   const [uploadNote, setUploadNote] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [watermarkTrim, setWatermarkTrim] = useState<WatermarkTrimPreset>('none');
+  const [enhancementMode, setEnhancementMode] = useState<ImageEnhancementMode>('natural');
+  const [showGuideline, setShowGuideline] = useState(false);
 
   useEffect(() => {
     if (target) {
       setUrlInput(target.currentUrl);
       setError('');
       setUploadNote('');
+      setSelectedFile(null);
+      setWatermarkTrim('none');
+      setEnhancementMode('natural');
+      setShowGuideline(false);
     }
   }, [target]);
 
-  if (!target) return null;
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    setError('');
-    setUploadNote('');
-    try {
-      if (target.optimizationTarget) {
-        const optimized = await optimizeWorkLogImage(file, target.optimizationTarget);
+  const processWorkLogFile = useCallback(
+    async (
+      file: File,
+      optTarget: WorkLogImageNameInput,
+      trim: WatermarkTrimPreset,
+      enhance: ImageEnhancementMode
+    ) => {
+      setUploading(true);
+      setError('');
+      try {
+        const optimized = await optimizeWorkLogImage(file, optTarget, 240 * 1024, {
+          watermarkTrim: trim,
+          enhancementMode: enhance,
+        });
         const savedUrl = onUploadImage
           ? await onUploadImage(optimized.dataUrl, optimized.filename)
           : optimized.dataUrl;
@@ -90,21 +106,60 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
                 Math.round((1 - optimized.compressedBytes / optimized.originalBytes) * 100)
               )
             : 0;
+        const notesText = optimized.appliedNotes?.length
+          ? `${optimized.appliedNotes.join(' · ')} · `
+          : '';
         setUrlInput(savedUrl);
         setUploadNote(
-          `${resolvedName} · ${formatBytes(optimized.originalBytes)} → ${formatBytes(optimized.compressedBytes)} (${ratio}% 절감)`
+          `${resolvedName} · ${notesText}${formatBytes(optimized.originalBytes)} → ${formatBytes(optimized.compressedBytes)} (${ratio}% 절감)`
         );
-      } else {
-        const dataUrl = await resizeImageFile(file);
-        const savedUrl = onUploadImage
-          ? await onUploadImage(dataUrl, file.name.replace(/\.[^.]+$/, ''))
-          : dataUrl;
-        setUrlInput(savedUrl);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : '이미지 처리 중 오류가 발생했습니다.');
+      } finally {
+        setUploading(false);
       }
+    },
+    [onUploadImage]
+  );
+
+  if (!target) return null;
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (target.optimizationTarget) {
+      setSelectedFile(file);
+      await processWorkLogFile(file, target.optimizationTarget, watermarkTrim, enhancementMode);
+      return;
+    }
+
+    setUploading(true);
+    setError('');
+    setUploadNote('');
+    try {
+      const dataUrl = await resizeImageFile(file);
+      const savedUrl = onUploadImage
+        ? await onUploadImage(dataUrl, file.name.replace(/\.[^.]+$/, ''))
+        : dataUrl;
+      setUrlInput(savedUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : '이미지 처리 중 오류가 발생했습니다.');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleTrimChange = async (nextTrim: WatermarkTrimPreset) => {
+    setWatermarkTrim(nextTrim);
+    if (selectedFile && target.optimizationTarget) {
+      await processWorkLogFile(selectedFile, target.optimizationTarget, nextTrim, enhancementMode);
+    }
+  };
+
+  const handleEnhanceChange = async (nextEnhance: ImageEnhancementMode) => {
+    setEnhancementMode(nextEnhance);
+    if (selectedFile && target.optimizationTarget) {
+      await processWorkLogFile(selectedFile, target.optimizationTarget, watermarkTrim, nextEnhance);
     }
   };
 
@@ -148,17 +203,83 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
 
         <form onSubmit={handleSave} className="space-y-4">
           {/* Preview */}
-          <div className="aspect-[16/9] rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center">
+          <div className="h-56 rounded-2xl bg-slate-100/90 border border-slate-200 overflow-hidden flex items-center justify-center">
             {urlInput ? (
               <img
                 src={urlInput}
                 alt="미리보기"
-                className="w-full h-full object-cover"
+                className={
+                  target.optimizationTarget
+                    ? 'w-full h-full object-contain'
+                    : 'w-full h-full object-cover'
+                }
               />
             ) : (
               <span className="text-xs text-slate-400">미리보기 없음</span>
             )}
           </div>
+
+          {target.optimizationTarget && (
+            <div className="rounded-2xl border border-blue-200/90 bg-blue-50/40 p-3 space-y-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-extrabold text-slate-900">
+                  작업갤러리 이미지 최적화 옵션
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowGuideline((prev) => !prev)}
+                  className="text-[11px] font-bold text-blue-700 hover:underline cursor-pointer"
+                >
+                  {showGuideline ? '가이드라인 닫기 ▲' : '가이드라인 보기 ▼'}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 mb-1">
+                    하단 워터마크 제거
+                  </label>
+                  <select
+                    value={watermarkTrim}
+                    onChange={(e) => void handleTrimChange(e.target.value as WatermarkTrimPreset)}
+                    className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-xl font-medium text-slate-800"
+                  >
+                    {WATERMARK_TRIM_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 mb-1">
+                    현장 사진 보정 모드
+                  </label>
+                  <select
+                    value={enhancementMode}
+                    onChange={(e) => void handleEnhanceChange(e.target.value as ImageEnhancementMode)}
+                    className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-xl font-medium text-slate-800"
+                  >
+                    {ENHANCEMENT_MODE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {showGuideline && (
+                <ul className="space-y-1 pt-2 border-t border-blue-200/70">
+                  {GALLERY_IMAGE_GUIDELINES.map((g) => (
+                    <li key={g.id} className="text-[10px] text-slate-600 leading-snug">
+                      <strong className="text-blue-800">{g.title}:</strong> {g.summary}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
 
           {/* File Upload */}
           <div>

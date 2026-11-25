@@ -264,12 +264,12 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
 
           {/* Featured Cover Photo */}
           {heroCover && (
-            <div className="relative bg-slate-100 border-b border-slate-100">
+            <div className="relative bg-slate-100/80 border-b border-slate-100">
               <img
                 src={resolveAssetUrl(heroCover)}
                 alt={post.title}
                 referrerPolicy="no-referrer"
-                className="w-full max-h-[520px] object-cover"
+                className="w-full max-h-[600px] object-contain mx-auto"
               />
               {isEditMode && (
                 <button
@@ -338,13 +338,13 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
                   key={block.id}
                   className="my-2 rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 shadow-sm relative"
                 >
-                  <div className="relative bg-slate-900">
+                  <div className="relative bg-slate-100/70">
                     <img
                       src={resolveAssetUrl(block.url)}
                       alt={block.caption || `${post.title} 시공 사진`}
                       referrerPolicy="no-referrer"
                       loading="lazy"
-                      className="w-full max-h-[580px] object-cover"
+                      className="w-full max-h-[680px] object-contain mx-auto"
                     />
                     {isEditMode && (
                       <button

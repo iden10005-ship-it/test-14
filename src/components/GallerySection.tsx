@@ -122,6 +122,11 @@ export const GallerySection: React.FC<GallerySectionProps> = ({
                         onEditImage({
                           title: `[${post.title}] 대표 이미지 변경`,
                           currentUrl: post.coverImage || post.afterImage,
+                          optimizationTarget: {
+                            region: post.region,
+                            category: post.category,
+                            title: post.title,
+                          },
                           onSave: (url) => onUpdatePostField(post.id, 'coverImage', url),
                         });
                       }}

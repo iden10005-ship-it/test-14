@@ -111,10 +111,10 @@ export const Hero: React.FC<HeroProps> = ({
               />
             </p>
 
-            <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2.5 sm:gap-3">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2.5 sm:gap-3">
               <a
                 href={`tel:${company.phone}`}
-                className="px-4 sm:px-5 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm sm:text-base flex items-center justify-center gap-1.5 sm:gap-2 shadow-lg shadow-slate-950/40 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150 whitespace-nowrap"
+                className="w-full sm:w-auto px-5 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-slate-950/35 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150 whitespace-nowrap"
               >
                 <Phone className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
                 <EditableText
@@ -127,9 +127,9 @@ export const Hero: React.FC<HeroProps> = ({
 
               <a
                 href={`sms:${smsDigits}`}
-                className="px-4 sm:px-5 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm sm:text-base flex items-center justify-center gap-1.5 sm:gap-2 shadow-lg shadow-slate-950/40 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150 whitespace-nowrap"
+                className="w-full sm:w-auto px-5 py-3.5 rounded-xl bg-green-600 hover:bg-green-500 text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-slate-950/35 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150 whitespace-nowrap"
               >
-                <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 text-emerald-100" />
+                <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
                 <EditableText
                   value={hero.smsButtonText || '문자 상담하기'}
                   onSave={(v) => onUpdateHero('smsButtonText', v)}
@@ -142,7 +142,7 @@ export const Hero: React.FC<HeroProps> = ({
                 href={company.kakaoLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-4 sm:px-5 py-3.5 rounded-xl bg-[#FEE500] hover:bg-[#FADA0A] text-[#3c1e1e] font-bold text-sm sm:text-base flex items-center justify-center gap-1.5 sm:gap-2 shadow-lg shadow-slate-950/30 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150 whitespace-nowrap"
+                className="w-full sm:w-auto px-5 py-3.5 rounded-xl bg-[#FEE500] hover:bg-[#FADA0A] text-[#3c1e1e] font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-slate-950/35 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150 whitespace-nowrap"
               >
                 <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 fill-current shrink-0" />
                 <EditableText
@@ -156,7 +156,7 @@ export const Hero: React.FC<HeroProps> = ({
               <button
                 type="button"
                 onClick={onScrollToContact}
-                className="px-4 sm:px-5 py-3.5 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-md text-white font-semibold text-sm sm:text-base border border-white/35 transition-all cursor-pointer whitespace-nowrap flex items-center justify-center"
+                className="w-full sm:w-auto px-5 py-3.5 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-md text-white font-bold text-sm sm:text-base border border-white/35 shadow-lg shadow-slate-950/25 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150 cursor-pointer whitespace-nowrap flex items-center justify-center"
               >
                 빠른 온라인 견적
               </button>
