@@ -137,10 +137,6 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
           .split(/\r?\n/)
           .map((line) => line.trim())
           .filter(Boolean),
-      posts,
-      categories: resolvedCategories,
-      regions,
-      siteData,
     });
 
   const handleCopyPrompt = async (overrideText?: string, blogUrlsOverride?: string[]) => {
@@ -311,7 +307,7 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
               <div className="flex flex-col items-start md:items-end gap-2.5 self-start md:self-auto shrink-0">
                 <div
                   className="inline-flex flex-wrap items-center gap-2 rounded-2xl bg-slate-900/75 border border-white/15 backdrop-blur-md px-3.5 py-2 text-xs shadow-lg"
-                  title="JSON 복사하기처럼 구조화된 JSON 형식으로 복사되어, 채팅창에 붙여넣으면 txt 메모장처럼 깔끔하게 첨부됩니다."
+                  title="작성한 프롬프트 텍스트만 깔끔한 JSON 형식으로 변환해 복사합니다."
                 >
                   <span className="inline-flex items-center gap-1.5 font-bold text-slate-100">
                     <FileText className="w-3.5 h-3.5 text-amber-300 shrink-0" />
@@ -655,10 +651,10 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
                     </div>
                     <div>
                       <h3 className="text-base font-extrabold text-slate-900">
-                        작업일지 프롬프트 편집 (JSON 복사 지원)
+                        작업일지 프롬프트 편집 (깔끔한 JSON 복사)
                       </h3>
                       <p className="text-[11px] text-slate-500">
-                        복사 시 현재 사이트 카테고리·지역·기존 글 목록과 함께 구조화된 JSON으로 묶여, 채팅창에 붙여넣으면 txt 파일처럼 깔끔하게 첨부됩니다.
+                        전체 사이트 데이터를 섞지 않고, 아래 입력한 프롬프트 내용과 블로그 주소만 깔끔한 JSON 형식으로 변환해 복사합니다.
                       </p>
                     </div>
                   </div>

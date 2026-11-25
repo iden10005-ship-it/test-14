@@ -198,23 +198,11 @@ export const Header: React.FC<HeaderProps> = ({
                 label="운영시간 수정"
               />
             </span>
-            <a
-              href={`tel:${company.phone}`}
-              className="font-bold text-white hover:text-blue-400 flex items-center gap-1.5 transition-colors whitespace-nowrap tabular-nums"
-            >
-              <Phone className="w-3.5 h-3.5 text-blue-400" />
-              <EditableText
-                value={company.phone}
-                onSave={(v) => onUpdateCompany('phone', v)}
-                isEditMode={isEditMode}
-                label="대표 전화번호 수정"
-              />
-            </a>
             {!isAdminMode ? (
               <button
                 type="button"
                 onClick={onOpenAdminLogin}
-                className="inline-flex items-center gap-1 text-slate-400 hover:text-white transition-colors pl-2 border-l border-slate-700 font-semibold text-[11px] cursor-pointer"
+                className="inline-flex items-center gap-1 text-slate-400 hover:text-white transition-colors sm:pl-2 sm:border-l sm:border-slate-700 font-semibold text-[11px] cursor-pointer"
                 title="관리자 모드 로그인"
               >
                 <Lock className="w-3 h-3 text-blue-400" />
@@ -224,7 +212,7 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 type="button"
                 onClick={onLogoutAdmin}
-                className="inline-flex items-center gap-1 text-emerald-400 hover:text-emerald-200 transition-colors pl-2 border-l border-slate-700 font-semibold text-[11px] cursor-pointer"
+                className="inline-flex items-center gap-1 text-emerald-400 hover:text-emerald-200 transition-colors sm:pl-2 sm:border-l sm:border-slate-700 font-semibold text-[11px] cursor-pointer"
                 title="관리자 모드 종료"
               >
                 <Lock className="w-3 h-3" />
