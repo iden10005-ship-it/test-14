@@ -51,6 +51,10 @@ import {
   analyzePageSeoKeywords,
   type SeoKeywordSuggestion,
 } from '@/src/utils/seoKeywordSuggester';
+import {
+  DEFAULT_WORKLOG_PROMPT_TEMPLATE,
+  WORKLOG_PROMPT_STORAGE_KEY,
+} from '@/src/utils/worklogPromptTemplate';
 
 const SITE_DATA_STORAGE_KEY = 'clearworks_site_data_v1';
 const INQUIRIES_STORAGE_KEY = 'clearworks_inquiries_v1';
@@ -529,20 +533,45 @@ export default function App() {
     }
   };
 
+  useEffect(() => {
+    if (!isAdminMode || !canWriteCode) return;
+    try {
+      const localPrompt = window.localStorage.getItem(WORKLOG_PROMPT_STORAGE_KEY)?.trim();
+      const serverPrompt = latestSiteDataRef.current.worklogPrompt?.trim();
+      if (
+        localPrompt &&
+        localPrompt !== DEFAULT_WORKLOG_PROMPT_TEMPLATE.trim() &&
+        !serverPrompt
+      ) {
+        updateSiteData((prev) => ({
+          ...prev,
+          worklogPrompt: localPrompt,
+        }));
+      }
+    } catch {
+      // Ignore storage access errors
+    }
+  }, [isAdminMode, canWriteCode, updateSiteData]);
+
+  const scrollToElementWithHeaderOffset = (sectionId: string) => {
+    const el = document.getElementById(sectionId);
+    if (!el) return;
+    const headerEl = document.querySelector('header');
+    const headerHeight = headerEl ? headerEl.getBoundingClientRect().height : 104;
+    const top = Math.max(0, el.getBoundingClientRect().top + window.scrollY - headerHeight);
+    window.scrollTo({ top, behavior: 'instant' as ScrollBehavior });
+  };
+
   const scrollToSection = (sectionId: string) => {
     if (route.type !== 'home') {
       navigateTo({ type: 'home' });
       requestAnimationFrame(() => {
         setTimeout(() => {
-          document.getElementById(sectionId)?.scrollIntoView({
-            behavior: 'instant' as ScrollBehavior,
-          });
+          scrollToElementWithHeaderOffset(sectionId);
         }, 20);
       });
     } else {
-      document.getElementById(sectionId)?.scrollIntoView({
-        behavior: 'instant' as ScrollBehavior,
-      });
+      scrollToElementWithHeaderOffset(sectionId);
     }
   };
 
@@ -1264,6 +1293,9 @@ export default function App() {
             onAddPost={addGalleryPost}
             onUpdatePost={updateGalleryPost}
             onDeletePost={deleteGalleryPost}
+            onUpdateWorklogPrompt={(text) =>
+              updateSiteData((prev) => ({ ...prev, worklogPrompt: text }))
+            }
             onUploadImage={uploadImageToCodebase}
             onBackHome={() => navigateTo({ type: 'home' })}
             onSelectPost={(postId) => navigateTo({ type: 'gallery_detail', postId })}

@@ -199,6 +199,21 @@ export function buildWorkLogPromptJson({
       '3) 반영한 핵심 기술 차별화 포인트 & 고객 문의 유도 패턴 요약',
       '4) 실제 첨부한 작업 전후 비교 사진 내역 및 각 사진 설명 (총 장수, 워터마크 제거 여부, 대표 썸네일 지정)',
     ],
+    currentSiteData: siteData
+      ? {
+          ...siteData,
+          gallery: {
+            ...siteData.gallery,
+            posts,
+          },
+          updatedAt: new Date().toISOString(),
+        }
+      : {
+          gallery: {
+            categories,
+            posts,
+          },
+        },
   };
 
   return `${JSON.stringify(payload, null, 2)}\n`;

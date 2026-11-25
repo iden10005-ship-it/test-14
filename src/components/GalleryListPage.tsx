@@ -46,6 +46,7 @@ interface GalleryListPageProps {
   onAddPost: (post: GalleryPost) => void;
   onUpdatePost: (post: GalleryPost) => void;
   onDeletePost: (postId: string) => void;
+  onUpdateWorklogPrompt?: (text: string) => void;
   onUploadImage?: (dataUrl: string, nameHint?: string) => Promise<string>;
   onBackHome: () => void;
   onSelectPost: (postId: string) => void;
@@ -70,6 +71,7 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
   onAddPost,
   onUpdatePost,
   onDeletePost,
+  onUpdateWorklogPrompt,
   onUploadImage,
   onBackHome,
   onSelectPost,
@@ -81,14 +83,22 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
   const [editingPost, setEditingPost] = useState<GalleryPost | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [copiedListJson, setCopiedListJson] = useState(false);
-  const [promptTemplate, setPromptTemplate] = useState<string>(() =>
-    loadWorkLogPromptTemplate()
+  const [promptTemplate, setPromptTemplate] = useState<string>(
+    () => siteData?.worklogPrompt?.trim() || loadWorkLogPromptTemplate()
   );
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [promptModalOpen, setPromptModalOpen] = useState(false);
   const [promptDraft, setPromptDraft] = useState('');
   const [promptBlogUrlsInput, setPromptBlogUrlsInput] = useState('');
   const gridTopRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const serverPrompt = siteData?.worklogPrompt?.trim();
+    if (serverPrompt && serverPrompt !== promptTemplate) {
+      setPromptTemplate(serverPrompt);
+      saveWorkLogPromptTemplate(serverPrompt);
+    }
+  }, [siteData?.worklogPrompt]);
 
   const copyPlainText = async (text: string): Promise<boolean> => {
     let ok = false;
@@ -165,6 +175,7 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
     const cleaned = promptDraft.trim();
     if (!cleaned) return;
     saveWorkLogPromptTemplate(cleaned);
+    onUpdateWorklogPrompt?.(cleaned);
     setPromptTemplate(cleaned);
     setPromptModalOpen(false);
     if (copyAfterSave) {
@@ -174,6 +185,7 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
 
   const handleResetPrompt = () => {
     const restored = resetWorkLogPromptTemplate();
+    onUpdateWorklogPrompt?.(restored);
     setPromptDraft(restored);
     setPromptTemplate(restored);
   };
@@ -374,7 +386,7 @@ export const GalleryListPage: React.FC<GalleryListPageProps> = ({
         {/* Filter Tabs + Count / Page Size Bar */}
         <div
           ref={gridTopRef}
-          className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8 scroll-mt-24"
+          className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8 scroll-mt-28"
         >
           <div className="flex flex-wrap items-center gap-2">
             {categoryTabs.map((cat) => {

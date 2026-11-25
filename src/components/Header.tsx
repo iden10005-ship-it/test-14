@@ -168,7 +168,12 @@ export const Header: React.FC<HeaderProps> = ({
     }`;
 
   return (
-    <>
+    <header
+      ref={headerRef}
+      className={`sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/90 transition-shadow duration-200 ${
+        scrolled ? 'shadow-md' : 'shadow-2xs'
+      }`}
+    >
       {/* Top Utility Bar */}
       <div className="bg-slate-900 text-slate-300 text-xs py-2 px-4 border-b border-slate-800">
         <div className="max-w-6xl mx-auto flex justify-between items-center gap-4">
@@ -230,19 +235,11 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Main Sticky Header */}
-      <header
-        ref={headerRef}
-        className={`sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/90 transition-shadow duration-200 ${
-          scrolled ? 'shadow-md' : 'shadow-2xs'
-        }`}
+      {/* Main Navigation Bar */}
+      <nav
+        aria-label="주 메뉴"
+        className="max-w-6xl mx-auto px-4 sm:px-6 py-3 sm:py-3.5 flex items-center justify-between gap-3 xl:gap-4"
       >
-        <nav
-          aria-label="주 메뉴"
-          className={`max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-3 xl:gap-4 transition-all duration-200 ${
-            scrolled ? 'py-2.5' : 'py-3 sm:py-3.5'
-          }`}
-        >
           {/* Brand Logo */}
           <div
             onClick={handleGoHome}
@@ -553,7 +550,6 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
         )}
-      </header>
-    </>
+    </header>
   );
 };

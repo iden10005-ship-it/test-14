@@ -211,6 +211,7 @@ export interface SiteData {
   adminPin: string;
   siteUrl?: string;
   updatedAt?: string;
+  worklogPrompt?: string;
   seo?: SeoSettings;
   company: CompanyInfo;
   hero: HeroData;
