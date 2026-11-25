@@ -55,7 +55,7 @@ export const Hero: React.FC<HeroProps> = ({
   return (
     <section id="top" className="relative bg-slate-50/70 border-b border-slate-200/70">
       {/* Wide Full-Bleed Photo Hero Banner */}
-      <div className="relative w-full overflow-hidden bg-slate-900 min-h-[440px] sm:min-h-[500px] md:min-h-[540px] flex items-center">
+      <div className="relative w-full overflow-hidden bg-slate-900 min-h-[320px] sm:min-h-[380px] md:min-h-[540px] flex items-center">
         {resolvedBgUrl && !bgFailed ? (
           <img
             src={resolvedBgUrl}
@@ -101,7 +101,7 @@ export const Hero: React.FC<HeroProps> = ({
               />
             </h1>
 
-            <p className="text-base sm:text-lg md:text-xl text-slate-100/95 leading-relaxed font-normal mb-7 sm:mb-8 max-w-xl whitespace-pre-line drop-shadow-xs">
+            <p className="text-base sm:text-lg md:text-xl text-slate-100/95 leading-relaxed font-normal mb-0 md:mb-8 max-w-xl whitespace-pre-line drop-shadow-xs">
               <EditableText
                 value={hero.subtitle}
                 onSave={(v) => onUpdateHero('subtitle', v)}
@@ -111,7 +111,7 @@ export const Hero: React.FC<HeroProps> = ({
               />
             </p>
 
-            <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2.5 sm:gap-3">
+            <div className="hidden md:flex flex-wrap items-center gap-3">
               <a
                 href={`tel:${company.phone}`}
                 className="w-full sm:w-auto px-5 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-slate-950/35 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150 whitespace-nowrap"
