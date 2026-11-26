@@ -23,7 +23,7 @@ export const Footer: React.FC<FooterProps> = ({
   onScrollToSection,
 }) => {
   return (
-    <footer className="bg-slate-950 text-slate-400 py-12 pb-24 md:pb-12 border-t border-slate-900 text-xs sm:text-sm">
+    <footer className="bg-slate-950 text-slate-300 py-12 pb-24 md:pb-12 border-t border-slate-900 text-[13px] sm:text-sm">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-8 border-b border-slate-800/80">
           <div className="flex items-center gap-2.5">
@@ -39,7 +39,7 @@ export const Footer: React.FC<FooterProps> = ({
                   label="업체명 수정"
                 />
               </span>
-              <span className="text-xs text-slate-500 block">
+              <span className="text-[13px] text-slate-400 block mt-0.5">
                 프리미엄 윈도우 케어 &amp; 외벽 청소 솔루션
               </span>
             </div>
@@ -79,7 +79,7 @@ export const Footer: React.FC<FooterProps> = ({
           </div>
         </div>
 
-        <div className="pt-6 space-y-2 text-slate-500 text-xs leading-relaxed">
+        <div className="pt-6 space-y-2 text-slate-400 text-[13px] leading-relaxed">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <strong className="text-slate-300 font-bold">
               <EditableText
@@ -125,7 +125,7 @@ export const Footer: React.FC<FooterProps> = ({
               전화:{' '}
               <a
                 href={`tel:${company.phone}`}
-                className="text-slate-400 hover:text-white tabular-nums"
+                className="text-slate-300 hover:text-white tabular-nums"
               >
                 <EditableText
                   value={company.phone}
@@ -147,15 +147,15 @@ export const Footer: React.FC<FooterProps> = ({
             </span>
           </div>
 
-          <div className="pt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between text-slate-600 gap-2">
+          <div className="pt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between text-slate-400 gap-2 text-xs">
             <p>© 2026 {company.name}. All rights reserved.</p>
-            <div className="flex items-center gap-3 text-[11px]">
+            <div className="flex items-center gap-3 text-xs">
               <span>배상책임보험 가입 업체 | 안전시공 인증</span>
               {!isAdminMode ? (
                 <button
                   type="button"
                   onClick={onOpenAdminLogin}
-                  className="inline-flex items-center gap-1 text-slate-600 hover:text-slate-300 transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
                   title="관리자 모드 로그인"
                 >
                   <Lock className="w-3 h-3" />

@@ -677,7 +677,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                 </span>
                 <SoomgoPaymentBadge />
               </div>
-              <div className="text-[11px] text-[#888888] mt-0.5 tabular-nums">
+              <div className="text-xs text-[#888888] mt-0.5 tabular-nums">
                 {review.date || '2개월 전'}
               </div>
             </div>
@@ -718,24 +718,24 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
         {/* 3. 서비스명 + 노란 별 1개 + 5.0 + 왼쪽 세로선 세부 카테고리 */}
         <div className="space-y-1">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-[13.5px] font-extrabold text-[#222222] leading-snug">
+            <span className="text-[14px] font-extrabold text-[#222222] leading-snug">
               {review.tag || '건물외부 청소(외벽/유리창)'}
             </span>
             <span className="inline-flex items-center gap-0.5 shrink-0">
               <Star className="w-3.5 h-3.5 text-[#FFCE00] fill-[#FFCE00]" />
-              <span className="text-[13px] font-extrabold text-[#222222] tabular-nums">
+              <span className="text-[13.5px] font-extrabold text-[#222222] tabular-nums">
                 {(review.rating || 5).toFixed(1)}
               </span>
             </span>
           </div>
-          <div className="border-l-2 border-[#D8DCE2] pl-2 text-[11px] text-[#737373] truncate">
+          <div className="border-l-2 border-[#D8DCE2] pl-2 text-xs text-[#666666] truncate">
             {review.subTag || `${review.serviceCategory || '창문 (통유리창 포함)'} · ${review.region || '수도권'}`}
           </div>
         </div>
 
         {/* 4. 후기 본문 */}
         <p
-          className={`text-[13px] text-[#333333] leading-[1.6] ${
+          className={`text-[13.5px] sm:text-[14px] text-[#333333] leading-[1.65] ${
             isPopupMode
               ? 'whitespace-pre-line'
               : photos.length > 0
@@ -751,7 +751,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
           {(isPopupMode ? highlights : highlights.slice(0, 4)).map((chip, cIdx) => (
             <span
               key={cIdx}
-              className="px-2 py-1 rounded bg-[#F2F4F7] text-[#555D6D] text-[10.5px] font-medium leading-none"
+              className="px-2 py-1 rounded bg-[#F2F4F7] text-[#555D6D] text-[11.5px] font-medium leading-none"
             >
               {chip}
             </span>
@@ -819,11 +819,11 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
             <div className="flex items-center gap-2 min-w-0">
               <ChevronLeft className="w-4 h-4 text-slate-700 shrink-0" />
               <div className="min-w-0">
-                <div className="text-[13px] font-bold text-slate-900 flex items-center gap-1 truncate">
+                <div className="text-[14px] font-bold text-slate-900 flex items-center gap-1 truncate">
                   <BlurredCustomerName name={review.author} />
                   <span className="font-semibold">고객님</span>
                 </div>
-                <div className="text-[10.5px] text-slate-700">
+                <div className="text-[11.5px] text-slate-700">
                   <BlurredPhoneNumber phone={kakaoPhone} />
                 </div>
               </div>
@@ -838,7 +838,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
           <div className="px-3 py-3.5 flex flex-col justify-start">
             <div className="space-y-2.5">
               <div className="text-center">
-                <span className="inline-block text-[10px] text-slate-700 bg-black/10 rounded-full px-2.5 py-0.5 tabular-nums">
+                <span className="inline-block text-[11px] text-slate-700 bg-black/10 rounded-full px-2.5 py-0.5 tabular-nums">
                   {review.date || '2026.05'} · {review.region || '수도권 방문 시공'}
                 </span>
               </div>
@@ -858,13 +858,13 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                       {showAvatar && <KakaoDefaultAvatar size="sm" />}
                       <div className="min-w-0 flex-1">
                         {showAvatar && (
-                          <div className="text-[10px] font-medium text-slate-700 mb-1 leading-none truncate">
+                          <div className="text-[11px] font-medium text-slate-700 mb-1 leading-none truncate">
                             <BlurredCustomerName name={review.author} />
                             <span> 고객님</span>
                           </div>
                         )}
                         <div className="flex items-end gap-1.5 min-w-0">
-                          <div className="relative bg-white text-slate-900 rounded-xl rounded-tl-[2px] px-3 py-2 text-[12px] leading-[1.45] shadow-2xs break-keep">
+                          <div className="relative bg-white text-slate-900 rounded-xl rounded-tl-[2px] px-3 py-2 text-[13px] leading-[1.5] shadow-2xs break-keep">
                             {showAvatar && (
                               <span
                                 className="absolute -left-1 top-1.5 w-2 h-2 bg-white rotate-45 rounded-[1px] pointer-events-none"
@@ -873,7 +873,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                             )}
                             <span className="relative z-10 line-clamp-4">{msg.text}</span>
                           </div>
-                          <span className="text-[9px] text-slate-600 shrink-0 tabular-nums leading-none pb-0.5">
+                          <span className="text-[10px] text-slate-600 shrink-0 tabular-nums leading-none pb-0.5">
                             {msg.time || '오후 2:18'}
                           </span>
                         </div>
@@ -887,10 +887,10 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                     key={msgIdx}
                     className="flex items-end justify-end gap-1.5 ml-auto max-w-[88%]"
                   >
-                    <span className="text-[9px] text-slate-600 shrink-0 tabular-nums leading-none pb-0.5">
+                    <span className="text-[10px] text-slate-600 shrink-0 tabular-nums leading-none pb-0.5">
                       {msg.time || '오후 2:24'}
                     </span>
-                    <div className="relative bg-[#FEE500] text-[#191919] rounded-xl rounded-tr-[2px] px-3 py-2 text-[12px] leading-[1.45] shadow-2xs break-keep">
+                    <div className="relative bg-[#FEE500] text-[#191919] rounded-xl rounded-tr-[2px] px-3 py-2 text-[13px] leading-[1.5] shadow-2xs break-keep">
                       <span
                         className="absolute -right-1 top-1.5 w-2 h-2 bg-[#FEE500] rotate-45 rounded-[1px] pointer-events-none"
                         aria-hidden="true"
@@ -930,7 +930,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
 
           {/* 3개 플랫폼 통일 하단 바 (시공항목 검은색 + 눌러서 보기 숨고/당근 톤 회색) */}
           <div className="bg-white px-4 sm:px-5 pb-3 pt-0.5 shrink-0">
-            <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 text-[11px]">
+            <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 text-xs">
               <span className="font-semibold text-black truncate">
                 {review.tag || '고층 외벽·유리창 청소'}
               </span>
@@ -966,7 +966,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
               {renderSoomgoCardContent(review, index, false)}
             </div>
 
-            <div className="pt-2.5 mt-3.5 border-t border-slate-100 flex items-center justify-between gap-2 text-[11px] shrink-0">
+            <div className="pt-2.5 mt-3.5 border-t border-slate-100 flex items-center justify-between gap-2 text-xs shrink-0">
               <span className="font-semibold text-black truncate">
                 {review.tag || '유리창·외벽 청소'}
               </span>
@@ -1006,10 +1006,10 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                 {(review.author || '당').slice(0, 1)}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="text-[13.5px] font-bold text-[#212124] truncate">
+                <div className="text-[14px] font-bold text-[#212124] truncate">
                   <BlurredCustomerName name={review.author} />
                 </div>
-                <div className="text-[11px] text-[#868B94] truncate mt-0.5 tabular-nums">
+                <div className="text-xs text-[#868B94] truncate mt-0.5 tabular-nums">
                   {review.region || '경기도 안양시'} 인증 {verifyCount}회 ·{' '}
                   {review.date || '6개월 전 작성'}
                 </div>
@@ -1022,14 +1022,14 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
             {/* 사진 바로 아래 주황 별 1개 + 5.0 */}
             <div className="inline-flex items-center gap-1 pt-0.5">
               <Star className="w-4 h-4 text-[#FF6F0F] fill-[#FF6F0F]" />
-              <span className="text-[13.5px] font-extrabold text-[#212124] tabular-nums">
+              <span className="text-[14px] font-extrabold text-[#212124] tabular-nums">
                 {(review.rating || 5).toFixed(1)}
               </span>
             </div>
 
             {/* 실제 당근 본문 */}
             <p
-              className={`text-[13px] text-[#212124] leading-[1.6] ${
+              className={`text-[13.5px] sm:text-[14px] text-[#212124] leading-[1.65] ${
                 photos.length > 0 ? 'line-clamp-6' : 'line-clamp-[10]'
               }`}
             >
@@ -1037,7 +1037,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
             </p>
           </div>
 
-          <div className="pt-2.5 mt-3.5 border-t border-slate-100 flex items-center justify-between gap-2 text-[11px] shrink-0">
+          <div className="pt-2.5 mt-3.5 border-t border-slate-100 flex items-center justify-between gap-2 text-xs shrink-0">
             <span className="font-semibold text-black truncate">
               {review.tag || '청소 후기'}
             </span>
@@ -1056,7 +1056,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
             {Array.from({ length: 5 }).map((_, idx) => (
               <Star key={idx} className="w-4 h-4 fill-amber-400" />
             ))}
-            <span className="ml-1.5 text-xs font-bold text-slate-600 tabular-nums">
+            <span className="ml-1.5 text-[13px] font-bold text-slate-600 tabular-nums">
               평점 5.0 · 실제 플랫폼 인증 후기
             </span>
           </div>
@@ -1068,7 +1068,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
               label="고객 후기 섹션 제목 수정"
             />
           </h2>
-          <p className="text-sm sm:text-base text-slate-600 leading-relaxed break-keep whitespace-pre-line">
+          <p className="text-[15px] sm:text-base md:text-[17px] text-slate-600 leading-relaxed break-keep whitespace-pre-line">
             <EditableText
               value={sectionSubtitle}
               onSave={onUpdateSubtitle}
@@ -1746,7 +1746,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                               </span>
                             </div>
 
-                            <p className="text-[14px] text-[#212124] leading-[1.65] whitespace-pre-line">
+                            <p className="text-[14.5px] text-[#212124] leading-[1.65] whitespace-pre-line">
                               {targetReview.content}
                             </p>
                           </div>

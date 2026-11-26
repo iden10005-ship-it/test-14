@@ -436,7 +436,7 @@ export const Header: React.FC<HeaderProps> = ({
                       setMobileMenuOpen(false);
                       onNavigateService(srv.id);
                     }}
-                    className={`w-full text-left px-3 py-2 text-xs font-semibold rounded-lg flex items-center justify-between ${
+                    className={`w-full text-left px-3 py-2 text-sm font-semibold rounded-lg flex items-center justify-between ${
                       currentPage.type === 'service' && currentPage.serviceId === srv.id
                         ? 'text-blue-600 bg-blue-50/70'
                         : 'text-slate-600 hover:text-blue-600 hover:bg-blue-50/60'
@@ -450,7 +450,7 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 type="button"
                 onClick={() => handleSectionLink('process')}
-                className={`w-full text-left px-3.5 py-2.5 text-sm font-semibold rounded-xl transition-colors ${
+                className={`w-full text-left px-3.5 py-2.5 text-[15px] font-semibold rounded-xl transition-colors ${
                   isProcessActive
                     ? 'text-blue-600 bg-blue-50/70'
                     : 'text-slate-700 hover:bg-slate-50'
@@ -464,7 +464,7 @@ export const Header: React.FC<HeaderProps> = ({
                   setMobileMenuOpen(false);
                   onNavigateGalleryList();
                 }}
-                className={`w-full text-left px-3.5 py-2.5 text-sm font-bold rounded-xl transition-colors ${
+                className={`w-full text-left px-3.5 py-2.5 text-[15px] font-bold rounded-xl transition-colors ${
                   isGalleryActive
                     ? 'text-blue-600 bg-blue-50/70'
                     : 'text-slate-700 hover:bg-slate-50'
@@ -475,7 +475,7 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 type="button"
                 onClick={() => handleSectionLink('price')}
-                className={`w-full text-left px-3.5 py-2.5 text-sm font-semibold rounded-xl transition-colors ${
+                className={`w-full text-left px-3.5 py-2.5 text-[15px] font-semibold rounded-xl transition-colors ${
                   isPriceActive
                     ? 'text-blue-600 bg-blue-50/70'
                     : 'text-slate-700 hover:bg-slate-50'
@@ -486,7 +486,7 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 type="button"
                 onClick={() => handleSectionLink('faq')}
-                className={`w-full text-left px-3.5 py-2.5 text-sm font-semibold rounded-xl transition-colors ${
+                className={`w-full text-left px-3.5 py-2.5 text-[15px] font-semibold rounded-xl transition-colors ${
                   isFaqActive
                     ? 'text-blue-600 bg-blue-50/70'
                     : 'text-slate-700 hover:bg-slate-50'
@@ -497,7 +497,7 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 type="button"
                 onClick={() => handleSectionLink('regions')}
-                className={`w-full text-left px-3.5 py-2.5 text-sm font-semibold rounded-xl transition-colors ${
+                className={`w-full text-left px-3.5 py-2.5 text-[15px] font-semibold rounded-xl transition-colors ${
                   isRegionsActive
                     ? 'text-blue-600 bg-blue-50/70'
                     : 'text-slate-700 hover:bg-slate-50'
@@ -521,7 +521,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="grid grid-cols-2 gap-2.5 pt-3 border-t border-slate-100">
               <a
                 href={`tel:${company.phone}`}
-                className="py-3 rounded-xl bg-blue-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm"
+                className="py-3 rounded-xl bg-blue-600 text-white font-bold text-sm flex items-center justify-center gap-1.5 shadow-sm"
               >
                 <Phone className="w-4 h-4" />
                 <span>전화 상담</span>
@@ -530,7 +530,7 @@ export const Header: React.FC<HeaderProps> = ({
                 href={company.kakaoLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="py-3 rounded-xl bg-[#FEE500] text-[#3c1e1e] font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm"
+                className="py-3 rounded-xl bg-[#FEE500] text-[#3c1e1e] font-bold text-sm flex items-center justify-center gap-1.5 shadow-sm"
               >
                 <MessageCircle className="w-4 h-4 fill-current" />
                 <span>카톡 1:1 문의</span>

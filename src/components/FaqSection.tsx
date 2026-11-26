@@ -41,7 +41,7 @@ export const FaqSection: React.FC<FaqSectionProps> = ({
     >
       <div className="max-w-4xl mx-auto px-4 sm:px-6">
         <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
-          <span className="text-xs font-bold text-blue-600 tracking-wider uppercase mb-2 block">
+          <span className="text-xs sm:text-[13px] font-bold text-blue-600 tracking-wider uppercase mb-2 block">
             Frequently Asked Questions
           </span>
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight mb-3 sm:mb-4">
@@ -52,7 +52,7 @@ export const FaqSection: React.FC<FaqSectionProps> = ({
               label="FAQ 섹션 제목 수정"
             />
           </h2>
-          <p className="text-sm sm:text-base text-slate-600">
+          <p className="text-[15px] sm:text-base md:text-[17px] text-slate-600 leading-relaxed">
             <EditableText
               value={sectionSubtitle}
               onSave={onUpdateSubtitle}
@@ -87,7 +87,7 @@ export const FaqSection: React.FC<FaqSectionProps> = ({
                     <span className="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
                       Q
                     </span>
-                    <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-snug">
+                    <h3 className="text-[16px] sm:text-lg font-bold text-slate-900 leading-snug">
                       <EditableText
                         value={item.question}
                         onSave={(v) => onUpdateFaq(item.id, 'question', v)}
@@ -122,7 +122,7 @@ export const FaqSection: React.FC<FaqSectionProps> = ({
                 </div>
 
                 {isOpen && (
-                  <div className="px-5 pb-5 sm:px-6 sm:pb-6 pt-3 text-slate-600 text-sm sm:text-base leading-relaxed border-t border-slate-100/80 bg-slate-50/40">
+                  <div className="px-5 pb-5 sm:px-6 sm:pb-6 pt-3.5 text-slate-700 text-[15px] sm:text-base leading-relaxed border-t border-slate-100/80 bg-slate-50/40">
                     <div className="flex items-start gap-3.5">
                       <span className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
                         A

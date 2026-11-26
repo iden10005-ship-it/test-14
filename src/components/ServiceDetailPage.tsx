@@ -160,7 +160,7 @@ export const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({
                 label="서비스명 수정"
               />
             </h1>
-            <p className="text-sm sm:text-base md:text-lg text-blue-600 font-bold mb-3 leading-relaxed">
+            <p className="text-[15px] sm:text-base md:text-lg text-blue-600 font-bold mb-3 leading-relaxed">
               <EditableText
                 value={detail.tagline}
                 onSave={(v) => updateDetail({ tagline: v })}
@@ -169,7 +169,7 @@ export const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({
                 multiline
               />
             </p>
-            <p className="text-xs sm:text-sm md:text-base text-slate-600 leading-relaxed mb-6">
+            <p className="text-[14.5px] sm:text-base text-slate-600 leading-relaxed mb-6">
               <EditableText
                 value={service.description}
                 onSave={(v) => onUpdateService({ ...service, description: v })}
@@ -191,7 +191,7 @@ export const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
               <a
                 href={`tel:${company.phone}`}
-                className="justify-center px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-md shadow-blue-500/20 transition-all tabular-nums"
+                className="justify-center px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm flex items-center gap-2 shadow-md shadow-blue-500/20 transition-all tabular-nums"
               >
                 <Phone className="w-4 h-4 shrink-0" />
                 <span>{company.phone} 전화 상담</span>
@@ -200,14 +200,14 @@ export const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({
                 href={company.kakaoLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="justify-center px-5 py-3 rounded-xl bg-[#FEE500] text-[#3c1e1e] font-bold text-xs sm:text-sm flex items-center gap-2 shadow-2xs hover:brightness-95 transition-all"
+                className="justify-center px-5 py-3 rounded-xl bg-[#FEE500] text-[#3c1e1e] font-bold text-sm flex items-center gap-2 shadow-2xs hover:brightness-95 transition-all"
               >
                 <MessageCircle className="w-4 h-4 fill-current shrink-0" />
                 <span>카톡 1:1 상담</span>
               </a>
               <a
                 href="#service-quote"
-                className="justify-center px-5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs sm:text-sm transition-colors text-center"
+                className="justify-center px-5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm transition-colors text-center"
               >
                 무료 견적 신청
               </a>
@@ -222,7 +222,7 @@ export const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({
               <h2 className="text-lg sm:text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight">
                 {service.title} 시공 전후 비교
               </h2>
-              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+              <p className="text-[13.5px] sm:text-sm text-slate-500 mt-1">
                 실제 시공 현장에서 촬영된 시공 전·후 비교 사진입니다.
               </p>
             </div>
@@ -280,7 +280,7 @@ export const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({
             </div>
             <ul className="space-y-3">
               {detail.scopeList.map((item, idx) => (
-                <li key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm text-slate-700">
+                <li key={idx} className="flex items-start gap-2.5 text-[14px] sm:text-[15px] text-slate-700">
                   <span className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5 font-bold text-xs">
                     ✓
                   </span>
@@ -338,7 +338,7 @@ export const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({
               </div>
               <ul className="space-y-3">
                 {detail.equipment.map((eq, idx) => (
-                  <li key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm text-slate-700">
+                  <li key={idx} className="flex items-start gap-2.5 text-[14px] sm:text-[15px] text-slate-700">
                     <span className="w-5 h-5 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 mt-0.5 font-bold text-xs">
                       •
                     </span>
@@ -372,7 +372,7 @@ export const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({
               </ul>
             </div>
 
-            <div className="mt-6 pt-5 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div className="mt-6 pt-5 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-3 text-[13px] sm:text-sm">
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
                 <span className="font-bold text-slate-500 block mb-0.5">평균 소요 시간</span>
                 <span className="font-bold text-slate-900">
@@ -428,7 +428,7 @@ export const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({
               {(detail.faqList ?? []).map((faq, idx) => (
                 <div key={idx} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 relative">
                   <div className="flex items-start justify-between gap-2 mb-1.5">
-                    <p className="text-sm font-bold text-slate-900 flex-1">
+                    <p className="text-[15px] font-bold text-slate-900 flex-1">
                       Q.{' '}
                       <EditableText
                         value={faq.q}
@@ -457,7 +457,7 @@ export const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({
                       </button>
                     )}
                   </div>
-                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                  <p className="text-[14.5px] sm:text-[15px] text-slate-600 leading-relaxed">
                     A.{' '}
                     <EditableText
                       value={faq.a}
@@ -486,15 +486,15 @@ export const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({
           <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 mb-1">
             {service.title} 빠른 무료 견적
           </h3>
-          <p className="text-xs sm:text-sm text-slate-600 mb-5">
+          <p className="text-sm text-slate-600 mb-5">
             연락처를 남겨주시면 담당 엔지니어가 영업시간 내 빠르게 안내해 드립니다.
           </p>
 
           {sent ? (
             <div className="py-6 text-center bg-emerald-50 rounded-2xl border border-emerald-200">
               <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
-              <p className="font-bold text-slate-900 text-sm mb-1">견적 신청이 완료되었습니다!</p>
-              <p className="text-xs text-slate-600">빠른 시간 내에 연락드리겠습니다.</p>
+              <p className="font-bold text-slate-900 text-base mb-1">견적 신청이 완료되었습니다!</p>
+              <p className="text-sm text-slate-600">빠른 시간 내에 연락드리겠습니다.</p>
             </div>
           ) : (
             <form onSubmit={handleQuoteSubmit} className="space-y-3.5">
@@ -505,7 +505,7 @@ export const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="성함 / 상호명 *"
-                  className="px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-3.5 py-2.5 text-base sm:text-[15px] bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <input
                   type="tel"
@@ -513,25 +513,25 @@ export const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="연락처 (010-0000-0000) *"
-                  className="px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-3.5 py-2.5 text-base sm:text-[15px] bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <input
                   type="text"
                   value={region}
                   onChange={(e) => setRegion(e.target.value)}
                   placeholder="지역 (예: 서울 강남구)"
-                  className="px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-3.5 py-2.5 text-base sm:text-[15px] bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <textarea
                 rows={2}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                className="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3.5 py-2.5 text-base sm:text-[15px] bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button
                 type="submit"
-                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-[15px] flex items-center justify-center gap-2 shadow-md cursor-pointer"
               >
                 <Send className="w-4 h-4" />
                 <span>무료 견적 신청하기</span>
@@ -542,7 +542,7 @@ export const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({
 
         {/* Other Services */}
         <div>
-          <h3 className="text-base sm:text-lg font-extrabold text-slate-900 mb-4">
+          <h3 className="text-lg font-extrabold text-slate-900 mb-4">
             다른 전문 서비스 둘러보기
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -554,10 +554,10 @@ export const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({
                 className="text-left p-4 rounded-2xl bg-white hover:bg-blue-50/50 border border-slate-200 hover:border-blue-300 transition-all flex items-center justify-between gap-2 cursor-pointer group"
               >
                 <div>
-                  <div className="font-bold text-sm text-slate-900 group-hover:text-blue-600">
+                  <div className="font-bold text-[15px] text-slate-900 group-hover:text-blue-600">
                     {other.title}
                   </div>
-                  <div className="text-xs text-slate-500 line-clamp-1 mt-0.5">{other.description}</div>
+                  <div className="text-[13px] text-slate-500 line-clamp-1 mt-0.5">{other.description}</div>
                 </div>
                 <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 shrink-0" />
               </button>

@@ -172,7 +172,7 @@ export const MatrixPage: React.FC<MatrixPageProps> = ({
             {regionName} {service.title} 전문 | {company.name}
           </h1>
 
-          <p className="text-sm sm:text-base md:text-lg text-blue-600 font-bold mb-3">
+          <p className="text-[15px] sm:text-base md:text-lg text-blue-600 font-bold mb-3">
             <EditableText
               value={service.detail.tagline}
               onSave={(v) => updateDetail({ tagline: v })}
@@ -182,7 +182,7 @@ export const MatrixPage: React.FC<MatrixPageProps> = ({
             />
           </p>
 
-          <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mb-5">
+          <p className="text-[14.5px] sm:text-base text-slate-600 leading-relaxed mb-5">
             {regionName}({subDistricts.slice(0, 6).join(', ')} 등) 전지역에서 {service.title} 시공을 진행합니다.{' '}
             <EditableText
               value={service.detail.duration}
@@ -202,7 +202,7 @@ export const MatrixPage: React.FC<MatrixPageProps> = ({
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
             <a
               href={`tel:${company.phone}`}
-              className="justify-center px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-md tabular-nums"
+              className="justify-center px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm flex items-center gap-2 shadow-md tabular-nums"
             >
               <Phone className="w-4 h-4 shrink-0" />
               <span>{company.phone} 전화 상담</span>
@@ -211,7 +211,7 @@ export const MatrixPage: React.FC<MatrixPageProps> = ({
               href={company.kakaoLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="justify-center px-5 py-3 rounded-xl bg-[#FEE500] text-[#3c1e1e] font-bold text-xs sm:text-sm flex items-center gap-2 shadow-2xs"
+              className="justify-center px-5 py-3 rounded-xl bg-[#FEE500] text-[#3c1e1e] font-bold text-sm flex items-center gap-2 shadow-2xs"
             >
               <MessageCircle className="w-4 h-4 fill-current shrink-0" />
               <span>카톡 1:1 상담</span>
@@ -224,7 +224,7 @@ export const MatrixPage: React.FC<MatrixPageProps> = ({
             <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
               {regionName} {service.title} 시공 전후 비교
             </h2>
-            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+            <p className="text-[13.5px] sm:text-sm text-slate-500 mt-1">
               실제 시공 현장에서 촬영된 시공 전·후 비교 사진입니다.
             </p>
           </div>
@@ -273,7 +273,7 @@ export const MatrixPage: React.FC<MatrixPageProps> = ({
             </h2>
             <ul className="space-y-2.5">
               {service.detail.scopeList.map((item, idx) => (
-                <li key={idx} className="flex items-start gap-2 text-xs sm:text-sm text-slate-700">
+                <li key={idx} className="flex items-start gap-2 text-[14px] sm:text-[15px] text-slate-700">
                   <span className="text-emerald-600 font-bold">✓</span>
                   <span className="flex-1">
                     <EditableText
@@ -299,7 +299,7 @@ export const MatrixPage: React.FC<MatrixPageProps> = ({
             </h2>
             <ul className="space-y-2.5">
               {service.detail.equipment.map((item, idx) => (
-                <li key={idx} className="flex items-start gap-2 text-xs sm:text-sm text-slate-700">
+                <li key={idx} className="flex items-start gap-2 text-[14px] sm:text-[15px] text-slate-700">
                   <span className="text-blue-600 font-bold">•</span>
                   <span className="flex-1">
                     <EditableText
@@ -374,10 +374,10 @@ export const MatrixPage: React.FC<MatrixPageProps> = ({
             <div className="space-y-3">
               {service.detail.faqList.map((faq, idx) => (
                 <div key={idx} className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                  <p className="text-sm font-bold text-slate-900 mb-1">
+                  <p className="text-[15px] font-bold text-slate-900 mb-1">
                     Q. [{regionName}] {faq.q}
                   </p>
-                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                  <p className="text-[14.5px] sm:text-[15px] text-slate-600 leading-relaxed">
                     A. {faq.a}
                   </p>
                 </div>
@@ -390,14 +390,14 @@ export const MatrixPage: React.FC<MatrixPageProps> = ({
           <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 mb-1">
             {regionName} {service.title} 빠른 견적 신청
           </h3>
-          <p className="text-xs sm:text-sm text-slate-600 mb-5">
+          <p className="text-sm text-slate-600 mb-5">
             남겨주시면 영업시간 내에 담당자가 연락드립니다.
           </p>
 
           {sent ? (
             <div className="py-6 text-center bg-emerald-50 rounded-2xl border border-emerald-200">
               <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
-              <p className="font-bold text-slate-900 text-sm">견적 신청이 완료되었습니다!</p>
+              <p className="font-bold text-slate-900 text-base">견적 신청이 완료되었습니다!</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-3.5">
@@ -408,7 +408,7 @@ export const MatrixPage: React.FC<MatrixPageProps> = ({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="성함 / 상호명 *"
-                  className="px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-3.5 py-2.5 text-base sm:text-[15px] bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <input
                   type="tel"
@@ -416,18 +416,18 @@ export const MatrixPage: React.FC<MatrixPageProps> = ({
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="연락처 (010-0000-0000) *"
-                  className="px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-3.5 py-2.5 text-base sm:text-[15px] bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <textarea
                 rows={2}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                className="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3.5 py-2.5 text-base sm:text-[15px] bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button
                 type="submit"
-                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-[15px] flex items-center justify-center gap-2 shadow-md cursor-pointer"
               >
                 <Send className="w-4 h-4" />
                 <span>무료 견적 신청하기</span>

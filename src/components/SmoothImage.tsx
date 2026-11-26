@@ -1,4 +1,5 @@
-import React, { useLayoutEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Image as ImageIcon } from 'lucide-react';
 
 export interface SmoothImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   wrapperClassName?: string;
@@ -8,7 +9,13 @@ export interface SmoothImageProps extends React.ImgHTMLAttributes<HTMLImageEleme
   fallback?: React.ReactNode;
 }
 
-export const SmoothImage: React.FC<SmoothImageProps> = ({
+const loadedSrcCache = new Set<string>();
+
+interface SmoothImageInnerProps extends Omit<SmoothImageProps, 'src'> {
+  src: string;
+}
+
+const SmoothImageInner: React.FC<SmoothImageInnerProps> = ({
   src,
   alt,
   className = '',
@@ -23,31 +30,65 @@ export const SmoothImage: React.FC<SmoothImageProps> = ({
   ...rest
 }) => {
   const imgRef = useRef<HTMLImageElement | null>(null);
-  const [loaded, setLoaded] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState<boolean>(() => loadedSrcCache.has(src));
+  const [failed, setFailed] = useState<boolean>(false);
 
-  useLayoutEffect(() => {
-    setFailed(false);
-    const img = imgRef.current;
-    if (img && img.complete && img.naturalWidth > 0) {
-      setLoaded(true);
-    } else {
-      setLoaded(false);
-    }
+  const markLoaded = useCallback(() => {
+    loadedSrcCache.add(src);
+    setLoaded(true);
   }, [src]);
 
-  if (!src || failed) {
+  useLayoutEffect(() => {
+    const img = imgRef.current;
+    if (img && img.complete && img.naturalWidth > 0) {
+      markLoaded();
+    }
+  }, [markLoaded]);
+
+  useEffect(() => {
+    if (loaded || failed) return;
+    const checkComplete = () => {
+      const img = imgRef.current;
+      if (img && img.complete && img.naturalWidth > 0) {
+        markLoaded();
+        return true;
+      }
+      return false;
+    };
+
+    if (checkComplete()) return;
+
+    const rafId = window.requestAnimationFrame(() => {
+      checkComplete();
+    });
+    const t1 = window.setTimeout(checkComplete, 120);
+    const t2 = window.setTimeout(checkComplete, 450);
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+  }, [loaded, failed, markLoaded]);
+
+  if (failed) {
     if (fallback !== undefined) {
       return <>{fallback}</>;
     }
     return (
-      <div className={wrapperClassName}>
+      <div className={`${wrapperClassName} ${minSkeletonHeightClass}`.trim()}>
         <div
-          aria-hidden="true"
-          className={`w-full h-full ${
-            skeletonTone === 'dark' ? 'cw-skeleton-dark' : 'cw-skeleton'
+          className={`w-full h-full flex flex-col items-center justify-center gap-1.5 p-4 ${
+            minSkeletonHeightClass || 'min-h-[160px]'
+          } ${
+            skeletonTone === 'dark'
+              ? 'bg-slate-800 text-slate-300'
+              : 'bg-slate-100 text-slate-400'
           } ${skeletonClassName}`}
-        />
+        >
+          <ImageIcon className="w-6 h-6 opacity-70" />
+          <span className="text-xs font-medium">이미지를 불러오는 중입니다</span>
+        </div>
       </div>
     );
   }
@@ -70,16 +111,57 @@ export const SmoothImage: React.FC<SmoothImageProps> = ({
         alt={alt}
         referrerPolicy={referrerPolicy}
         onLoad={(e) => {
-          setLoaded(true);
+          markLoaded();
           onLoad?.(e);
         }}
         onError={(e) => {
           setFailed(true);
           onError?.(e);
         }}
-        className={`${className} cw-img-fade ${loaded ? 'cw-img-loaded' : ''}`.trim()}
+        className={`${className} ${
+          loaded ? 'opacity-100' : 'cw-img-fade'
+        }`.trim()}
         {...rest}
       />
     </div>
+  );
+};
+
+export const SmoothImage: React.FC<SmoothImageProps> = ({
+  src,
+  wrapperClassName = 'relative w-full h-full overflow-hidden',
+  skeletonTone = 'light',
+  skeletonClassName = '',
+  minSkeletonHeightClass = '',
+  fallback,
+  ...rest
+}) => {
+  if (!src) {
+    if (fallback !== undefined) {
+      return <>{fallback}</>;
+    }
+    return (
+      <div className={`${wrapperClassName} ${minSkeletonHeightClass}`.trim()}>
+        <div
+          aria-hidden="true"
+          className={`w-full h-full ${minSkeletonHeightClass} ${
+            skeletonTone === 'dark' ? 'cw-skeleton-dark' : 'cw-skeleton'
+          } ${skeletonClassName}`}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <SmoothImageInner
+      key={src}
+      src={src}
+      wrapperClassName={wrapperClassName}
+      skeletonTone={skeletonTone}
+      skeletonClassName={skeletonClassName}
+      minSkeletonHeightClass={minSkeletonHeightClass}
+      fallback={fallback}
+      {...rest}
+    />
   );
 };

@@ -36,7 +36,7 @@ export const ProcessSection: React.FC<ProcessSectionProps> = ({
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
-          <span className="text-xs font-bold text-blue-600 tracking-wider uppercase mb-2 block">
+          <span className="text-xs sm:text-[13px] font-bold text-blue-600 tracking-wider uppercase mb-2 block">
             Work Process
           </span>
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight mb-3 sm:mb-4">
@@ -47,7 +47,7 @@ export const ProcessSection: React.FC<ProcessSectionProps> = ({
               label="작업과정 제목 수정"
             />
           </h2>
-          <p className="text-sm sm:text-base text-slate-600">
+          <p className="text-[15px] sm:text-base md:text-[17px] text-slate-600 leading-relaxed">
             <EditableText
               value={sectionSubtitle}
               onSave={onUpdateSubtitle}
@@ -74,7 +74,7 @@ export const ProcessSection: React.FC<ProcessSectionProps> = ({
                       0{item.step}
                     </span>
                   </div>
-                  <h3 className="text-[14px] sm:text-lg font-bold text-slate-900 mb-1.5 sm:mb-2.5 leading-snug">
+                  <h3 className="text-[15px] sm:text-lg font-bold text-slate-900 mb-1.5 sm:mb-2.5 leading-snug">
                     <EditableText
                       value={item.title}
                       onSave={(v) => onUpdateStep(item.step, 'title', v)}
@@ -82,7 +82,7 @@ export const ProcessSection: React.FC<ProcessSectionProps> = ({
                       label={`단계 ${item.step} 제목 수정`}
                     />
                   </h3>
-                  <p className="text-[11.5px] sm:text-sm text-slate-600 leading-snug sm:leading-relaxed">
+                  <p className="text-[13px] sm:text-[15px] text-slate-600 leading-relaxed">
                     <EditableText
                       value={item.description}
                       onSave={(v) => onUpdateStep(item.step, 'description', v)}
@@ -94,7 +94,7 @@ export const ProcessSection: React.FC<ProcessSectionProps> = ({
                 </div>
 
                 <div className="mt-3 sm:mt-5 pt-2.5 sm:pt-3 border-t border-slate-100">
-                  <span className="text-[10px] sm:text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded tabular-nums">
+                  <span className="text-[11px] sm:text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded tabular-nums">
                     STEP {item.step}
                   </span>
                 </div>

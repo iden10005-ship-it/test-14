@@ -83,17 +83,17 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
                 무료 견적 안내
               </h3>
 
-              <p className="text-slate-300 text-sm leading-relaxed mb-8">
+              <p className="text-slate-300 text-[15px] leading-relaxed mb-8">
                 창문 종류와 상태를 남겨주시면 담당 엔지니어가 작업 일정과 합리적인 견적을 꼼꼼히 산출하여 안내해 드립니다.
               </p>
 
               <div className="space-y-4">
-                <div className="flex items-center gap-3 text-slate-200 text-sm">
+                <div className="flex items-center gap-3 text-slate-200 text-[15px]">
                   <div className="w-9 h-9 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
                     <Phone className="w-4 h-4" />
                   </div>
                   <div>
-                    <span className="text-xs text-slate-400 block">직통 전화 상담</span>
+                    <span className="text-[12.5px] text-slate-400 block">직통 전화 상담</span>
                     <a
                       href={`tel:${company.phone}`}
                       className="font-bold hover:text-blue-300 transition-colors tabular-nums"
@@ -103,22 +103,22 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 text-slate-200 text-sm">
+                <div className="flex items-center gap-3 text-slate-200 text-[15px]">
                   <div className="w-9 h-9 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
                     <Clock className="w-4 h-4" />
                   </div>
                   <div>
-                    <span className="text-xs text-slate-400 block">운영 시간</span>
+                    <span className="text-[12.5px] text-slate-400 block">운영 시간</span>
                     <span className="font-medium">{company.operatingHours}</span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 text-slate-200 text-sm">
+                <div className="flex items-center gap-3 text-slate-200 text-[15px]">
                   <div className="w-9 h-9 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
                     <ShieldCheck className="w-4 h-4" />
                   </div>
                   <div>
-                    <span className="text-xs text-slate-400 block">안심 보장</span>
+                    <span className="text-[12.5px] text-slate-400 block">안심 보장</span>
                     <span className="font-medium">영업배상책임보험 1억원 가입</span>
                   </div>
                 </div>
@@ -137,7 +137,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
                   label="견적 신청 제목 수정"
                 />
               </h2>
-              <p className="text-sm text-slate-600">
+              <p className="text-[15px] sm:text-base text-slate-600 leading-relaxed">
                 <EditableText
                   value={sectionSubtitle}
                   onSave={onUpdateSubtitle}
@@ -204,7 +204,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
                   <div>
                     <label
                       htmlFor="contact-name"
-                      className="block text-xs font-bold text-slate-700 mb-1.5"
+                      className="block text-[13px] sm:text-sm font-bold text-slate-700 mb-1.5"
                     >
                       이름 / 고객명 <span className="text-red-500">*</span>
                     </label>
@@ -215,14 +215,14 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
                       value={form.name}
                       onChange={(e) => setForm({ ...form, name: e.target.value })}
                       placeholder="홍길동"
-                      className="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                      className="w-full px-3.5 py-2.5 text-base sm:text-[15px] bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="contact-phone"
-                      className="block text-xs font-bold text-slate-700 mb-1.5"
+                      className="block text-[13px] sm:text-sm font-bold text-slate-700 mb-1.5"
                     >
                       연락처 <span className="text-red-500">*</span>
                     </label>
@@ -233,7 +233,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
                       value={form.phone}
                       onChange={(e) => setForm({ ...form, phone: e.target.value })}
                       placeholder="010-1234-5678"
-                      className="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                      className="w-full px-3.5 py-2.5 text-base sm:text-[15px] bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                     />
                   </div>
                 </div>
@@ -242,7 +242,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
                   <div>
                     <label
                       htmlFor="contact-region"
-                      className="block text-xs font-bold text-slate-700 mb-1.5"
+                      className="block text-[13px] sm:text-sm font-bold text-slate-700 mb-1.5"
                     >
                       지역 (시·구·동)
                     </label>
@@ -252,14 +252,14 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
                       value={form.region}
                       onChange={(e) => setForm({ ...form, region: e.target.value })}
                       placeholder="예: 서울 서초구 반포동"
-                      className="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                      className="w-full px-3.5 py-2.5 text-base sm:text-[15px] bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="contact-type"
-                      className="block text-xs font-bold text-slate-700 mb-1.5"
+                      className="block text-[13px] sm:text-sm font-bold text-slate-700 mb-1.5"
                     >
                       문의유형
                     </label>
@@ -267,7 +267,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
                       id="contact-type"
                       value={form.buildingType}
                       onChange={(e) => setForm({ ...form, buildingType: e.target.value })}
-                      className="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                      className="w-full px-3.5 py-2.5 text-base sm:text-[15px] bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                     >
                       {INQUIRY_TYPES.map((type) => (
                         <option key={type} value={type}>
@@ -281,7 +281,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
                 <div>
                   <label
                     htmlFor="contact-content"
-                    className="block text-xs font-bold text-slate-700 mb-1.5"
+                    className="block text-[13px] sm:text-sm font-bold text-slate-700 mb-1.5"
                   >
                     문의 내용 / 희망 작업일
                   </label>
@@ -291,13 +291,13 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
                     value={form.content}
                     onChange={(e) => setForm({ ...form, content: e.target.value })}
                     placeholder="창문 수량, 대략적인 평수 또는 오염 상태를 간단히 적어주시면 더 신속하게 견적 산출이 가능합니다."
-                    className="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    className="w-full px-3.5 py-2.5 text-base sm:text-[15px] bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                   />
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 hover:shadow-xl transition-all cursor-pointer"
+                  className="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-[15px] sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 hover:shadow-xl transition-all cursor-pointer"
                 >
                   <Send className="w-4 h-4" />
                   <span>무료 견적 신청 완료하기</span>

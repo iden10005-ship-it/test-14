@@ -250,7 +250,7 @@ export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
                 : `[${regionName}] 유리창청소 전문 ${company.name}`}
             </h1>
 
-            <p className="text-sm sm:text-base md:text-lg text-blue-600 font-bold mb-3 leading-relaxed">
+            <p className="text-[15px] sm:text-base md:text-lg text-blue-600 font-bold mb-3 leading-relaxed">
               <EditableText
                 value={detail.description}
                 onSave={(v) => updateDetail({ description: v })}
@@ -260,12 +260,12 @@ export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
               />
             </p>
 
-            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mb-5">
+            <p className="text-[14.5px] sm:text-base text-slate-600 leading-relaxed mb-5">
               {regionName} 관내 아파트 외창 물때부터 상가 쇼윈도, 통유리까지 전문 스퀴지 장비와 안심 배상책임보험으로 흔적 없이 맑고 투명하게 케어합니다.
             </p>
 
             {(detail.notice || isEditMode) && (
-              <div className="p-3.5 bg-blue-50/80 rounded-2xl border border-blue-200/70 text-xs text-blue-900 font-medium mb-6 flex items-center gap-2">
+              <div className="p-3.5 bg-blue-50/80 rounded-2xl border border-blue-200/70 text-[13px] sm:text-sm text-blue-900 font-medium mb-6 flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
                 <span className="flex-1">
                   <EditableText
@@ -281,7 +281,7 @@ export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
               <a
                 href={`tel:${company.phone}`}
-                className="justify-center px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-md shadow-blue-500/20 transition-all tabular-nums"
+                className="justify-center px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm flex items-center gap-2 shadow-md shadow-blue-500/20 transition-all tabular-nums"
               >
                 <Phone className="w-4 h-4 shrink-0" />
                 <span>{regionName} 직통 전화 ({company.phone})</span>
@@ -290,14 +290,14 @@ export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
                 href={company.kakaoLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="justify-center px-5 py-3 rounded-xl bg-[#FEE500] text-[#3c1e1e] font-bold text-xs sm:text-sm flex items-center gap-2 shadow-2xs hover:brightness-95 transition-all"
+                className="justify-center px-5 py-3 rounded-xl bg-[#FEE500] text-[#3c1e1e] font-bold text-sm flex items-center gap-2 shadow-2xs hover:brightness-95 transition-all"
               >
                 <MessageCircle className="w-4 h-4 fill-current shrink-0" />
                 <span>카톡 문의</span>
               </a>
               <a
                 href="#region-quote"
-                className="justify-center px-5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs sm:text-sm transition-colors text-center"
+                className="justify-center px-5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm transition-colors text-center"
               >
                 {regionName} 빠른 출장 견적
               </a>
@@ -317,7 +317,7 @@ export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
               </h2>
             </div>
 
-            <p className="text-xs text-slate-500 mb-3.5">
+            <p className="text-[13.5px] sm:text-sm text-slate-500 mb-3.5">
               아래 관내 모든 법정동 및 행정동에 당일/익일 출장 작업이 가능합니다.
             </p>
 
@@ -325,7 +325,7 @@ export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
               {detail.subDistricts.map((sub, idx) => (
                 <span
                   key={`${sub}-${idx}`}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-800 text-xs font-semibold border border-slate-200/80"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-800 text-[13px] sm:text-sm font-semibold border border-slate-200/80"
                 >
                   <EditableText
                     value={sub}
@@ -374,7 +374,7 @@ export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
               </form>
             )}
 
-            <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between gap-2 text-xs text-slate-500">
+            <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between gap-2 text-[13px] text-slate-500">
               <span className="flex items-center gap-1.5">
                 <Clock className="w-4 h-4 text-blue-600 shrink-0" />
                 <span>
@@ -389,7 +389,7 @@ export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
                   </strong>
                 </span>
               </span>
-              <span className="text-[11px] text-blue-600 font-bold bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100 whitespace-nowrap">
+              <span className="text-xs text-blue-600 font-bold bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100 whitespace-nowrap">
                 무료 출장 견적
               </span>
             </div>
@@ -406,11 +406,11 @@ export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
                 </h2>
               </div>
 
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mb-4">
+              <p className="text-[14px] sm:text-[15px] text-slate-600 leading-relaxed mb-4">
                 {regionName} 관내 아파트 및 상가 유리창은 고소 작업 안전 인증 장비와 독일제 친환경 중성 케미컬을 투입하여 창틀 손상 없이 투명하게 복원합니다.
               </p>
 
-              <div className="space-y-2 text-xs font-semibold text-slate-700 mb-4">
+              <div className="space-y-2 text-[13.5px] sm:text-sm font-semibold text-slate-700 mb-4">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
                   <span>영업배상책임보험 1억원 가입 완료</span>
@@ -423,14 +423,14 @@ export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
             </div>
 
             <div className="pt-4 border-t border-slate-100">
-              <span className="text-xs font-bold text-slate-500 block mb-2">
+              <span className="text-[13px] font-bold text-slate-500 block mb-2">
                 주요 출장 아파트/상권
               </span>
               <div className="flex flex-wrap gap-1.5">
                 {detail.popularComplexes.map((complex, idx) => (
                   <span
                     key={`${complex}-${idx}`}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-[11px] font-semibold"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-semibold"
                   >
                     <EditableText
                       value={complex}
@@ -501,7 +501,7 @@ export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
                 >
                   {regionName} 맞춤 실제 현장 작업 사례
                 </h2>
-                <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                <p className="text-[13.5px] sm:text-sm text-slate-500 mt-1">
                   카드를 클릭하시면 실제 작업 전·후 사진과 상세 시공 과정을 확인하실 수 있습니다.
                 </p>
               </div>
@@ -509,7 +509,7 @@ export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
               <button
                 type="button"
                 onClick={onViewGalleryList}
-                className="self-start sm:self-auto px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-blue-50 text-blue-600 font-bold text-xs border border-slate-200 hover:border-blue-200 flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                className="self-start sm:self-auto px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-blue-50 text-blue-600 font-bold text-[13px] border border-slate-200 hover:border-blue-200 flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap shrink-0"
               >
                 <span>전체 작업일지 보기</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -532,20 +532,20 @@ export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
                   className="bg-white rounded-2xl border border-slate-200/90 overflow-hidden shadow-2xs hover:shadow-xl hover:border-blue-200 transition-all duration-300 flex flex-col justify-between group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
                 >
                   <div>
-                    <div className="relative aspect-[16/10] bg-slate-900 overflow-hidden">
+                    <div className="relative aspect-[16/10] bg-slate-100 overflow-hidden">
                       <SmoothImage
                         src={resolveAssetUrl(post.coverImage || post.afterImage)}
                         alt={post.title}
                         loading="lazy"
                         wrapperClassName="w-full h-full overflow-hidden"
-                        skeletonTone="dark"
+                        skeletonTone="light"
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                       <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1.5 z-10">
-                        <span className="px-2.5 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-extrabold shadow-md">
+                        <span className="px-2.5 py-0.5 rounded-full bg-blue-600 text-white text-[11px] font-extrabold shadow-md">
                           {post.category}
                         </span>
-                        <span className="px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-white text-[10px] font-bold flex items-center gap-1">
+                        <span className="px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-white text-[11px] font-bold flex items-center gap-1">
                           <MapPin className="w-2.5 h-2.5 text-blue-400" />
                           <span>{post.region}</span>
                         </span>
@@ -553,20 +553,20 @@ export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
                     </div>
 
                     <div className="p-4">
-                      <div className="flex items-center gap-1.5 text-[11px] text-slate-400 mb-1.5 tabular-nums">
-                        <Calendar className="w-3 h-3 text-blue-600" />
+                      <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-1.5 tabular-nums">
+                        <Calendar className="w-3.5 h-3.5 text-blue-600" />
                         <span>{post.date}</span>
                       </div>
-                      <h3 className="text-sm sm:text-[15px] font-extrabold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-2 leading-snug mb-1.5">
+                      <h3 className="text-[15.5px] sm:text-base font-extrabold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-2 leading-snug mb-1.5">
                         {post.title}
                       </h3>
-                      <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">
+                      <p className="text-[13.5px] text-slate-600 leading-relaxed line-clamp-2">
                         {post.excerpt}
                       </p>
                     </div>
                   </div>
 
-                  <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between text-xs font-bold text-blue-600 group-hover:bg-blue-50/50 transition-colors">
+                  <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between text-[13px] font-bold text-blue-600 group-hover:bg-blue-50/50 transition-colors">
                     <span>자세히 보기</span>
                     <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                   </div>
@@ -582,7 +582,7 @@ export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
             <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-1">
               {regionName} 맞춤 서비스 바로가기
             </h3>
-            <p className="text-xs text-slate-500">
+            <p className="text-[13.5px] sm:text-sm text-slate-500">
               원하시는 청소 유형을 선택하시면 {regionName} 전용 시공 안내 및 맞춤 견적 기준을 확인하실 수 있습니다.
             </p>
           </div>
@@ -685,15 +685,15 @@ export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
               ? `${regionName} ${selectedService.title} 무료 출장 견적 신청`
               : `${regionName} 무료 출장 견적 신청`}
           </h3>
-          <p className="text-xs sm:text-sm text-slate-600 mb-5">
+          <p className="text-sm text-slate-600 mb-5">
             {regionName} 전담 팀이 신속하게 연락드려 일정과 예상 금액을 안내해 드립니다.
           </p>
 
           {sent ? (
             <div className="py-6 text-center bg-emerald-50 rounded-2xl border border-emerald-200">
               <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
-              <p className="font-bold text-slate-900 text-sm mb-1">견적 신청이 접수되었습니다!</p>
-              <p className="text-xs text-slate-600">영업시간 내에 신속히 연락드리겠습니다.</p>
+              <p className="font-bold text-slate-900 text-base mb-1">견적 신청이 접수되었습니다!</p>
+              <p className="text-sm text-slate-600">영업시간 내에 신속히 연락드리겠습니다.</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-3.5">
@@ -704,7 +704,7 @@ export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="성함 / 고객명 *"
-                  className="px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-3.5 py-2.5 text-base sm:text-[15px] bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <input
                   type="tel"
@@ -712,7 +712,7 @@ export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="연락처 (010-0000-0000) *"
-                  className="px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-3.5 py-2.5 text-base sm:text-[15px] bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <select
                   value={buildingType}
@@ -727,7 +727,7 @@ export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
                       setSelectedServiceId('');
                     }
                   }}
-                  className="px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-3.5 py-2.5 text-base sm:text-[15px] bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   {allServices.map((srv) => (
                     <option key={srv.id} value={srv.title}>
@@ -741,11 +741,11 @@ export const RegionDetailPage: React.FC<RegionDetailPageProps> = ({
                 rows={2}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                className="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3.5 py-2.5 text-base sm:text-[15px] bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button
                 type="submit"
-                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-[15px] flex items-center justify-center gap-2 shadow-md cursor-pointer"
               >
                 <Send className="w-4 h-4" />
                 <span>{regionName} 무료 견적 신청하기</span>

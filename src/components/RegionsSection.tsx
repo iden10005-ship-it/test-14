@@ -65,7 +65,7 @@ export const RegionsSection: React.FC<RegionsSectionProps> = ({
       className="py-11 md:py-16 bg-white border-b border-slate-300/75 relative"
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 text-center">
-        <span className="text-xs font-extrabold text-blue-600 tracking-wider uppercase mb-2 block">
+        <span className="text-xs sm:text-[13px] font-extrabold text-blue-600 tracking-wider uppercase mb-2 block">
           Service Coverage Area
         </span>
         <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight mb-3">
@@ -76,7 +76,7 @@ export const RegionsSection: React.FC<RegionsSectionProps> = ({
             label="서비스 지역 제목 수정"
           />
         </h2>
-        <p className="text-xs sm:text-base text-slate-600 mb-7 sm:mb-9 max-w-2xl mx-auto leading-relaxed">
+        <p className="text-[15px] sm:text-base md:text-[17px] text-slate-600 mb-7 sm:mb-9 max-w-2xl mx-auto leading-relaxed">
           <EditableText
             value={sectionSubtitle}
             onSave={onUpdateSubtitle}
@@ -94,12 +94,12 @@ export const RegionsSection: React.FC<RegionsSectionProps> = ({
                   <Sparkles className="w-3.5 h-3.5 text-blue-600" />
                   <span>서울 25개구 전역</span>
                 </span>
-                <span className="text-[11px] font-bold text-slate-400">당일/익일 출장</span>
+                <span className="text-xs font-bold text-slate-500">당일/익일 출장</span>
               </div>
               <h3 className="text-xl font-black text-slate-900 group-hover:text-blue-600 transition-colors mb-2">
                 서울특별시 전지역
               </h3>
-              <p className="text-xs text-slate-600 leading-relaxed mb-4">
+              <p className="text-[14px] sm:text-sm text-slate-600 leading-relaxed mb-4">
                 강남·서초·송파·마포·용산·영등포·노원 등 서울시 25개 자치구 모든 아파트 및 상가 유리창 전문 출장
               </p>
               <div className="flex flex-wrap gap-1.5 mb-4">
@@ -111,9 +111,9 @@ export const RegionsSection: React.FC<RegionsSectionProps> = ({
                       e.preventDefault();
                       onViewRegion(district);
                     }}
-                    className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-600 text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+                    className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-600 text-[13px] font-semibold transition-colors flex items-center gap-1 cursor-pointer"
                   >
-                    <MapPin className="w-3 h-3 text-blue-500" />
+                    <MapPin className="w-3.5 h-3.5 text-blue-500" />
                     <span>{district}</span>
                   </a>
                 ))}
@@ -123,7 +123,7 @@ export const RegionsSection: React.FC<RegionsSectionProps> = ({
             <button
               type="button"
               onClick={() => setExpanded(true)}
-              className="w-full py-2.5 rounded-xl bg-slate-50 hover:bg-blue-50 text-blue-600 font-bold text-xs border border-slate-200 hover:border-blue-200 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+              className="w-full py-2.5 rounded-xl bg-slate-50 hover:bg-blue-50 text-blue-600 font-bold text-[13px] sm:text-sm border border-slate-200 hover:border-blue-200 transition-colors flex items-center justify-center gap-1 cursor-pointer"
             >
               <span>서울 전체 구 목록 보기 ({seoulCount}개 구)</span>
             </button>
@@ -136,12 +136,12 @@ export const RegionsSection: React.FC<RegionsSectionProps> = ({
                   <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
                   <span>경기 주요 신도시 전역</span>
                 </span>
-                <span className="text-[11px] font-bold text-slate-400">전담팀 배정</span>
+                <span className="text-xs font-bold text-slate-500">전담팀 배정</span>
               </div>
               <h3 className="text-xl font-black text-slate-900 group-hover:text-blue-600 transition-colors mb-2">
                 경기도 주요 지역
               </h3>
-              <p className="text-xs text-slate-600 leading-relaxed mb-4">
+              <p className="text-[14px] sm:text-sm text-slate-600 leading-relaxed mb-4">
                 수원·성남(분당)·용인(수지)·고양(일산)·부천·하남·안양·화성·평택 등 수도권 신도시 및 구/시 전역
               </p>
               <div className="flex flex-wrap gap-1.5 mb-4">
@@ -153,9 +153,9 @@ export const RegionsSection: React.FC<RegionsSectionProps> = ({
                       e.preventDefault();
                       onViewRegion(city);
                     }}
-                    className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-600 text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+                    className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-600 text-[13px] font-semibold transition-colors flex items-center gap-1 cursor-pointer"
                   >
-                    <MapPin className="w-3 h-3 text-blue-500" />
+                    <MapPin className="w-3.5 h-3.5 text-blue-500" />
                     <span>{city}</span>
                   </a>
                 ))}
@@ -165,7 +165,7 @@ export const RegionsSection: React.FC<RegionsSectionProps> = ({
             <button
               type="button"
               onClick={() => setExpanded(true)}
-              className="w-full py-2.5 rounded-xl bg-slate-50 hover:bg-blue-50 text-blue-600 font-bold text-xs border border-slate-200 hover:border-blue-200 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+              className="w-full py-2.5 rounded-xl bg-slate-50 hover:bg-blue-50 text-blue-600 font-bold text-[13px] sm:text-sm border border-slate-200 hover:border-blue-200 transition-colors flex items-center justify-center gap-1 cursor-pointer"
             >
               <span>경기도 전체 시·구 목록 보기</span>
             </button>
@@ -178,12 +178,12 @@ export const RegionsSection: React.FC<RegionsSectionProps> = ({
                   <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
                   <span>인천 송도·청라·부평 신도시</span>
                 </span>
-                <span className="text-[11px] font-bold text-slate-400">초발수 코팅</span>
+                <span className="text-xs font-bold text-slate-500">초발수 코팅</span>
               </div>
               <h3 className="text-xl font-black text-slate-900 group-hover:text-blue-600 transition-colors mb-2">
                 인천광역시
               </h3>
-              <p className="text-xs text-slate-600 leading-relaxed mb-4">
+              <p className="text-[14px] sm:text-sm text-slate-600 leading-relaxed mb-4">
                 송도국제도시(연수구)·청라/검단(서구)·부평구 등 서해 해풍 및 염분 방지 나노 불소 코팅 특화
               </p>
               <div className="flex flex-wrap gap-1.5 mb-4">
@@ -195,9 +195,9 @@ export const RegionsSection: React.FC<RegionsSectionProps> = ({
                       e.preventDefault();
                       onViewRegion(district);
                     }}
-                    className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-600 text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+                    className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-600 text-[13px] font-semibold transition-colors flex items-center gap-1 cursor-pointer"
                   >
-                    <MapPin className="w-3 h-3 text-blue-500" />
+                    <MapPin className="w-3.5 h-3.5 text-blue-500" />
                     <span>{district}</span>
                   </a>
                 ))}
@@ -207,7 +207,7 @@ export const RegionsSection: React.FC<RegionsSectionProps> = ({
             <button
               type="button"
               onClick={() => setExpanded(true)}
-              className="w-full py-2.5 rounded-xl bg-slate-50 hover:bg-blue-50 text-blue-600 font-bold text-xs border border-slate-200 hover:border-blue-200 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+              className="w-full py-2.5 rounded-xl bg-slate-50 hover:bg-blue-50 text-blue-600 font-bold text-[13px] sm:text-sm border border-slate-200 hover:border-blue-200 transition-colors flex items-center justify-center gap-1 cursor-pointer"
             >
               <span>인천 주요 구 목록 보기</span>
             </button>
@@ -219,7 +219,7 @@ export const RegionsSection: React.FC<RegionsSectionProps> = ({
             type="button"
             onClick={() => setExpanded((prev) => !prev)}
             aria-expanded={expanded}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-white hover:bg-blue-50 text-slate-800 hover:text-blue-600 text-xs sm:text-sm font-bold border border-slate-200 shadow-2xs transition-all cursor-pointer"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-white hover:bg-blue-50 text-slate-800 hover:text-blue-600 text-sm font-bold border border-slate-200 shadow-2xs transition-all cursor-pointer"
           >
             <Compass className="w-4 h-4 text-blue-600" />
             <span>
@@ -238,7 +238,7 @@ export const RegionsSection: React.FC<RegionsSectionProps> = ({
                   <MapPin className="w-4 h-4 text-blue-600" />
                   <span>전체 서비스 지역 세부 정보 ({regions.length}개 지역)</span>
                 </h4>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-[13px] sm:text-sm text-slate-500 mt-1">
                   각 지역을 클릭하여 전용 상세페이지를 확인하거나, 지역별 맞춤 견적을 바로 요청할 수 있습니다.
                 </p>
               </div>
@@ -247,7 +247,7 @@ export const RegionsSection: React.FC<RegionsSectionProps> = ({
                 <button
                   type="button"
                   onClick={() => setExpanded(false)}
-                  className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs text-slate-500 hover:text-slate-800 font-bold cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs sm:text-[13px] text-slate-600 hover:text-slate-900 font-bold cursor-pointer"
                 >
                   닫기 ✕
                 </button>
@@ -258,7 +258,7 @@ export const RegionsSection: React.FC<RegionsSectionProps> = ({
                   {regions.map((region, idx) => (
                     <span
                       key={`${region}-${idx}`}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-blue-50 text-slate-800 hover:text-blue-700 text-xs font-semibold border border-slate-200/80 transition-colors group"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-blue-50 text-slate-800 hover:text-blue-700 text-[13px] sm:text-sm font-semibold border border-slate-200/80 transition-colors group"
                     >
                       <a
                         href={getRoutePath({ type: 'region', regionName: region })}

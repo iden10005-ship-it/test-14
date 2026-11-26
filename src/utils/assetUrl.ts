@@ -15,8 +15,8 @@ export function resolveAssetUrl(url?: string): string {
   ) {
     return trimmed;
   }
+  const base = import.meta.env.BASE_URL || '/';
   if (trimmed.startsWith('/')) {
-    const base = import.meta.env.BASE_URL || '/';
     if (base.startsWith('/')) {
       const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base;
       return `${normalizedBase}${trimmed}`;
@@ -29,6 +29,15 @@ export function resolveAssetUrl(url?: string): string {
       }
     }
     return `.${trimmed}`;
+  }
+  if (
+    base.startsWith('/') &&
+    (trimmed.startsWith('images/') ||
+      trimmed.startsWith('uploads/') ||
+      trimmed.startsWith('assets/'))
+  ) {
+    const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base;
+    return `${normalizedBase}/${trimmed}`;
   }
   return trimmed;
 }

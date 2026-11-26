@@ -223,7 +223,7 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
             </h1>
 
             {post.excerpt && (
-              <p className="text-sm sm:text-base text-slate-600 leading-relaxed mb-4">
+              <p className="text-[15px] sm:text-base text-slate-600 leading-relaxed mb-4">
                 <EditableText
                   value={post.excerpt}
                   onSave={(v) => commitPostUpdate({ ...post, excerpt: v })}
@@ -234,7 +234,7 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
               </p>
             )}
 
-            <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-slate-500 pt-3 border-t border-slate-100">
+            <div className="flex flex-wrap items-center gap-4 text-[13px] sm:text-sm font-medium text-slate-500 pt-3 border-t border-slate-100">
               <span className="flex items-center gap-1.5 tabular-nums">
                 <Calendar className="w-4 h-4 text-blue-600" />
                 <span>
@@ -267,8 +267,12 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
           {heroCover && (
             <div className="relative bg-slate-100/80 border-b border-slate-100">
               <SmoothImage
+                key={`${post.id}-hero-${heroCover}`}
                 src={resolveAssetUrl(heroCover)}
                 alt={post.title}
+                loading="eager"
+                decoding="sync"
+                fetchPriority="high"
                 wrapperClassName="relative w-full overflow-hidden"
                 minSkeletonHeightClass="min-h-[240px] sm:min-h-[340px]"
                 skeletonTone="light"
@@ -301,12 +305,14 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
 
           {/* Blog-Style Interleaved Body Content (Headings, Text, Photos) */}
           <div className="p-6 sm:p-10 space-y-6">
-            {blocks.map((block) => {
+            {(() => {
+              let imageBlockIndex = 0;
+              return blocks.map((block) => {
               if (block.type === 'heading') {
                 return (
                   <h2
                     key={block.id}
-                    className="text-lg sm:text-xl font-extrabold text-slate-900 pt-3 border-l-4 border-blue-600 pl-3.5 leading-snug"
+                    className="text-[19px] sm:text-xl font-extrabold text-slate-900 pt-3 border-l-4 border-blue-600 pl-3.5 leading-snug"
                   >
                     <EditableText
                       value={block.text}
@@ -322,7 +328,7 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
                 return (
                   <div
                     key={block.id}
-                    className="whitespace-pre-line text-[15px] sm:text-base text-slate-700 leading-[1.85]"
+                    className="whitespace-pre-line text-[16px] sm:text-[16.5px] text-slate-700 leading-[1.85]"
                   >
                     <EditableText
                       value={block.text}
@@ -336,6 +342,7 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
                 );
               }
 
+              const currentImgOrder = imageBlockIndex++;
               return (
                 <figure
                   key={block.id}
@@ -345,7 +352,8 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
                     <SmoothImage
                       src={resolveAssetUrl(block.url)}
                       alt={block.caption || `${post.title} 시공 사진`}
-                      loading="lazy"
+                      loading={currentImgOrder < 2 ? 'eager' : 'lazy'}
+                      decoding={currentImgOrder < 2 ? 'sync' : 'async'}
                       wrapperClassName="relative w-full overflow-hidden"
                       minSkeletonHeightClass="min-h-[220px] sm:min-h-[320px]"
                       skeletonTone="light"
@@ -374,7 +382,7 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
                     )}
                   </div>
                   {(block.caption || isEditMode) && (
-                    <figcaption className="px-4 py-2.5 text-xs text-slate-500 text-center bg-slate-50 border-t border-slate-100">
+                    <figcaption className="px-4 py-2.5 text-[13px] text-slate-500 text-center bg-slate-50 border-t border-slate-100">
                       <EditableText
                         value={block.caption || (isEditMode ? '사진 설명 입력 (선택)' : '')}
                         onSave={(v) => handleUpdateBlockCaption(block.id, v)}
@@ -385,7 +393,8 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
                   )}
                 </figure>
               );
-            })}
+              });
+            })()}
 
             {isEditMode && (
               <div className="pt-2">
@@ -403,13 +412,13 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
             {/* Key Points & Equipment */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-6 border-t border-slate-100">
               <div className="p-5 rounded-2xl bg-emerald-50/60 border border-emerald-200/70">
-                <h2 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+                <h2 className="text-[15px] sm:text-base font-bold text-slate-900 mb-3 flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-emerald-600" />
                   <span>현장 핵심 시공 포인트</span>
                 </h2>
                 <ul className="space-y-2">
                   {post.keyPoints.map((kp, idx) => (
-                    <li key={idx} className="text-xs sm:text-sm text-slate-700 flex items-start gap-2">
+                    <li key={idx} className="text-[14px] sm:text-[15px] text-slate-700 leading-relaxed flex items-start gap-2">
                       <span className="text-emerald-600 font-bold">✓</span>
                       <span className="flex-1">
                         <EditableText
@@ -430,13 +439,13 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
               </div>
 
               <div className="p-5 rounded-2xl bg-blue-50/60 border border-blue-200/70">
-                <h2 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+                <h2 className="text-[15px] sm:text-base font-bold text-slate-900 mb-3 flex items-center gap-2">
                   <Wrench className="w-4 h-4 text-blue-600" />
                   <span>투입 장비 및 약품</span>
                 </h2>
                 <ul className="space-y-2">
                   {post.equipmentUsed.map((eq, idx) => (
-                    <li key={idx} className="text-xs sm:text-sm text-slate-700 flex items-start gap-2">
+                    <li key={idx} className="text-[14px] sm:text-[15px] text-slate-700 leading-relaxed flex items-start gap-2">
                       <span className="text-blue-600 font-bold">•</span>
                       <span className="flex-1">
                         <EditableText
@@ -477,14 +486,14 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
           <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 mb-1">
             이와 동일한 시공이 필요하신가요?
           </h3>
-          <p className="text-xs sm:text-sm text-slate-600 mb-5">
+          <p className="text-sm text-slate-600 mb-5">
             연락처를 남겨주시면 담당 마스터가 무료 견적 상담을 도와드립니다.
           </p>
 
           {sent ? (
             <div className="py-6 text-center bg-emerald-50 rounded-2xl border border-emerald-200">
               <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
-              <p className="font-bold text-slate-900 text-sm">견적 문의가 접수되었습니다!</p>
+              <p className="font-bold text-slate-900 text-base">견적 문의가 접수되었습니다!</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-3">
@@ -495,7 +504,7 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="성함 / 고객명 *"
-                  className="px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-3.5 py-2.5 text-base sm:text-[15px] bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <input
                   type="tel"
@@ -503,12 +512,12 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="연락처 (010-0000-0000) *"
-                  className="px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-3.5 py-2.5 text-base sm:text-[15px] bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <select
                   value={buildingType}
                   onChange={(e) => setBuildingType(e.target.value)}
-                  className="px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-3.5 py-2.5 text-base sm:text-[15px] bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="아파트창문청소·외창청소">아파트창문청소·외창청소</option>
                   <option value="상가·매장·사무실 유리창청소">상가·매장·사무실 유리창청소</option>
@@ -522,11 +531,11 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
                 rows={2}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                className="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3.5 py-2.5 text-base sm:text-[15px] bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button
                 type="submit"
-                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-[15px] flex items-center justify-center gap-2 shadow-md cursor-pointer"
               >
                 <Send className="w-4 h-4" />
                 <span>무료 견적 문의하기</span>
@@ -538,9 +547,22 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
         {/* Related Field Logs */}
         {relatedPosts.length > 0 && (
           <div>
-            <h3 className="text-base sm:text-lg font-extrabold text-slate-900 mb-4">
-              다른 현장 작업일지
-            </h3>
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <h3 className="text-lg font-extrabold text-slate-900">
+                다른 현장 작업일지
+              </h3>
+              <a
+                href="/gallery"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onBackToList();
+                }}
+                className="px-3.5 py-2 sm:px-5 sm:py-3 rounded-2xl bg-white hover:bg-slate-100 text-blue-600 font-extrabold text-xs sm:text-sm border border-slate-200 shadow-2xs inline-flex items-center gap-1.5 sm:gap-2 transition-all hover:scale-[1.02] cursor-pointer whitespace-nowrap shrink-0"
+              >
+                <span>전체 작업일지 보러가기</span>
+                <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              </a>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {relatedPosts.map((rel) => (
                 <button
@@ -550,24 +572,24 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
                   className="text-left bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-lg transition-all cursor-pointer group flex flex-col justify-between"
                 >
                   <div>
-                    <div className="aspect-[16/10] bg-slate-900 overflow-hidden">
+                    <div className="aspect-[16/10] bg-slate-100 overflow-hidden">
                       <SmoothImage
                         src={resolveAssetUrl(getPostCoverImage(rel))}
                         alt={rel.title}
                         loading="lazy"
                         wrapperClassName="w-full h-full overflow-hidden"
-                        skeletonTone="dark"
+                        skeletonTone="light"
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                     </div>
                     <div className="p-4">
-                      <span className="text-[11px] font-bold text-blue-600">{rel.region}</span>
-                      <h4 className="text-xs sm:text-sm font-bold text-slate-900 line-clamp-2 mt-1 group-hover:text-blue-600">
+                      <span className="text-xs font-bold text-blue-600">{rel.region}</span>
+                      <h4 className="text-[14px] sm:text-[15px] font-bold text-slate-900 line-clamp-2 mt-1 group-hover:text-blue-600">
                         {rel.title}
                       </h4>
                     </div>
                   </div>
-                  <div className="px-4 py-2.5 border-t border-slate-100 text-[11px] font-bold text-blue-600 flex items-center justify-between">
+                  <div className="px-4 py-2.5 border-t border-slate-100 text-xs font-bold text-blue-600 flex items-center justify-between">
                     <span>보기</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </div>

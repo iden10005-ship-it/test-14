@@ -68,7 +68,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
     <section id="service" className="py-11 md:py-16 bg-white relative border-b border-slate-300/75">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
-          <span className="text-xs font-bold text-blue-600 tracking-wider uppercase mb-2 block">
+          <span className="text-xs sm:text-[13px] font-bold text-blue-600 tracking-wider uppercase mb-2 block">
             Our Services
           </span>
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight mb-3 sm:mb-4">
@@ -79,7 +79,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
               label="서비스 섹션 제목 수정"
             />
           </h2>
-          <p className="text-sm sm:text-base text-slate-600">
+          <p className="text-[15px] sm:text-base md:text-[17px] text-slate-600 leading-relaxed">
             <EditableText
               value={sectionSubtitle}
               onSave={onUpdateSubtitle}
@@ -133,7 +133,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
                           if (isEditMode) e.stopPropagation();
                         }}
                       >
-                        <span className="inline-block px-3 py-1 text-[11px] font-bold rounded-full bg-blue-600/95 backdrop-blur-xs text-white shadow-sm whitespace-nowrap">
+                        <span className="inline-block px-3 py-1 text-xs font-bold rounded-full bg-blue-600/95 backdrop-blur-xs text-white shadow-sm whitespace-nowrap">
                           <EditableText
                             value={service.badge || '뱃지 추가'}
                             onSave={(v) => onUpdateService(service.id, 'badge', v)}
@@ -169,7 +169,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
                       <div className="w-8 h-8 rounded-xl bg-blue-50 group-hover:bg-blue-600 flex items-center justify-center transition-colors shrink-0">
                         {ICON_MAP[service.iconName]}
                       </div>
-                      <h3 className="text-lg sm:text-xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors leading-snug">
+                      <h3 className="text-[19px] sm:text-xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors leading-snug">
                         <EditableText
                           value={service.title}
                           onSave={(v) => onUpdateService(service.id, 'title', v)}
@@ -179,7 +179,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
                       </h3>
                     </div>
 
-                    <p className="text-sm text-slate-600 leading-relaxed">
+                    <p className="text-[15px] sm:text-[15.5px] text-slate-600 leading-relaxed">
                       <EditableText
                         value={service.description}
                         onSave={(v) => onUpdateService(service.id, 'description', v)}
@@ -199,7 +199,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
                       e.stopPropagation();
                       onViewDetail(service.id);
                     }}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 group-hover:text-blue-800 transition-colors"
+                    className="inline-flex items-center gap-1.5 text-[13.5px] sm:text-sm font-bold text-blue-600 group-hover:text-blue-800 transition-colors"
                   >
                     <span>상세보기 및 작업범위</span>
                     <span className="group-hover:translate-x-0.5 transition-transform">→</span>

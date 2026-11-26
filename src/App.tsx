@@ -1331,6 +1331,7 @@ export default function App() {
 
         {effectiveRoute.type === 'gallery_detail' && activePost && (
           <GalleryDetailPage
+            key={activePost.id}
             post={activePost}
             allPosts={siteData.gallery.posts}
             categories={siteData.gallery.categories}

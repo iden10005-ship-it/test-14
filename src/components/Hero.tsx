@@ -77,7 +77,7 @@ export const Hero: React.FC<HeroProps> = ({
         {/* Hero Copy & CTA Overlay */}
         <div className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 py-16 sm:py-20 md:py-24">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-500/25 backdrop-blur-md text-sky-100 text-xs font-semibold mb-4 sm:mb-5 border border-sky-300/30 shadow-xs">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-500/25 backdrop-blur-md text-sky-100 text-xs sm:text-[13px] font-semibold mb-4 sm:mb-5 border border-sky-300/30 shadow-xs">
               <EditableText
                 value={hero.badgeText}
                 onSave={(v) => onUpdateHero('badgeText', v)}
@@ -97,13 +97,14 @@ export const Hero: React.FC<HeroProps> = ({
               />
             </h1>
 
-            <p className="text-base sm:text-lg md:text-xl text-slate-100/95 leading-relaxed font-normal mb-0 md:mb-8 max-w-xl whitespace-pre-line drop-shadow-xs">
+            <p className="text-[16px] sm:text-lg md:text-xl text-slate-100/95 leading-relaxed font-normal mb-0 md:mb-8 max-w-xl whitespace-pre-line drop-shadow-xs">
               <EditableText
                 value={hero.subtitle}
                 onSave={(v) => onUpdateHero('subtitle', v)}
                 isEditMode={isEditMode}
                 label="서브 카피 수정"
                 multiline
+                className="text-[15px]"
               />
             </p>
 
@@ -193,7 +194,7 @@ export const Hero: React.FC<HeroProps> = ({
               <div className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center mb-2.5">
                 {statIcons[idx % statIcons.length]}
               </div>
-              <div className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight tabular-nums">
+              <div className="text-[22px] sm:text-2xl font-black text-slate-900 tracking-tight tabular-nums">
                 {isEditMode ? (
                   <EditableText
                     value={stat.value}
@@ -205,7 +206,7 @@ export const Hero: React.FC<HeroProps> = ({
                   <AnimatedCounter value={stat.value} />
                 )}
               </div>
-              <div className="text-xs sm:text-sm font-medium text-slate-500 mt-0.5">
+              <div className="text-sm sm:text-[15px] font-semibold text-slate-600 mt-1">
                 <EditableText
                   value={stat.label}
                   onSave={(v) => onUpdateStat(stat.id, 'label', v)}
