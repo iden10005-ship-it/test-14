@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Camera,
   Check,
@@ -315,7 +315,13 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
   const [savedToast, setSavedToast] = useState(false);
   const [pendingOpenNewId, setPendingOpenNewId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  // 팝업: 모바일/데스크톱 네이티브 scroll-snap 좌우 스와이프 (고객후기 팝업과 동일한 부드러운 전환)
+  const popupScrollRef = useRef<HTMLDivElement | null>(null);
+  const wasPopupTrackOpenRef = useRef<boolean>(false);
+  const currentPopupSlotRef = useRef<number>(1);
+  const popupScrollSettleTimerRef = useRef<number | null>(null);
+  const popupAnimRafRef = useRef<number | null>(null);
 
   // 안드로이드/모바일 뒤로가기 시 페이지 이탈 없이 팝업만 닫고 직전 스크롤 위치 유지
   const hasShowcaseHistoryRef = useRef<boolean>(false);
@@ -430,17 +436,147 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
     };
   }, [isModalOpen]);
 
+  // 팝업이 열리거나 편집 종료 후 복귀할 때만 초기 슬라이드 위치 즉시 정렬
+  useLayoutEffect(() => {
+    const isTrackVisible = isModalOpen && !(isEditMode && isPopupEditing && draft);
+    if (isTrackVisible && !wasPopupTrackOpenRef.current) {
+      const el = popupScrollRef.current;
+      if (el && activeIndex >= 0) {
+        const width = el.clientWidth;
+        const targetSlot = items.length > 1 ? activeIndex + 1 : 0;
+        currentPopupSlotRef.current = targetSlot;
+        if (width > 0) {
+          el.scrollLeft = targetSlot * width;
+        }
+      }
+    }
+    wasPopupTrackOpenRef.current = isTrackVisible;
+  }, [isModalOpen, isEditMode, isPopupEditing, draft, activeIndex, items.length]);
+
+  // 기기 회전/리사이즈 시 현재 슬라이드 위치 유지
+  useEffect(() => {
+    const isTrackVisible = isModalOpen && !(isEditMode && isPopupEditing && draft);
+    if (!isTrackVisible) return;
+    const el = popupScrollRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+
+    const observer = new ResizeObserver(() => {
+      const width = el.clientWidth;
+      if (width > 0) {
+        el.scrollLeft = currentPopupSlotRef.current * width;
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [isModalOpen, isEditMode, isPopupEditing, draft]);
+
+  useEffect(() => {
+    return () => {
+      if (popupScrollSettleTimerRef.current !== null) {
+        window.clearTimeout(popupScrollSettleTimerRef.current);
+      }
+      if (popupAnimRafRef.current !== null) {
+        window.cancelAnimationFrame(popupAnimRafRef.current);
+      }
+    };
+  }, []);
+
+  const normalizeCloneBoundary = useCallback(() => {
+    const target = popupScrollRef.current;
+    if (!target || items.length <= 1) return;
+    const w = target.clientWidth;
+    if (w <= 0) return;
+
+    const settledSlot = Math.round(target.scrollLeft / w);
+    if (Math.abs(target.scrollLeft - settledSlot * w) <= Math.max(6, w * 0.03)) {
+      if (settledSlot <= 0) {
+        currentPopupSlotRef.current = items.length;
+        target.scrollLeft = items.length * w;
+      } else if (settledSlot >= items.length + 1) {
+        currentPopupSlotRef.current = 1;
+        target.scrollLeft = w;
+      }
+    }
+  }, [items.length]);
+
+  useEffect(() => {
+    const isTrackVisible = isModalOpen && !(isEditMode && isPopupEditing && draft);
+    if (!isTrackVisible || items.length <= 1) return;
+    const el = popupScrollRef.current;
+    if (!el) return;
+
+    const onScrollEnd = () => {
+      normalizeCloneBoundary();
+    };
+    el.addEventListener('scrollend', onScrollEnd);
+    return () => {
+      el.removeEventListener('scrollend', onScrollEnd);
+    };
+  }, [isModalOpen, isEditMode, isPopupEditing, draft, items.length, normalizeCloneBoundary]);
+
+  const animatePopupToDirection = useCallback(
+    (dir: 'prev' | 'next') => {
+      if (items.length <= 1 || isPopupEditing) return;
+      const el = popupScrollRef.current;
+      if (!el) return;
+      const width = el.clientWidth;
+      if (width <= 0) return;
+
+      if (popupAnimRafRef.current !== null) {
+        window.cancelAnimationFrame(popupAnimRafRef.current);
+        popupAnimRafRef.current = null;
+      }
+
+      let currentSlot = Math.round(el.scrollLeft / width);
+      if (currentSlot <= 0) {
+        currentSlot = items.length;
+        el.scrollLeft = currentSlot * width;
+      } else if (currentSlot >= items.length + 1) {
+        currentSlot = 1;
+        el.scrollLeft = currentSlot * width;
+      }
+
+      const nextSlot = dir === 'next' ? currentSlot + 1 : currentSlot - 1;
+      currentPopupSlotRef.current = nextSlot;
+
+      const startLeft = el.scrollLeft;
+      const targetLeft = nextSlot * width;
+      const distance = targetLeft - startLeft;
+      const durationMs = 220;
+      const startTime = performance.now();
+
+      el.style.scrollSnapType = 'none';
+
+      const tick = (now: number) => {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / durationMs, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        el.scrollLeft = startLeft + distance * eased;
+
+        if (progress < 1) {
+          popupAnimRafRef.current = window.requestAnimationFrame(tick);
+        } else {
+          popupAnimRafRef.current = null;
+          el.scrollLeft = targetLeft;
+          el.style.scrollSnapType = '';
+          normalizeCloneBoundary();
+        }
+      };
+
+      popupAnimRafRef.current = window.requestAnimationFrame(tick);
+    },
+    [items.length, isPopupEditing, normalizeCloneBoundary]
+  );
+
   const goToPrev = useCallback(() => {
     if (items.length <= 1 || activeIndex < 0 || isPopupEditing) return;
-    const prevIdx = (activeIndex - 1 + items.length) % items.length;
-    setActiveItemId(items[prevIdx].id);
-  }, [items, activeIndex, isPopupEditing]);
+    animatePopupToDirection('prev');
+  }, [items.length, activeIndex, isPopupEditing, animatePopupToDirection]);
 
   const goToNext = useCallback(() => {
     if (items.length <= 1 || activeIndex < 0 || isPopupEditing) return;
-    const nextIdx = (activeIndex + 1) % items.length;
-    setActiveItemId(items[nextIdx].id);
-  }, [items, activeIndex, isPopupEditing]);
+    animatePopupToDirection('next');
+  }, [items.length, activeIndex, isPopupEditing, animatePopupToDirection]);
 
   useEffect(() => {
     if (!isModalOpen) return;
@@ -641,7 +777,7 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
           <ShowcaseMarqueeRow
             items={row1Items}
             direction="left"
-            speedPxPerSec={34}
+            speedPxPerSec={42}
             paused={isModalOpen}
             onSelectItem={openShowcasePopup}
           />
@@ -651,7 +787,7 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
           <ShowcaseMarqueeRow
             items={row2Items}
             direction="right"
-            speedPxPerSec={30}
+            speedPxPerSec={42}
             paused={isModalOpen}
             onSelectItem={openShowcasePopup}
           />
@@ -700,14 +836,8 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
               {/* 모달 상단 헤더 */}
               <div className="shrink-0 px-4 sm:px-5 py-3 border-b border-slate-200 flex items-center justify-between gap-2 bg-white">
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-xs font-bold truncate">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded bg-blue-50 text-blue-700 text-xs font-bold truncate">
                     {isPopupEditing && draft ? draft.tag || '작업 구분' : activeItem.tag}
-                  </span>
-                  <span className="hidden sm:inline-flex items-center gap-1 text-xs font-semibold text-slate-500 truncate">
-                    <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    {formatRegionLabel(
-                      isPopupEditing && draft ? draft.region || '지역' : activeItem.region
-                    )}
                   </span>
                 </div>
 
@@ -727,7 +857,7 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold cursor-pointer transition-colors"
                       >
                         <Pencil className="w-3.5 h-3.5" />
-                        <span>사진·설명 수정</span>
+                        <span>편집하기</span>
                       </button>
                       {items.length > 2 && (
                         <button
@@ -779,58 +909,126 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
                 </div>
               </div>
 
-              {/* 모달 본문 (고정 높이 이미지 영역 + 스크롤 가능 설명 영역) */}
+              {/* 모달 본문 (고객후기 팝업과 동일한 네이티브 scroll-snap 좌우 슬라이드) */}
               {!(isEditMode && isPopupEditing && draft) ? (
-                <div
-                  className="flex-1 min-h-0 flex flex-col overflow-hidden"
-                  onTouchStart={(e) => {
-                    const t = e.touches[0];
-                    if (t) swipeStartRef.current = { x: t.clientX, y: t.clientY };
-                  }}
-                  onTouchEnd={(e) => {
-                    const start = swipeStartRef.current;
-                    swipeStartRef.current = null;
-                    const t = e.changedTouches[0];
-                    if (!start || !t) return;
-                    const dx = t.clientX - start.x;
-                    const dy = t.clientY - start.y;
-                    if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.2) {
-                      if (dx < 0) goToNext();
-                      else goToPrev();
-                    }
-                  }}
-                >
-                  {/* 고정 높이 대형 이미지 뷰어 (모바일 좌우 스와이프 지원) */}
-                  <div className="relative shrink-0 h-[256px] sm:h-[384px] bg-slate-950 flex items-center justify-center overflow-hidden select-none">
-                    <img
-                      key={activeItem.id}
-                      src={activeItem.image}
-                      alt={activeItem.title}
-                      className="w-full h-full object-contain"
-                    />
-                  </div>
+                (() => {
+                  const hasMultiple = items.length > 1;
+                  const slides = hasMultiple
+                    ? [
+                        {
+                          slotKey: `clone-prev-${items[items.length - 1].id}`,
+                          item: items[items.length - 1],
+                        },
+                        ...items.map((it) => ({
+                          slotKey: `slide-${it.id}`,
+                          item: it,
+                        })),
+                        {
+                          slotKey: `clone-next-${items[0].id}`,
+                          item: items[0],
+                        },
+                      ]
+                    : [{ slotKey: `slide-${activeItem.id}`, item: activeItem }];
 
-                  {/* 현장 캡션 및 설명 (남은 고정 영역 내부 스크롤) */}
-                  <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 bg-white space-y-2.5">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-blue-600 text-white text-xs font-bold">
-                        {activeItem.tag}
-                      </span>
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-semibold">
-                        <MapPin className="w-3.5 h-3.5 text-blue-600" />
-                        {formatRegionLabel(activeItem.region)}
-                      </span>
+                  return (
+                    <div
+                      ref={popupScrollRef}
+                      onTouchStart={() => {
+                        if (popupAnimRafRef.current !== null) {
+                          window.cancelAnimationFrame(popupAnimRafRef.current);
+                          popupAnimRafRef.current = null;
+                          if (popupScrollRef.current) {
+                            popupScrollRef.current.style.scrollSnapType = '';
+                          }
+                        }
+                        if (!hasMultiple) return;
+                        const el = popupScrollRef.current;
+                        if (!el) return;
+                        const w = el.clientWidth;
+                        if (w <= 0) return;
+
+                        if (el.scrollLeft <= 0.5 * w) {
+                          const targetLeft = el.scrollLeft + items.length * w;
+                          currentPopupSlotRef.current = Math.round(targetLeft / w);
+                          el.scrollLeft = targetLeft;
+                        } else if (el.scrollLeft >= (items.length + 0.5) * w) {
+                          const targetLeft = el.scrollLeft - items.length * w;
+                          currentPopupSlotRef.current = Math.round(targetLeft / w);
+                          el.scrollLeft = targetLeft;
+                        }
+                      }}
+                      onScroll={(e) => {
+                        if (!hasMultiple) return;
+                        const el = e.currentTarget;
+                        const width = el.clientWidth;
+                        if (width <= 0) return;
+
+                        const rawSlot = Math.round(el.scrollLeft / width);
+                        currentPopupSlotRef.current = rawSlot;
+
+                        const mappedIdx =
+                          rawSlot <= 0
+                            ? items.length - 1
+                            : rawSlot >= items.length + 1
+                            ? 0
+                            : rawSlot - 1;
+
+                        const nextId = items[mappedIdx]?.id;
+                        if (nextId) {
+                          setActiveItemId((prev) => (prev === nextId ? prev : nextId));
+                        }
+
+                        if (popupScrollSettleTimerRef.current !== null) {
+                          window.clearTimeout(popupScrollSettleTimerRef.current);
+                        }
+                        popupScrollSettleTimerRef.current = window.setTimeout(() => {
+                          normalizeCloneBoundary();
+                        }, 90);
+                      }}
+                      style={{ touchAction: 'pan-x pan-y', WebkitOverflowScrolling: 'touch' }}
+                      className="flex-1 min-h-0 flex w-full overflow-x-auto overscroll-x-contain snap-x snap-mandatory cw-no-scrollbar cw-marquee-gpu"
+                    >
+                      {slides.map(({ slotKey, item: slideItem }) => (
+                        <div
+                          key={slotKey}
+                          className="w-full h-full shrink-0 snap-start snap-always flex flex-col overflow-hidden"
+                        >
+                          {/* 고정 높이 대형 이미지 뷰어 */}
+                          <div className="relative shrink-0 h-[256px] sm:h-[384px] bg-slate-950 flex items-center justify-center overflow-hidden select-none">
+                            <img
+                              src={slideItem.image}
+                              alt={slideItem.title}
+                              loading="eager"
+                              decoding="async"
+                              className="w-full h-full object-contain"
+                            />
+                          </div>
+
+                          {/* 현장 캡션 및 설명 (남은 고정 영역 내부 스크롤) */}
+                          <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 bg-white space-y-2.5">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-blue-600 text-white text-xs font-bold">
+                                {slideItem.tag}
+                              </span>
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-semibold">
+                                <MapPin className="w-3.5 h-3.5 text-blue-600" />
+                                {formatRegionLabel(slideItem.region)}
+                              </span>
+                            </div>
+
+                            <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 leading-snug break-keep">
+                              {slideItem.title}
+                            </h3>
+
+                            <p className="text-[15px] sm:text-base text-slate-600 leading-relaxed whitespace-pre-line break-keep">
+                              {slideItem.description}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-
-                    <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 leading-snug break-keep">
-                      {activeItem.title}
-                    </h3>
-
-                    <p className="text-[15px] sm:text-base text-slate-600 leading-relaxed whitespace-pre-line break-keep">
-                      {activeItem.description}
-                    </p>
-                  </div>
-                </div>
+                  );
+                })()
               ) : (
                 <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 bg-slate-50 space-y-4">
 

@@ -211,6 +211,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
   const wasPopupTrackOpenRef = useRef<boolean>(false);
   const currentPopupSlotRef = useRef<number>(1);
   const popupScrollSettleTimerRef = useRef<number | null>(null);
+  const popupAnimRafRef = useRef<number | null>(null);
 
   // 안드로이드 뒤로가기(백버튼) 2단계 팝업 스택 관리: 홈 -> 후기팝업(1) -> 사진팝업(2)
   const hasReviewHistoryRef = useRef<boolean>(false);
@@ -420,6 +421,9 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
       if (popupScrollSettleTimerRef.current !== null) {
         window.clearTimeout(popupScrollSettleTimerRef.current);
       }
+      if (popupAnimRafRef.current !== null) {
+        window.cancelAnimationFrame(popupAnimRafRef.current);
+      }
     };
   }, []);
 
@@ -463,6 +467,11 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
       const width = el.clientWidth;
       if (width <= 0) return;
 
+      if (popupAnimRafRef.current !== null) {
+        window.cancelAnimationFrame(popupAnimRafRef.current);
+        popupAnimRafRef.current = null;
+      }
+
       // 클론 끝단(0 또는 N+1)에 머물러 있으면 먼저 본 슬라이드로 무음 정렬
       let currentSlot = Math.round(el.scrollLeft / width);
       if (currentSlot <= 0) {
@@ -475,9 +484,34 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
 
       const nextSlot = dir === 'next' ? currentSlot + 1 : currentSlot - 1;
       currentPopupSlotRef.current = nextSlot;
-      el.scrollTo({ left: nextSlot * width, behavior: 'smooth' });
+
+      const startLeft = el.scrollLeft;
+      const targetLeft = nextSlot * width;
+      const distance = targetLeft - startLeft;
+      const durationMs = 220;
+      const startTime = performance.now();
+
+      el.style.scrollSnapType = 'none';
+
+      const tick = (now: number) => {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / durationMs, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        el.scrollLeft = startLeft + distance * eased;
+
+        if (progress < 1) {
+          popupAnimRafRef.current = window.requestAnimationFrame(tick);
+        } else {
+          popupAnimRafRef.current = null;
+          el.scrollLeft = targetLeft;
+          el.style.scrollSnapType = '';
+          normalizeCloneBoundary();
+        }
+      };
+
+      popupAnimRafRef.current = window.requestAnimationFrame(tick);
     },
-    [reviews.length, isPopupEditing]
+    [reviews.length, isPopupEditing, normalizeCloneBoundary]
   );
 
   useEffect(() => {
@@ -1800,6 +1834,13 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                     <div
                       ref={popupScrollRef}
                       onTouchStart={() => {
+                        if (popupAnimRafRef.current !== null) {
+                          window.cancelAnimationFrame(popupAnimRafRef.current);
+                          popupAnimRafRef.current = null;
+                          if (popupScrollRef.current) {
+                            popupScrollRef.current.style.scrollSnapType = '';
+                          }
+                        }
                         if (!hasMultiple) return;
                         const el = popupScrollRef.current;
                         if (!el) return;
