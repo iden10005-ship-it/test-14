@@ -207,6 +207,22 @@ export interface SeoSettings {
   pages: Record<string, PageSeoMeta>;
 }
 
+export interface SiteShowcaseItem {
+  id: string;
+  image: string;
+  title: string;
+  description: string;
+  tag: string;
+  region: string;
+}
+
+export interface SiteShowcaseData {
+  eyebrow?: string;
+  sectionTitle: string;
+  sectionSubtitle: string;
+  items: SiteShowcaseItem[];
+}
+
 export interface SiteData {
   adminPin: string;
   siteUrl?: string;
@@ -220,6 +236,7 @@ export interface SiteData {
     sectionSubtitle: string;
     items: ServiceItem[];
   };
+  siteShowcase?: SiteShowcaseData;
   process: {
     sectionTitle: string;
     sectionSubtitle: string;

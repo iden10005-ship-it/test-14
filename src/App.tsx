@@ -16,6 +16,7 @@ import { RegionsSection } from '@/src/components/RegionsSection';
 import { ReviewsSection } from '@/src/components/ReviewsSection';
 import { ServiceDetailPage } from '@/src/components/ServiceDetailPage';
 import { ServicesSection } from '@/src/components/ServicesSection';
+import { SiteShowcaseSection } from '@/src/components/SiteShowcaseSection';
 import { AdminLoginModal } from '@/src/components/admin/AdminLoginModal';
 import { AdminToolbar, type CodeSyncStatus } from '@/src/components/admin/AdminToolbar';
 import {
@@ -40,6 +41,7 @@ import type {
   ReviewItem,
   ServiceItem,
   SiteData,
+  SiteShowcaseData,
 } from '@/src/types/clearworks';
 import {
   applyResolvedSeoMeta,
@@ -1083,6 +1085,36 @@ export default function App() {
               onDeleteService={deleteService}
               onViewDetail={(serviceId) => navigateTo({ type: 'service', serviceId })}
             />
+            {(siteData.siteShowcase || INITIAL_SITE_DATA.siteShowcase) && (
+              <SiteShowcaseSection
+                showcase={
+                  siteData.siteShowcase ??
+                  (INITIAL_SITE_DATA.siteShowcase as SiteShowcaseData)
+                }
+                regions={siteData.regions.list}
+                isEditMode={activeEditMode}
+                isAdminMode={isAdminMode}
+                onUpdateShowcase={(updater) =>
+                  updateSiteData((prev) => {
+                    const current =
+                      prev.siteShowcase ??
+                      (INITIAL_SITE_DATA.siteShowcase as SiteShowcaseData);
+                    return {
+                      ...prev,
+                      siteShowcase: updater(current),
+                    };
+                  })
+                }
+                onUploadImage={uploadImageToCodebase}
+                onRequestAdminEdit={() => {
+                  if (!isAdminMode) {
+                    setLoginModalOpen(true);
+                  } else {
+                    setIsEditMode(true);
+                  }
+                }}
+              />
+            )}
             <ProcessSection
               sectionTitle={siteData.process.sectionTitle}
               sectionSubtitle={siteData.process.sectionSubtitle}
