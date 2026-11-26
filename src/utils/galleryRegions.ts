@@ -127,6 +127,15 @@ export function getAvailableGalleryRegions(regions?: string[]): string[] {
   return out.length > 0 ? out : [...DEFAULT_GALLERY_REGIONS];
 }
 
+export function formatRegionLabel(region: string): string {
+  const clean = (region || '').trim().replace(/\s+/g, ' ');
+  if (!clean) return '';
+  if (SEOUL_DISTRICT_SET.has(clean)) {
+    return `서울 ${clean}`;
+  }
+  return clean;
+}
+
 export function groupGalleryRegions(regions?: string[]): RegionGroup[] {
   const list = getAvailableGalleryRegions(regions);
   const seoul: string[] = [];

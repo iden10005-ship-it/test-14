@@ -7,7 +7,6 @@ import {
   ImagePlus,
   Link2,
   Loader2,
-  Lock,
   MapPin,
   Pencil,
   Plus,
@@ -21,6 +20,7 @@ import { SmoothImage } from '@/src/components/SmoothImage';
 import { EditableText } from '@/src/components/admin/EditableText';
 import type { SiteShowcaseData, SiteShowcaseItem } from '@/src/types/clearworks';
 import {
+  formatRegionLabel,
   getAvailableGalleryRegions,
   groupGalleryRegions,
   normalizeRegionToDetailKey,
@@ -30,10 +30,8 @@ interface SiteShowcaseSectionProps {
   showcase: SiteShowcaseData;
   regions?: string[];
   isEditMode: boolean;
-  isAdminMode: boolean;
   onUpdateShowcase: (updater: (prev: SiteShowcaseData) => SiteShowcaseData) => void;
   onUploadImage?: (dataUrl: string, nameHint?: string) => Promise<string>;
-  onRequestAdminEdit?: () => void;
 }
 
 const DEFAULT_TAG_SUGGESTIONS = [
@@ -98,7 +96,6 @@ const ShowcaseMarqueeRow: React.FC<MarqueeRowProps> = ({
   const trackARef = useRef<HTMLDivElement | null>(null);
   const posRef = useRef<number>(0);
   const initializedRef = useRef<boolean>(false);
-  const isHoveredRef = useRef<boolean>(false);
   const isUserTouchingRef = useRef<boolean>(false);
   const resumeTimerRef = useRef<number | null>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -144,7 +141,7 @@ const ShowcaseMarqueeRow: React.FC<MarqueeRowProps> = ({
             initializedRef.current = true;
             posRef.current = direction === 'right' ? halfWidth * 0.5 : 0;
             container.scrollLeft = posRef.current;
-          } else if (!paused && !isHoveredRef.current && !isUserTouchingRef.current) {
+          } else if (!paused && !isUserTouchingRef.current) {
             if (direction === 'left') {
               posRef.current += speedPxPerSec * dt;
               if (posRef.current >= halfWidth) {
@@ -189,7 +186,7 @@ const ShowcaseMarqueeRow: React.FC<MarqueeRowProps> = ({
         }
       }}
       aria-label={`${item.title} 현장 사진 크게 보기`}
-      className="group relative shrink-0 w-[258px] sm:w-[304px] md:w-[324px] aspect-[4/3] rounded-2xl overflow-hidden bg-slate-200 border border-slate-300/70 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 select-none"
+      className="group relative shrink-0 w-[286px] h-[238px] sm:w-[328px] sm:h-[264px] md:w-[356px] md:h-[282px] rounded-2xl overflow-hidden bg-slate-200 border border-slate-300/70 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 select-none"
     >
       <SmoothImage
         src={item.image}
@@ -214,7 +211,7 @@ const ShowcaseMarqueeRow: React.FC<MarqueeRowProps> = ({
         </span>
         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-950/75 text-white text-[11.5px] font-semibold tracking-tight backdrop-blur-[2px] truncate max-w-[52%]">
           <MapPin className="w-3 h-3 text-blue-300 shrink-0" />
-          <span className="truncate">{item.region || '수도권 현장'}</span>
+          <span className="truncate">{formatRegionLabel(item.region || '수도권 현장')}</span>
         </span>
       </div>
 
@@ -236,12 +233,6 @@ const ShowcaseMarqueeRow: React.FC<MarqueeRowProps> = ({
   return (
     <div
       ref={scrollRef}
-      onMouseEnter={() => {
-        isHoveredRef.current = true;
-      }}
-      onMouseLeave={() => {
-        isHoveredRef.current = false;
-      }}
       onTouchStart={(e) => {
         isUserTouchingRef.current = true;
         didSwipeRef.current = false;
@@ -286,7 +277,7 @@ const ShowcaseMarqueeRow: React.FC<MarqueeRowProps> = ({
         }
       }}
       style={{ touchAction: 'pan-x pan-y', WebkitOverflowScrolling: 'touch' }}
-      className="w-full overflow-x-auto cw-no-scrollbar py-1"
+      className="w-full overflow-x-auto cw-no-scrollbar cw-marquee-gpu py-1"
     >
       <div className="flex items-stretch w-max">
         <div ref={trackARef} className="flex items-stretch gap-3.5 sm:gap-4 pr-3.5 sm:pr-4">
@@ -304,10 +295,8 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
   showcase,
   regions,
   isEditMode,
-  isAdminMode,
   onUpdateShowcase,
   onUploadImage,
-  onRequestAdminEdit,
 }) => {
   const items = showcase.items || [];
   const availableRegions = useMemo(
@@ -328,6 +317,37 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
 
+  // 안드로이드/모바일 뒤로가기 시 페이지 이탈 없이 팝업만 닫고 직전 스크롤 위치 유지
+  const hasShowcaseHistoryRef = useRef<boolean>(false);
+  const ignorePopstateCountRef = useRef<number>(0);
+  const savedScrollYRef = useRef<number>(0);
+  const activeItemIdRef = useRef<string | null>(activeItemId);
+  activeItemIdRef.current = activeItemId;
+
+  const openShowcasePopup = useCallback((id: string) => {
+    if (typeof window !== 'undefined' && activeItemIdRef.current === null) {
+      savedScrollYRef.current = window.scrollY;
+      if (!hasShowcaseHistoryRef.current) {
+        hasShowcaseHistoryRef.current = true;
+        window.history.pushState(
+          { ...(window.history.state || {}), cwModalStage: 'showcase' },
+          '',
+          window.location.href
+        );
+      }
+    }
+    setActiveItemId(id);
+  }, []);
+
+  const closeShowcasePopup = useCallback(() => {
+    setActiveItemId(null);
+    if (typeof window !== 'undefined' && hasShowcaseHistoryRef.current) {
+      hasShowcaseHistoryRef.current = false;
+      ignorePopstateCountRef.current += 1;
+      window.history.back();
+    }
+  }, []);
+
   const activeIndex = useMemo(() => {
     if (!activeItemId) return -1;
     return items.findIndex((it) => it.id === activeItemId);
@@ -347,13 +367,13 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
     if (!pendingOpenNewId) return;
     const found = items.find((it) => it.id === pendingOpenNewId);
     if (found) {
-      setActiveItemId(found.id);
+      openShowcasePopup(found.id);
       setDraft({ ...found });
       setIsPopupEditing(true);
       setUploadError(null);
       setPendingOpenNewId(null);
     }
-  }, [pendingOpenNewId, items]);
+  }, [pendingOpenNewId, items, openShowcasePopup]);
 
   // 팝업 닫힘 시 편집 상태 초기화
   useEffect(() => {
@@ -363,6 +383,42 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
       setUploadError(null);
     }
   }, [activeItemId]);
+
+  // 관리자 편집 모드가 해제되면 즉시 편집 상태 종료
+  useEffect(() => {
+    if (!isEditMode) {
+      setIsPopupEditing(false);
+      setDraft(null);
+      setUploadError(null);
+    }
+  }, [isEditMode]);
+
+  // 안드로이드/모바일 뒤로가기(<) 누르면 팝업만 닫고 팝업 열기 직전 위치로 복원
+  useEffect(() => {
+    const handlePopState = () => {
+      if (ignorePopstateCountRef.current > 0) {
+        ignorePopstateCountRef.current -= 1;
+        return;
+      }
+
+      if (activeItemIdRef.current !== null) {
+        hasShowcaseHistoryRef.current = false;
+        setIsPopupEditing(false);
+        setDraft(null);
+        setUploadError(null);
+        setActiveItemId(null);
+        const targetScrollY = savedScrollYRef.current;
+        window.requestAnimationFrame(() => {
+          if (Math.abs(window.scrollY - targetScrollY) > 12) {
+            window.scrollTo(0, targetScrollY);
+          }
+        });
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // 모달 열림 시 배경 스크롤 잠금
   useEffect(() => {
@@ -395,7 +451,7 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
           setDraft(null);
           setUploadError(null);
         } else {
-          setActiveItemId(null);
+          closeShowcasePopup();
         }
         return;
       }
@@ -410,10 +466,10 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isModalOpen, isPopupEditing, goToPrev, goToNext]);
+  }, [isModalOpen, isPopupEditing, goToPrev, goToNext, closeShowcasePopup]);
 
   const handleOpenEditInPopup = () => {
-    if (!activeItem) return;
+    if (!isEditMode || !activeItem) return;
     const normalizedRegion = normalizeRegionToDetailKey(
       activeItem.region,
       availableRegions
@@ -429,7 +485,7 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
-    if (!file || !draft) return;
+    if (!isEditMode || !file || !draft) return;
 
     setIsUploading(true);
     setUploadError(null);
@@ -449,13 +505,13 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
   };
 
   const handleSaveDraft = () => {
-    if (!draft) return;
+    if (!isEditMode || !draft) return;
     const cleaned: SiteShowcaseItem = {
       ...draft,
       title: draft.title.trim() || '현장 시공 사진',
       description: draft.description.trim(),
       tag: draft.tag.trim() || '현장 시공',
-      region: draft.region.trim() || '수도권 현장',
+      region: formatRegionLabel(draft.region.trim()) || '수도권 현장',
       image: draft.image.trim() || activeItem?.image || '',
     };
 
@@ -471,6 +527,7 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
   };
 
   const handleAddNewSlide = () => {
+    if (!isEditMode) return;
     const newId = `showcase-${Date.now()}`;
     const fallbackImage = items[0]?.image || '/images/gallery/induce_dongtan_apt_living_after.jpg';
     const newItem: SiteShowcaseItem = {
@@ -479,7 +536,7 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
       title: '새 현장 시공 사진 제목을 입력하세요',
       description: '시공 과정과 전후 변화 포인트를 고객이 이해하기 쉽게 작성해 주세요.',
       tag: '유리창 세정',
-      region: availableRegions[0] || '강남구',
+      region: formatRegionLabel(availableRegions[0] || '강남구'),
     };
     onUpdateShowcase((prev) => ({
       ...prev,
@@ -489,7 +546,7 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
   };
 
   const handleDeleteCurrent = () => {
-    if (!activeItem || items.length <= 2) return;
+    if (!isEditMode || !activeItem || items.length <= 2) return;
     const remaining = items.filter((it) => it.id !== activeItem.id);
     onUpdateShowcase((prev) => ({
       ...prev,
@@ -497,7 +554,11 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
     }));
     setIsPopupEditing(false);
     setDraft(null);
-    setActiveItemId(remaining[0]?.id ?? null);
+    if (remaining[0]?.id) {
+      setActiveItemId(remaining[0].id);
+    } else {
+      closeShowcasePopup();
+    }
   };
 
   if (items.length === 0 && !isEditMode) return null;
@@ -505,8 +566,10 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
   return (
     <section
       id="field-showcase"
+      data-has-modal="true"
       className="py-11 md:py-16 bg-slate-100/80 border-b border-slate-300/75 relative overflow-x-clip"
     >
+      <div className="cw-section-optimize">
       {/* 섹션 헤더 */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 mb-7 sm:mb-9">
         <div className="text-center max-w-2xl mx-auto">
@@ -533,7 +596,7 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
             />
           </h2>
 
-          <p className="text-[15px] sm:text-base md:text-[17px] text-slate-600 leading-relaxed break-keep">
+          <p className="text-[15px] sm:text-base md:text-[17px] text-slate-600 leading-relaxed break-keep whitespace-pre-line">
             <EditableText
               value={showcase.sectionSubtitle}
               onSave={(val) =>
@@ -580,7 +643,7 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
             direction="left"
             speedPxPerSec={34}
             paused={isModalOpen}
-            onSelectItem={(id) => setActiveItemId(id)}
+            onSelectItem={openShowcasePopup}
           />
         )}
 
@@ -590,12 +653,13 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
             direction="right"
             speedPxPerSec={30}
             paused={isModalOpen}
-            onSelectItem={(id) => setActiveItemId(id)}
+            onSelectItem={openShowcasePopup}
           />
         )}
       </div>
+      </div>
 
-      {/* 현장 사진 확대 + 사진교체·설명수정 팝업 모달 */}
+      {/* 현장 사진 확대 + 사진교체·설명수정 팝업 모달 (고정 크기) */}
       {activeItem && (
         <div
           className="fixed inset-0 z-[105] bg-slate-950/85 backdrop-blur-xs flex items-center justify-center p-2.5 sm:p-6"
@@ -603,11 +667,11 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
           aria-modal="true"
           aria-label="현장 시공 사진 상세 보기"
           onClick={() => {
-            if (!isPopupEditing) setActiveItemId(null);
+            if (!isPopupEditing) closeShowcasePopup();
           }}
         >
           <div
-            className="relative w-full max-w-3xl max-h-[92dvh] flex flex-col"
+            className="relative w-[calc(100vw-1.25rem)] max-w-[440px] sm:max-w-[700px] h-[min(86dvh,640px)] sm:h-[min(86dvh,690px)] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* 데스크톱 좌우 화살표 */}
@@ -632,31 +696,30 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
               </>
             )}
 
-            <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92dvh]">
+            <div className="w-full h-full bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
               {/* 모달 상단 헤더 */}
               <div className="shrink-0 px-4 sm:px-5 py-3 border-b border-slate-200 flex items-center justify-between gap-2 bg-white">
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-xs font-extrabold text-slate-500 tabular-nums shrink-0">
-                    {activeIndex + 1} / {items.length}
-                  </span>
                   <span className="inline-flex items-center px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-xs font-bold truncate">
                     {isPopupEditing && draft ? draft.tag || '작업 구분' : activeItem.tag}
                   </span>
                   <span className="hidden sm:inline-flex items-center gap-1 text-xs font-semibold text-slate-500 truncate">
                     <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    {isPopupEditing && draft ? draft.region || '지역' : activeItem.region}
+                    {formatRegionLabel(
+                      isPopupEditing && draft ? draft.region || '지역' : activeItem.region
+                    )}
                   </span>
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0">
-                  {savedToast && !isPopupEditing && (
+                  {isEditMode && savedToast && !isPopupEditing && (
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-bold">
                       <Check className="w-3.5 h-3.5" />
                       저장됨
                     </span>
                   )}
 
-                  {!isPopupEditing ? (
+                  {isEditMode && !isPopupEditing && (
                     <>
                       <button
                         type="button"
@@ -666,7 +729,7 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
                         <Pencil className="w-3.5 h-3.5" />
                         <span>사진·설명 수정</span>
                       </button>
-                      {isEditMode && items.length > 2 && (
+                      {items.length > 2 && (
                         <button
                           type="button"
                           onClick={handleDeleteCurrent}
@@ -677,7 +740,9 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
                         </button>
                       )}
                     </>
-                  ) : (
+                  )}
+
+                  {isEditMode && isPopupEditing && (
                     <>
                       <button
                         type="button"
@@ -704,7 +769,7 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
 
                   <button
                     type="button"
-                    onClick={() => setActiveItemId(null)}
+                    onClick={closeShowcasePopup}
                     aria-label="팝업 닫기"
                     className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 text-xs font-bold cursor-pointer transition-colors"
                   >
@@ -714,46 +779,46 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
                 </div>
               </div>
 
-              {/* 모달 본문 */}
-              {!isPopupEditing ? (
-                <div className="flex-1 min-h-0 overflow-y-auto">
-                  {/* 대형 이미지 뷰어 (모바일 좌우 스와이프 지원) */}
-                  <div
-                    className="relative bg-slate-950 flex items-center justify-center min-h-[240px] sm:min-h-[340px] max-h-[54dvh] overflow-hidden select-none"
-                    onTouchStart={(e) => {
-                      const t = e.touches[0];
-                      if (t) swipeStartRef.current = { x: t.clientX, y: t.clientY };
-                    }}
-                    onTouchEnd={(e) => {
-                      const start = swipeStartRef.current;
-                      swipeStartRef.current = null;
-                      const t = e.changedTouches[0];
-                      if (!start || !t) return;
-                      const dx = t.clientX - start.x;
-                      const dy = t.clientY - start.y;
-                      if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.2) {
-                        if (dx < 0) goToNext();
-                        else goToPrev();
-                      }
-                    }}
-                  >
+              {/* 모달 본문 (고정 높이 이미지 영역 + 스크롤 가능 설명 영역) */}
+              {!(isEditMode && isPopupEditing && draft) ? (
+                <div
+                  className="flex-1 min-h-0 flex flex-col overflow-hidden"
+                  onTouchStart={(e) => {
+                    const t = e.touches[0];
+                    if (t) swipeStartRef.current = { x: t.clientX, y: t.clientY };
+                  }}
+                  onTouchEnd={(e) => {
+                    const start = swipeStartRef.current;
+                    swipeStartRef.current = null;
+                    const t = e.changedTouches[0];
+                    if (!start || !t) return;
+                    const dx = t.clientX - start.x;
+                    const dy = t.clientY - start.y;
+                    if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+                      if (dx < 0) goToNext();
+                      else goToPrev();
+                    }
+                  }}
+                >
+                  {/* 고정 높이 대형 이미지 뷰어 (모바일 좌우 스와이프 지원) */}
+                  <div className="relative shrink-0 h-[256px] sm:h-[384px] bg-slate-950 flex items-center justify-center overflow-hidden select-none">
                     <img
                       key={activeItem.id}
                       src={activeItem.image}
                       alt={activeItem.title}
-                      className="w-full max-h-[54dvh] object-contain"
+                      className="w-full h-full object-contain"
                     />
                   </div>
 
-                  {/* 현장 캡션 및 설명 */}
-                  <div className="p-4 sm:p-6 bg-white space-y-3">
+                  {/* 현장 캡션 및 설명 (남은 고정 영역 내부 스크롤) */}
+                  <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 bg-white space-y-2.5">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-blue-600 text-white text-xs font-bold">
                         {activeItem.tag}
                       </span>
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-semibold">
                         <MapPin className="w-3.5 h-3.5 text-blue-600" />
-                        {activeItem.region}
+                        {formatRegionLabel(activeItem.region)}
                       </span>
                     </div>
 
@@ -767,24 +832,7 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
                   </div>
                 </div>
               ) : (
-                draft && (
-                  <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 bg-slate-50 space-y-4">
-                    {/* 관리자 저장 안내 */}
-                    {!isAdminMode && onRequestAdminEdit && (
-                      <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
-                        <span className="font-medium leading-relaxed">
-                          현재 브라우저 미리보기에서 즉시 수정·저장됩니다. 코드에 영구 반영하려면 관리자 로그인을 연동해 주세요.
-                        </span>
-                        <button
-                          type="button"
-                          onClick={onRequestAdminEdit}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold shrink-0 cursor-pointer"
-                        >
-                          <Lock className="w-3 h-3" />
-                          관리자 로그인
-                        </button>
-                      </div>
-                    )}
+                <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 bg-slate-50 space-y-4">
 
                     {/* 사진 교체 영역 */}
                     <div className="bg-white rounded-xl border border-slate-200 p-3.5 sm:p-4 space-y-3">
@@ -885,14 +933,16 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
                         >
                           {draft.region && !availableRegions.includes(draft.region) && (
                             <optgroup label="기존 입력값">
-                              <option value={draft.region}>{draft.region}</option>
+                              <option value={draft.region}>
+                                {formatRegionLabel(draft.region)}
+                              </option>
                             </optgroup>
                           )}
                           {regionGroups.map((group) => (
                             <optgroup key={group.label} label={group.label}>
                               {group.items.map((reg) => (
                                 <option key={reg} value={reg}>
-                                  {reg}
+                                  {formatRegionLabel(reg)}
                                 </option>
                               ))}
                             </optgroup>
@@ -935,29 +985,30 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
                       </div>
                     </div>
                   </div>
-                )
               )}
 
-              {/* 하단 네비게이션 바 (모바일·데스크톱 공통) */}
+              {/* 하단 고정 이전/다음 화살표 네비게이션 (고객후기 팝업과 동일 스타일) */}
               {!isPopupEditing && items.length > 1 && (
-                <div className="shrink-0 px-4 sm:px-5 py-2.5 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-2">
+                <div className="shrink-0 px-3.5 py-2.5 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-2">
                   <button
                     type="button"
                     onClick={goToPrev}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold cursor-pointer transition-colors"
+                    className="inline-flex items-center gap-1 px-3 min-h-[42px] rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-800 cursor-pointer transition-colors"
                   >
                     <ChevronLeft className="w-4 h-4" />
                     <span>이전 사진</span>
                   </button>
 
-                  <span className="text-xs text-slate-500 font-medium hidden sm:inline">
-                    좌우 화살표 또는 스와이프로 다른 현장을 확인하세요
-                  </span>
+                  <div className="text-center">
+                    <div className="text-xs font-medium text-slate-400 leading-tight">
+                      좌우로 밀어 넘기기
+                    </div>
+                  </div>
 
                   <button
                     type="button"
                     onClick={goToNext}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold cursor-pointer transition-colors"
+                    className="inline-flex items-center gap-1 px-3 min-h-[42px] rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-800 cursor-pointer transition-colors"
                   >
                     <span>다음 사진</span>
                     <ChevronRight className="w-4 h-4" />

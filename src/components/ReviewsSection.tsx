@@ -1049,7 +1049,11 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
   };
 
   return (
-    <section className="py-11 md:py-16 bg-white border-b border-slate-300/75 relative overflow-hidden">
+    <section
+      data-has-modal="true"
+      className="py-11 md:py-16 bg-white border-b border-slate-300/75 relative overflow-hidden"
+    >
+      <div className="cw-section-optimize">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="text-center max-w-2xl mx-auto mb-7 sm:mb-9">
           <div className="inline-flex items-center justify-center gap-1.5 text-amber-400 mb-3">
@@ -1155,7 +1159,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
             }
           }}
           style={{ touchAction: 'pan-x pan-y', WebkitOverflowScrolling: 'touch' }}
-          className="w-full overflow-x-auto cw-no-scrollbar"
+          className="w-full overflow-x-auto cw-no-scrollbar cw-marquee-gpu"
         >
           <div className="flex items-start w-max">
             <div ref={marqueeTrackARef} className="flex items-start gap-4 pr-4">
@@ -1166,6 +1170,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
             </div>
           </div>
         </div>
+      </div>
       </div>
 
       {/* 모바일 최적화 및 데스크톱 고정 세로 비율 후기 팝업 */}

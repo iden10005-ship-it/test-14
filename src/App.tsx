@@ -1093,7 +1093,6 @@ export default function App() {
                 }
                 regions={siteData.regions.list}
                 isEditMode={activeEditMode}
-                isAdminMode={isAdminMode}
                 onUpdateShowcase={(updater) =>
                   updateSiteData((prev) => {
                     const current =
@@ -1106,13 +1105,6 @@ export default function App() {
                   })
                 }
                 onUploadImage={uploadImageToCodebase}
-                onRequestAdminEdit={() => {
-                  if (!isAdminMode) {
-                    setLoginModalOpen(true);
-                  } else {
-                    setIsEditMode(true);
-                  }
-                }}
               />
             )}
             <ProcessSection

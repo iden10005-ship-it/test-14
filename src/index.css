@@ -64,16 +64,34 @@
   animation: cwSkeletonShimmer 1.5s ease-in-out infinite;
 }
 
+/* 모바일/PC 섹션 전환 및 이미지 로딩 깜빡임 방지 최적화 */
+main > section:not(#top):not([data-has-modal="true"]),
+.cw-section-optimize {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 560px;
+}
+
+.cw-marquee-gpu {
+  will-change: scroll-position, transform;
+  transform: translate3d(0, 0, 0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
 .cw-img-fade {
   opacity: 0;
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
   transition:
-    opacity 320ms cubic-bezier(0.22, 1, 0.36, 1),
-    transform 500ms cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: opacity;
+    opacity 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 450ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
 }
 
 .cw-img-fade.cw-img-loaded {
   opacity: 1;
+  will-change: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {

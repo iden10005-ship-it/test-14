@@ -118,8 +118,8 @@ const SmoothImageInner: React.FC<SmoothImageInnerProps> = ({
           setFailed(true);
           onError?.(e);
         }}
-        className={`${className} ${
-          loaded ? 'opacity-100' : 'cw-img-fade'
+        className={`${className} cw-img-fade ${
+          loaded ? 'cw-img-loaded' : ''
         }`.trim()}
         {...rest}
       />

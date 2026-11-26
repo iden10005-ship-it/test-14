@@ -86,7 +86,7 @@ export const Hero: React.FC<HeroProps> = ({
               />
             </div>
 
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight leading-[1.18] mb-4 sm:mb-5 whitespace-pre-line drop-shadow-sm max-w-2xl">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight leading-[1.18] mb-5 sm:mb-6 md:mb-7 whitespace-pre-line drop-shadow-sm max-w-2xl">
               <EditableText
                 value={hero.title}
                 onSave={(v) => onUpdateHero('title', v)}
@@ -97,16 +97,16 @@ export const Hero: React.FC<HeroProps> = ({
               />
             </h1>
 
-            <p className="text-[16px] sm:text-lg md:text-xl text-slate-100/95 leading-relaxed font-normal mb-0 md:mb-8 max-w-xl whitespace-pre-line drop-shadow-xs">
+            <div className="text-[16px] sm:text-[18px] md:text-[21px] text-white/95 leading-[1.65] font-medium mb-0 md:mb-7 max-w-2xl whitespace-pre-line drop-shadow-sm">
               <EditableText
                 value={hero.subtitle}
                 onSave={(v) => onUpdateHero('subtitle', v)}
                 isEditMode={isEditMode}
                 label="서브 카피 수정"
                 multiline
-                className="text-[15px]"
+                as="div"
               />
-            </p>
+            </div>
 
             <div className="hidden md:flex flex-wrap items-center gap-3">
               <a
