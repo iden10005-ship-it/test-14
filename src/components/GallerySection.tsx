@@ -41,10 +41,10 @@ export const GallerySection: React.FC<GallerySectionProps> = ({
   return (
     <section
       id="gallery"
-      className="py-16 md:py-28 bg-slate-50 relative border-t border-slate-200/60"
+      className="py-11 md:py-16 bg-white relative border-b border-slate-300/75"
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 sm:mb-12 gap-5">
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-7 sm:mb-9 gap-5">
           <div className="max-w-2xl">
             <span className="text-xs font-bold text-blue-600 tracking-wider uppercase mb-2 flex items-center gap-1.5">
               <Sparkles className="w-4 h-4 text-blue-600" />

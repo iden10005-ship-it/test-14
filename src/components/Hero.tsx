@@ -48,7 +48,7 @@ export const Hero: React.FC<HeroProps> = ({
   ];
 
   return (
-    <section id="top" className="relative bg-slate-50/70 border-b border-slate-200/70">
+    <section id="top" className="relative bg-slate-200/70 border-b border-slate-300/75">
       {/* Wide Full-Bleed Photo Hero Banner */}
       <div className="relative w-full overflow-hidden bg-slate-900 min-h-[320px] sm:min-h-[380px] md:min-h-[540px] flex items-center">
         <SmoothImage
@@ -183,7 +183,7 @@ export const Hero: React.FC<HeroProps> = ({
       </div>
 
       {/* Trust Stats 4-Column Row */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-7">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
           {hero.stats.map((stat, idx) => (
             <div

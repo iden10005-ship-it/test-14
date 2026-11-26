@@ -23,7 +23,6 @@ import type {
 } from '@/src/types/clearworks';
 import {
   applyResolvedSeoMeta,
-  getRoutePath,
   resolveServiceDynamicSeo,
   type ResolvedSeoMeta,
 } from '@/src/utils/seo';
@@ -56,7 +55,7 @@ export const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({
   onEditImage,
   onBack,
   onSelectService,
-  onSelectRegionService,
+  onSelectRegionService: _onSelectRegionService,
   onSubmitInquiry,
 }) => {
   const [name, setName] = useState('');
@@ -540,33 +539,6 @@ export const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({
             </form>
           )}
         </div>
-
-        {/* Regional Service Matrix Links */}
-        {regions.length > 0 && (
-          <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 border border-slate-200 shadow-2xs">
-            <h3 className="text-base sm:text-lg font-extrabold text-slate-900 mb-1">
-              지역별 {service.title} 바로가기
-            </h3>
-            <p className="text-xs text-slate-500 mb-4">
-              지역을 선택하시면 해당 지역 맞춤 {service.title} 상세 안내 및 견적을 확인하실 수 있습니다.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {regions.slice(0, 18).map((reg) => (
-                <a
-                  key={reg}
-                  href={getRoutePath({ type: 'matrix', regionName: reg, serviceId: service.id })}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onSelectRegionService(reg, service.id);
-                  }}
-                  className="px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 hover:border-blue-300 text-xs font-bold transition-colors"
-                >
-                  {reg} {service.title}
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Other Services */}
         <div>

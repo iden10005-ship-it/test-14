@@ -62,7 +62,7 @@ export const RegionsSection: React.FC<RegionsSectionProps> = ({
   return (
     <section
       id="regions"
-      className="py-16 md:py-24 bg-slate-50/70 border-t border-slate-200/60 relative"
+      className="py-11 md:py-16 bg-white border-b border-slate-300/75 relative"
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 text-center">
         <span className="text-xs font-extrabold text-blue-600 tracking-wider uppercase mb-2 block">
@@ -76,7 +76,7 @@ export const RegionsSection: React.FC<RegionsSectionProps> = ({
             label="서비스 지역 제목 수정"
           />
         </h2>
-        <p className="text-xs sm:text-base text-slate-600 mb-10 max-w-2xl mx-auto leading-relaxed">
+        <p className="text-xs sm:text-base text-slate-600 mb-7 sm:mb-9 max-w-2xl mx-auto leading-relaxed">
           <EditableText
             value={sectionSubtitle}
             onSave={onUpdateSubtitle}

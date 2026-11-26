@@ -66,7 +66,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
   };
 
   return (
-    <section id="contact" className="py-16 md:py-28 bg-white relative">
+    <section id="contact" className="py-11 md:py-16 bg-slate-200/70 relative">
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-5">
           {/* Left Dark Info Column */}

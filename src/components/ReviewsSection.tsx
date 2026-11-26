@@ -1049,9 +1049,9 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
   };
 
   return (
-    <section className="py-16 md:py-24 bg-slate-50/70 border-y border-slate-200/70 relative overflow-hidden">
+    <section className="py-11 md:py-16 bg-white border-b border-slate-300/75 relative overflow-hidden">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-12">
+        <div className="text-center max-w-2xl mx-auto mb-7 sm:mb-9">
           <div className="inline-flex items-center justify-center gap-1.5 text-amber-400 mb-3">
             {Array.from({ length: 5 }).map((_, idx) => (
               <Star key={idx} className="w-4 h-4 fill-amber-400" />
@@ -1103,11 +1103,11 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
       <div className="relative w-full py-2">
         <div
           aria-hidden="true"
-          className="pointer-events-none hidden sm:block absolute inset-y-0 left-0 w-16 md:w-28 bg-gradient-to-r from-slate-50 via-slate-50/75 to-transparent z-10"
+          className="pointer-events-none hidden sm:block absolute inset-y-0 left-0 w-16 md:w-28 bg-gradient-to-r from-white via-white/80 to-transparent z-10"
         />
         <div
           aria-hidden="true"
-          className="pointer-events-none hidden sm:block absolute inset-y-0 right-0 w-16 md:w-28 bg-gradient-to-l from-slate-50 via-slate-50/75 to-transparent z-10"
+          className="pointer-events-none hidden sm:block absolute inset-y-0 right-0 w-16 md:w-28 bg-gradient-to-l from-white via-white/80 to-transparent z-10"
         />
         <div
           ref={marqueeScrollRef}

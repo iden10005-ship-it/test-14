@@ -35,9 +35,12 @@ export const FaqSection: React.FC<FaqSectionProps> = ({
   };
 
   return (
-    <section id="faq" className="py-16 md:py-28 bg-slate-50 relative">
+    <section
+      id="faq"
+      className="py-11 md:py-16 bg-slate-200/70 relative border-b border-slate-300/75"
+    >
       <div className="max-w-4xl mx-auto px-4 sm:px-6">
-        <div className="text-center max-w-2xl mx-auto mb-12 sm:mb-16">
+        <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
           <span className="text-xs font-bold text-blue-600 tracking-wider uppercase mb-2 block">
             Frequently Asked Questions
           </span>
