@@ -835,9 +835,17 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
             <div className="w-full h-full bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
               {/* 모달 상단 헤더 */}
               <div className="shrink-0 px-4 sm:px-5 py-3 border-b border-slate-200 flex items-center justify-between gap-2 bg-white">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded bg-blue-50 text-blue-700 text-xs font-bold truncate">
+                <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-blue-600 text-white text-xs font-bold shrink-0">
                     {isPopupEditing && draft ? draft.tag || '작업 구분' : activeItem.tag}
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-semibold truncate">
+                    <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                    <span className="truncate">
+                      {formatRegionLabel(
+                        isPopupEditing && draft ? draft.region || '지역' : activeItem.region
+                      )}
+                    </span>
                   </span>
                 </div>
 
@@ -994,7 +1002,7 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
                           className="w-full h-full shrink-0 snap-start snap-always flex flex-col overflow-hidden"
                         >
                           {/* 고정 높이 대형 이미지 뷰어 */}
-                          <div className="relative shrink-0 h-[256px] sm:h-[384px] bg-slate-950 flex items-center justify-center overflow-hidden select-none">
+                          <div className="relative shrink-0 h-[330px] sm:h-[420px] bg-slate-950 flex items-center justify-center overflow-hidden select-none">
                             <img
                               src={slideItem.image}
                               alt={slideItem.title}
@@ -1004,23 +1012,13 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
                             />
                           </div>
 
-                          {/* 현장 캡션 및 설명 (남은 고정 영역 내부 스크롤) */}
-                          <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 bg-white space-y-2.5">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-blue-600 text-white text-xs font-bold">
-                                {slideItem.tag}
-                              </span>
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-semibold">
-                                <MapPin className="w-3.5 h-3.5 text-blue-600" />
-                                {formatRegionLabel(slideItem.region)}
-                              </span>
-                            </div>
-
-                            <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 leading-snug break-keep">
+                          {/* 현장 캡션 및 설명 (스크롤 없음 · 모바일 최대 3줄) */}
+                          <div className="flex-1 min-h-0 overflow-hidden px-4 py-3 sm:px-6 sm:py-3.5 bg-white flex flex-col justify-center space-y-1.5">
+                            <h3 className="text-[16px] sm:text-[18px] font-extrabold text-slate-900 leading-snug break-keep line-clamp-2 sm:line-clamp-1">
                               {slideItem.title}
                             </h3>
 
-                            <p className="text-[15px] sm:text-base text-slate-600 leading-relaxed whitespace-pre-line break-keep">
+                            <p className="text-[13.5px] sm:text-[14.5px] text-slate-600 leading-[1.55] break-keep line-clamp-3">
                               {slideItem.description}
                             </p>
                           </div>

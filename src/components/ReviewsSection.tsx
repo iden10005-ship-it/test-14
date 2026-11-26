@@ -1244,19 +1244,19 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
 
             {/* 고정 크기 팝업 카드 */}
             <div className="w-full h-full bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden">
-              {/* 상단 고정 헤더 (<숨고 고객 후기> 등 불필요한 라벨 제거, 편집하기 + 닫기 제공) */}
-              <div className="shrink-0 px-4 py-2.5 border-b border-slate-200 flex items-center justify-between gap-2 bg-white">
-                <span className="text-xs font-bold text-slate-500 tabular-nums">
+              {/* 상단 고정 헤더 (페이지 번호 중앙 정렬 + 편집하기 + 닫기 제공) */}
+              <div className="relative shrink-0 px-3.5 sm:px-4 py-2.5 min-h-[48px] border-b border-slate-200 flex items-center justify-end gap-1.5 bg-white">
+                <span className="absolute left-1/2 -translate-x-1/2 text-xs font-bold text-slate-600 tabular-nums pointer-events-none select-none">
                   {activeIndex + 1} / {reviews.length}
                 </span>
 
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div className="relative z-10 flex items-center gap-1 sm:gap-1.5 shrink-0">
                   {isEditMode && !isPopupEditing && (
                     <>
                       <button
                         type="button"
                         onClick={handleStartEditInPopup}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold cursor-pointer transition-colors"
+                        className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold cursor-pointer transition-colors"
                       >
                         <Pencil className="w-3.5 h-3.5" />
                         <span>편집하기</span>
@@ -1298,10 +1298,10 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                     type="button"
                     onClick={closeReviewPopup}
                     aria-label="후기 팝업 닫기"
-                    className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 text-xs font-bold cursor-pointer transition-colors"
+                    className="inline-flex items-center gap-1 p-1.5 sm:px-2 sm:py-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 text-xs font-bold cursor-pointer transition-colors"
                   >
                     <X className="w-4 h-4" />
-                    <span className="sm:hidden">닫기</span>
+                    {!isEditMode && <span className="sm:hidden">닫기</span>}
                   </button>
                 </div>
               </div>
@@ -1911,11 +1911,8 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                   <span>이전 후기</span>
                 </button>
                 <div className="text-center">
-                  <div className="text-xs font-bold text-slate-500 tabular-nums">
-                    {activeIndex + 1} / {reviews.length}
-                  </div>
                   {!isPopupEditing && reviews.length > 1 && (
-                    <div className="sm:hidden text-[10px] font-medium text-slate-400 leading-tight mt-0.5">
+                    <div className="text-xs font-medium text-slate-400 leading-tight">
                       좌우로 밀어 넘기기
                     </div>
                   )}
