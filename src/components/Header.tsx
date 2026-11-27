@@ -170,18 +170,14 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header
       ref={headerRef}
-      className={`sticky top-0 z-50 w-full border-b transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300 ease-out ${
-        scrolled
-          ? 'bg-white/80 backdrop-blur-md backdrop-saturate-150 border-slate-200/70 shadow-[0_8px_28px_rgba(15,23,42,0.07)]'
-          : 'bg-white border-slate-200/90 shadow-2xs'
+      className={`sticky top-0 z-50 w-full border-b cw-header-glass ${
+        scrolled ? 'cw-header-scrolled' : ''
       }`}
     >
       {/* Top Utility Bar */}
       <div
-        className={`text-slate-300 text-xs py-2 px-4 border-b transition-colors duration-300 ${
-          scrolled
-            ? 'bg-slate-900/90 border-slate-800/80'
-            : 'bg-slate-900 border-slate-800'
+        className={`text-slate-300 text-xs py-2 px-4 border-b cw-header-topbar ${
+          scrolled ? 'cw-header-scrolled' : ''
         }`}
       >
         <div className="max-w-6xl mx-auto flex justify-between items-center gap-4">
