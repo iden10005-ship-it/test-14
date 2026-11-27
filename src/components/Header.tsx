@@ -68,7 +68,7 @@ export const Header: React.FC<HeaderProps> = ({
   const headerRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
+    const onScroll = () => setScrolled(window.scrollY > 8);
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
@@ -170,12 +170,20 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header
       ref={headerRef}
-      className={`sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/90 transition-shadow duration-200 ${
-        scrolled ? 'shadow-md' : 'shadow-2xs'
+      className={`sticky top-0 z-50 w-full border-b transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300 ease-out ${
+        scrolled
+          ? 'bg-white/80 backdrop-blur-md backdrop-saturate-150 border-slate-200/70 shadow-[0_8px_28px_rgba(15,23,42,0.07)]'
+          : 'bg-white border-slate-200/90 shadow-2xs'
       }`}
     >
       {/* Top Utility Bar */}
-      <div className="bg-slate-900 text-slate-300 text-xs py-2 px-4 border-b border-slate-800">
+      <div
+        className={`text-slate-300 text-xs py-2 px-4 border-b transition-colors duration-300 ${
+          scrolled
+            ? 'bg-slate-900/90 border-slate-800/80'
+            : 'bg-slate-900 border-slate-800'
+        }`}
+      >
         <div className="max-w-6xl mx-auto flex justify-between items-center gap-4">
           <div className="flex items-center gap-2 truncate">
             <span className="font-medium text-slate-200 truncate">
@@ -202,11 +210,11 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 type="button"
                 onClick={onOpenAdminLogin}
-                className="inline-flex items-center gap-1 text-slate-400 hover:text-white transition-colors sm:pl-2 sm:border-l sm:border-slate-700 font-semibold text-[11px] cursor-pointer"
+                className="inline-flex items-center justify-center p-1 text-slate-400 hover:text-white transition-colors sm:pl-2.5 sm:border-l sm:border-slate-700 cursor-pointer"
                 title="관리자 모드 로그인"
+                aria-label="관리자 모드 로그인"
               >
-                <Lock className="w-3 h-3 text-blue-400" />
-                <span>관리자</span>
+                <Lock className="w-3.5 h-3.5 text-blue-400" />
               </button>
             ) : (
               <button
@@ -318,7 +326,7 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => handleSectionLink('process')}
               className={getDesktopNavClass(isProcessActive)}
             >
-              작업과정
+              청소과정
             </button>
 
             <button
@@ -456,7 +464,7 @@ export const Header: React.FC<HeaderProps> = ({
                     : 'text-slate-700 hover:bg-slate-50'
                 }`}
               >
-                작업과정
+                청소과정
               </button>
               <button
                 type="button"
