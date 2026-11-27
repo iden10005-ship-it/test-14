@@ -124,6 +124,15 @@ export const GallerySection: React.FC<GallerySectionProps> = ({
                         onEditImage({
                           title: `[${post.title}] 대표 이미지 변경`,
                           currentUrl: post.coverImage || post.afterImage,
+                          aspectRatio: 16 / 10,
+                          aspectLabel: '갤러리 대표 16:10',
+                          seoFileName: {
+                            section: 'gallery',
+                            region: post.region,
+                            category: post.category,
+                            title: post.title,
+                            role: 'cover',
+                          },
                           optimizationTarget: {
                             region: post.region,
                             category: post.category,

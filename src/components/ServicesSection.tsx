@@ -153,6 +153,13 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
                             title: `[${service.title}] 서비스 대표 사진 변경`,
                             currentUrl: rawImageUrl,
                             defaultUrl: service.detail?.afterImage,
+                            aspectRatio: 16 / 10,
+                            aspectLabel: '서비스 카드 16:10',
+                            seoFileName: {
+                              section: 'service',
+                              serviceId: service.id,
+                              title: service.title,
+                            },
                             onSave: (url) => onUpdateServiceImage(service.id, url),
                           });
                         }}

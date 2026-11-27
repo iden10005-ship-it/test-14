@@ -243,6 +243,15 @@ export const MatrixPage: React.FC<MatrixPageProps> = ({
                     onEditImage({
                       title: `[${service.title}] 청소 전(Before) 사진 변경`,
                       currentUrl: service.detail.beforeImage,
+                      aspectRatio: 16 / 10,
+                      aspectLabel: '시공 전 16:10',
+                      seoFileName: {
+                        section: 'service',
+                        serviceId: service.id,
+                        region: regionName,
+                        title: service.title,
+                        role: 'before',
+                      },
                       onSave: (url) => updateDetail({ beforeImage: url }),
                     })
                 : undefined
@@ -253,6 +262,15 @@ export const MatrixPage: React.FC<MatrixPageProps> = ({
                     onEditImage({
                       title: `[${service.title}] 청소 후(After) 사진 변경`,
                       currentUrl: service.detail.afterImage,
+                      aspectRatio: 16 / 10,
+                      aspectLabel: '시공 후 16:10',
+                      seoFileName: {
+                        section: 'service',
+                        serviceId: service.id,
+                        region: regionName,
+                        title: service.title,
+                        role: 'after',
+                      },
                       onSave: (url) => updateDetail({ afterImage: url }),
                     })
                 : undefined

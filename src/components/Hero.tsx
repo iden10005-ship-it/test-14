@@ -171,6 +171,12 @@ export const Hero: React.FC<HeroProps> = ({
                   title: '홈 메인 배경 사진 변경',
                   currentUrl: rawBgUrl,
                   defaultUrl: CLEARWORKS_IMAGES.afterHero,
+                  aspectRatio: 16 / 9,
+                  aspectLabel: '메인 배경 16:9',
+                  seoFileName: {
+                    section: 'hero',
+                    role: 'banner',
+                  },
                   onSave: (url) => onUpdateHero('afterImage', url),
                 })
               }

@@ -285,6 +285,15 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
                     onEditImage({
                       title: '현장일지 대표 사진 변경',
                       currentUrl: heroCover,
+                      aspectRatio: 16 / 10,
+                      aspectLabel: '현장일지 대표 16:10',
+                      seoFileName: {
+                        section: 'gallery',
+                        region: post.region,
+                        category: post.category,
+                        title: post.title,
+                        role: 'cover',
+                      },
                       optimizationTarget: {
                         region: post.region,
                         category: post.category,
@@ -366,10 +375,19 @@ export const GalleryDetailPage: React.FC<GalleryDetailPageProps> = ({
                           onEditImage({
                             title: '본문 사진 변경',
                             currentUrl: block.url,
+                            aspectRatio: 4 / 3,
+                            aspectLabel: '본문 사진 4:3',
+                            seoFileName: {
+                              section: 'gallery',
+                              region: post.region,
+                              category: post.category,
+                              title: block.caption || post.title,
+                              role: 'detail',
+                            },
                             optimizationTarget: {
                               region: post.region,
                               category: post.category,
-                              title: post.title,
+                              title: block.caption || post.title,
                             },
                             onSave: (url) => handleUpdateBlockImage(block.id, url),
                           })

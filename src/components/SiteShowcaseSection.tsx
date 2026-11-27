@@ -18,6 +18,12 @@ import {
 } from 'lucide-react';
 import { SmoothImage } from '@/src/components/SmoothImage';
 import { EditableText } from '@/src/components/admin/EditableText';
+import {
+  DEFAULT_IMAGE_FRAME_TRANSFORM,
+  InteractiveImageFrameEditor,
+  renderFramedImageToDataUrl,
+  type ImageFrameTransform,
+} from '@/src/components/admin/InteractiveImageFrameEditor';
 import type { SiteShowcaseData, SiteShowcaseItem } from '@/src/types/clearworks';
 import {
   formatRegionLabel,
@@ -25,6 +31,7 @@ import {
   groupGalleryRegions,
   normalizeRegionToDetailKey,
 } from '@/src/utils/galleryRegions';
+import { buildSeoImageFilename } from '@/src/utils/imageOptimizer';
 
 interface SiteShowcaseSectionProps {
   showcase: SiteShowcaseData;
@@ -314,6 +321,10 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [savedToast, setSavedToast] = useState(false);
   const [pendingOpenNewId, setPendingOpenNewId] = useState<string | null>(null);
+  const [draftLocalPreview, setDraftLocalPreview] = useState<string | null>(null);
+  const [draftTransform, setDraftTransform] = useState<ImageFrameTransform>(
+    DEFAULT_IMAGE_FRAME_TRANSFORM
+  );
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // 팝업: 모바일/데스크톱 네이티브 scroll-snap 좌우 스와이프 (고객후기 팝업과 동일한 부드러운 전환)
@@ -614,6 +625,8 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
       ...activeItem,
       region: normalizedRegion || availableRegions[0] || '강남구',
     });
+    setDraftLocalPreview(null);
+    setDraftTransform({ ...DEFAULT_IMAGE_FRAME_TRANSFORM });
     setUploadError(null);
     setIsPopupEditing(true);
   };
@@ -626,29 +639,71 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
     setIsUploading(true);
     setUploadError(null);
     try {
-      const dataUrl = await resizeImageFileToDataUrl(file, 1600);
-      const savedUrl = onUploadImage
-        ? await onUploadImage(dataUrl, `showcase-${draft.id}`)
-        : dataUrl;
-      setDraft((prev) => (prev ? { ...prev, image: savedUrl } : null));
+      const dataUrl = await resizeImageFileToDataUrl(file, 2000);
+      setDraftLocalPreview(dataUrl);
+      setDraftTransform({ zoom: 1, panX: 0, panY: 0, mode: 'crop' });
     } catch (err) {
       setUploadError(
-        err instanceof Error ? err.message : '이미지 업로드에 실패했습니다.'
+        err instanceof Error ? err.message : '이미지 불러오기에 실패했습니다.'
       );
     } finally {
       setIsUploading(false);
     }
   };
 
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
     if (!isEditMode || !draft) return;
+
+    const previewSrc = draftLocalPreview || draft.image.trim();
+    const isAdjusted =
+      draftTransform.mode === 'crop' &&
+      (draftTransform.zoom > 1.001 ||
+        Math.abs(draftTransform.panX) > 0.001 ||
+        Math.abs(draftTransform.panY) > 0.001);
+
+    let finalImageUrl = draft.image.trim() || activeItem?.image || '';
+
+    if (previewSrc && (draftLocalPreview || isAdjusted)) {
+      setIsUploading(true);
+      setUploadError(null);
+      try {
+        const rendered = await renderFramedImageToDataUrl(
+          previewSrc,
+          5 / 4,
+          draftTransform,
+          1440
+        );
+        const seoName = buildSeoImageFilename({
+          section: 'showcase',
+          region: draft.region,
+          tag: draft.tag,
+          title: draft.title,
+        }).filename;
+        finalImageUrl = onUploadImage
+          ? await onUploadImage(rendered, seoName)
+          : rendered;
+      } catch (err) {
+        if (!draftLocalPreview && /^https?:\/\//i.test(previewSrc)) {
+          finalImageUrl = previewSrc;
+        } else {
+          setUploadError(
+            err instanceof Error ? err.message : '이미지 저장에 실패했습니다.'
+          );
+          setIsUploading(false);
+          return;
+        }
+      } finally {
+        setIsUploading(false);
+      }
+    }
+
     const cleaned: SiteShowcaseItem = {
       ...draft,
       title: draft.title.trim() || '현장 시공 사진',
       description: draft.description.trim(),
       tag: draft.tag.trim() || '현장 시공',
       region: formatRegionLabel(draft.region.trim()) || '수도권 현장',
-      image: draft.image.trim() || activeItem?.image || '',
+      image: finalImageUrl,
     };
 
     onUpdateShowcase((prev) => ({
@@ -657,6 +712,8 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
     }));
     setIsPopupEditing(false);
     setDraft(null);
+    setDraftLocalPreview(null);
+    setDraftTransform({ ...DEFAULT_IMAGE_FRAME_TRANSFORM });
     setUploadError(null);
     setSavedToast(true);
     window.setTimeout(() => setSavedToast(false), 2200);
@@ -1059,17 +1116,15 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
                         />
                       </div>
 
-                      <div className="relative rounded-xl overflow-hidden bg-slate-950 border border-slate-200 h-44 sm:h-52 flex items-center justify-center">
-                        {draft.image ? (
-                          <img
-                            src={draft.image}
-                            alt="교체 미리보기"
-                            className="w-full h-full object-contain"
-                          />
-                        ) : (
-                          <span className="text-xs text-slate-400">이미지 미리보기 없음</span>
-                        )}
-                      </div>
+                      <InteractiveImageFrameEditor
+                        src={draftLocalPreview || draft.image}
+                        aspectRatio={5 / 4}
+                        aspectLabel="워크플로우 카드 5:4"
+                        transform={draftTransform}
+                        onChange={setDraftTransform}
+                        allowOriginalMode={true}
+                        compact={true}
+                      />
 
                       <div>
                         <label className="block text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1">
@@ -1079,7 +1134,11 @@ export const SiteShowcaseSection: React.FC<SiteShowcaseSectionProps> = ({
                         <input
                           type="text"
                           value={draft.image}
-                          onChange={(e) => setDraft({ ...draft, image: e.target.value })}
+                          onChange={(e) => {
+                            setDraftLocalPreview(null);
+                            setDraftTransform({ ...DEFAULT_IMAGE_FRAME_TRANSFORM });
+                            setDraft({ ...draft, image: e.target.value });
+                          }}
                           placeholder="/images/gallery/..."
                           className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />

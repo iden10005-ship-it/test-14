@@ -419,43 +419,46 @@ async function startServer() {
       const base64Data = match[2];
 
       const rawHint = (nameHint || '').trim();
-      const hasSemanticFilename =
-        /\.jpe?g$/i.test(rawHint) || /[가-힣]/.test(rawHint) || rawHint.includes('_');
+      const baseWithoutExt = rawHint
+        .replace(/^.*\//, '')
+        .replace(/\?.*$/, '')
+        .replace(/\.(png|jpe?g|webp|gif)$/i, '')
+        .replace(/-framed$/i, '');
 
-      let filename: string;
-      if (hasSemanticFilename) {
-        const baseWithoutExt = rawHint.replace(/\.(png|jpe?g|webp|gif)$/i, '');
-        const safeBase =
+      const isRawCameraName =
+        !baseWithoutExt ||
+        /^\d{6,}([_-]\d+)*$/.test(baseWithoutExt) ||
+        /^(img|dsc|pxl|mvimg|photo|pic|image|screenshot|screen[-_ ]?shot|kakaotalk|bandphoto|camera|framed[-_ ]?image)([-_ ]?[0-9a-f]+)*$/i.test(
           baseWithoutExt
-            .replace(/[\s/\\]+/g, '-')
-            .replace(/[^가-힣a-zA-Z0-9_-]/g, '')
-            .replace(/-+/g, '-')
-            .replace(/^[-_]+|[-_]+$/g, '')
-            .slice(0, 64) || '현장사진';
+        ) ||
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(baseWithoutExt);
 
-        let candidate = `${safeBase}.${ext}`;
-        let counter = 2;
-        while (counter <= 99) {
-          try {
-            await fs.access(path.resolve(UPLOAD_DIR, candidate));
-            candidate = `${safeBase}-${counter}.${ext}`;
-            counter += 1;
-          } catch {
-            break;
-          }
-        }
-        if (counter > 99) {
-          candidate = `${safeBase}-${Date.now()}.${ext}`;
-        }
-        filename = candidate;
-      } else {
-        const safeHint =
-          rawHint
+      const normalizedBase = isRawCameraName
+        ? 'clearworks-window-cleaning-photo'
+        : baseWithoutExt
             .toLowerCase()
-            .replace(/[^a-z0-9_-]/g, '')
-            .slice(0, 24) || 'image';
-        filename = `${safeHint}-${Date.now()}.${ext}`;
+            .replace(/[\s_/\\]+/g, '-')
+            .replace(/[^가-힣a-z0-9-]/g, '')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '')
+            .slice(0, 68)
+            .replace(/-$/g, '') || 'clearworks-window-cleaning-photo';
+
+      let candidate = `${normalizedBase}.${ext}`;
+      let counter = 2;
+      while (counter <= 99) {
+        try {
+          await fs.access(path.resolve(UPLOAD_DIR, candidate));
+          candidate = `${normalizedBase}-${counter}.${ext}`;
+          counter += 1;
+        } catch {
+          break;
+        }
       }
+      if (counter > 99) {
+        candidate = `${normalizedBase}-${Date.now()}.${ext}`;
+      }
+      const filename = candidate;
 
       const buffer = Buffer.from(base64Data, 'base64');
       const filePath = path.resolve(UPLOAD_DIR, filename);
@@ -469,6 +472,37 @@ async function startServer() {
       });
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : 'Upload failed' });
+    }
+  });
+
+  // List uploaded images inside public/uploads for quick framing/re-selection in Admin modal
+  app.get('/api/admin/uploads', async (_req, res) => {
+    try {
+      const entries = await fs.readdir(UPLOAD_DIR);
+      const imageNames = entries.filter(
+        (name) => !name.startsWith('.') && /\.(jpe?g|png|webp|gif)$/i.test(name)
+      );
+      const withStats = await Promise.all(
+        imageNames.map(async (filename) => {
+          try {
+            const st = await fs.stat(path.resolve(UPLOAD_DIR, filename));
+            return {
+              filename,
+              url: `/uploads/${filename}`,
+              mtimeMs: st.mtimeMs,
+            };
+          } catch {
+            return null;
+          }
+        })
+      );
+      const files = withStats
+        .filter((item): item is { filename: string; url: string; mtimeMs: number } => item !== null)
+        .sort((a, b) => b.mtimeMs - a.mtimeMs)
+        .slice(0, 30);
+      res.json({ ok: true, files });
+    } catch {
+      res.json({ ok: true, files: [] });
     }
   });
 

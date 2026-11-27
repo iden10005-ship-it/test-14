@@ -56,6 +56,7 @@
         "description": "안팎 유리와 창틀, 샷시 레일까지 물때 없이 마무리합니다.",
         "iconName": "Home",
         "badge": "가장 많이 찾는 서비스",
+        "image": "/images/clearworks-apartment-window-cleaning.jpg",
         "detail": {
           "tagline": "탁 트인 조망과 풍부한 채광을 되찾아드리는 아파트 전용 프리미엄 외창 케어",
           "targetAudience": "구축/신축 아파트, 주상복합, 빌라 거실 및 베란다 창",
@@ -93,6 +94,7 @@
         "description": "영업 시간을 피해 일정을 잡고, 출입문과 통유리까지 함께 청소합니다.",
         "iconName": "Store",
         "badge": "정기관리 추천",
+        "image": "/images/clearworks-store-office-window-cleaning.jpg",
         "detail": {
           "tagline": "매장과 회사의 첫인상을 밝고 쾌적하게 바꾸는 상업공간 윈도우 케어",
           "targetAudience": "카페, 음식점, 의류 매장, 1층 로드샵, 오피스 빌딩 사무실",
@@ -125,6 +127,7 @@
         "description": "안전 장비와 보험을 갖춘 인력이 건물 구조에 맞춰 작업합니다.",
         "iconName": "Building2",
         "badge": "로프/스카이 전문",
+        "image": "/images/clearworks-building-exterior-window-cleaning.jpg",
         "detail": {
           "tagline": "건물 가치를 높이는 고층 빌딩 및 외벽 유리창 전문 특수 시공",
           "targetAudience": "중대형 빌딩, 사옥, 호텔, 병원, 관공서, 외벽 유리 건물",
@@ -156,6 +159,7 @@
         "title": "간판청소·어닝청소 고압세척",
         "description": "입주 전 찌든 때와 공사 후 오염을 제거해 새집처럼 맑게 만듭니다.",
         "iconName": "Sparkles",
+        "image": "/images/clearworks-sign-awning-pressure-wash.jpg",
         "detail": {
           "tagline": "인테리어 공사 후 분진과 시멘트 자국을 말끔히 없애는 입주 전 필수 케어",
           "targetAudience": "신규 아파트 입주 예정자, 인테리어 리모델링 완료 세대, 이사 전 세대",
@@ -179,6 +183,7 @@
         "title": "시트지제거·필름제거",
         "description": "접착 자국이 남지 않도록 유리 손상 없이 제거합니다.",
         "iconName": "Layers",
+        "image": "/images/clearworks-window-sheet-film-removal.jpg",
         "detail": {
           "tagline": "오래된 썬팅 필름, 시트지, 홍보 스티커를 유리 손상 없이 원상복구",
           "targetAudience": "상가 임대 만료 원상복구, 노후 썬팅 필름 들뜸 세대, 시트지 교체 매장",

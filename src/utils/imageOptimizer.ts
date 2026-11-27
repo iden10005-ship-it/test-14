@@ -122,72 +122,428 @@ export interface OptimizedWorkLogImage {
   appliedNotes: string[];
 }
 
-const SPECIFIC_WORK_TERMS = [
-  '어닝청소',
-  '간판청소',
-  '외창청소',
-  '유리창청소',
-  '통유리청소',
-  '외벽청소',
-  '고압세척',
-  '시트지제거',
-  '썬팅제거',
-  '필름제거',
-  '발수코팅',
-  '창틀청소',
-  '물때제거',
-  '백화제거',
-  '준공청소',
-];
+export type SeoImageSection =
+  | 'hero'
+  | 'service'
+  | 'gallery'
+  | 'showcase'
+  | 'og'
+  | 'review'
+  | 'general';
 
-const CATEGORY_WORKTYPE_MAP: Record<string, string> = {
-  아파트: '아파트외창청소',
-  '아파트·주택': '아파트외창청소',
-  상가: '상가유리창청소',
-  '상가·매장': '상가유리창청소',
-  빌딩: '빌딩외벽청소',
-  '간판,어닝청소': '간판어닝청소',
-  '간판·어닝청소': '간판어닝청소',
-  시트지제거: '시트지제거',
-  기타: '특수청소',
+export type SeoImageRole =
+  | 'cover'
+  | 'before'
+  | 'after'
+  | 'detail'
+  | 'banner'
+  | 'og';
+
+export interface SeoImageFilenameInput {
+  brand?: string;
+  section?: SeoImageSection;
+  serviceId?: string;
+  region?: string;
+  category?: string;
+  title?: string;
+  tag?: string;
+  pageKey?: string;
+  role?: SeoImageRole;
+  fallback?: string;
+}
+
+const SERVICE_ID_SLUG_MAP: Record<string, string> = {
+  'srv-1': 'apartment-window-cleaning',
+  'srv-2': 'store-office-window-cleaning',
+  'srv-3': 'building-exterior-window-cleaning',
+  'srv-4': 'sign-awning-pressure-wash',
+  'srv-5': 'window-sheet-film-removal',
+  'srv-6': 'special-glass-coating-cleaning',
+  apt: 'apartment-window-cleaning',
+  shop: 'store-office-window-cleaning',
+  building: 'building-exterior-window-cleaning',
+  sign: 'sign-awning-pressure-wash',
+  film: 'window-sheet-film-removal',
+  special: 'special-glass-coating-cleaning',
 };
 
-function sanitizeFileSegment(raw: string, fallback: string): string {
-  const cleaned = raw
+const WORK_TERM_SLUG_PAIRS: ReadonlyArray<[string, string]> = [
+  ['아파트외창청소', 'apartment-window-cleaning'],
+  ['아파트창문청소', 'apartment-window-cleaning'],
+  ['아파트유리창청소', 'apartment-window-cleaning'],
+  ['외창청소', 'exterior-window-cleaning'],
+  ['매장사무실', 'store-office-window-cleaning'],
+  ['매장유리창청소', 'store-window-cleaning'],
+  ['상가유리창청소', 'store-window-cleaning'],
+  ['사무실유리창청소', 'office-window-cleaning'],
+  ['사무실유리', 'office-window-cleaning'],
+  ['카페통유리', 'cafe-window-cleaning'],
+  ['통유리청소', 'full-glass-window-cleaning'],
+  ['통유리', 'full-glass-window-cleaning'],
+  ['빌딩외벽', 'building-exterior-cleaning'],
+  ['고층유리창청소', 'high-rise-window-cleaning'],
+  ['외벽청소', 'building-exterior-cleaning'],
+  ['간판청소', 'sign-awning-cleaning'],
+  ['어닝청소', 'awning-cleaning'],
+  ['고압세척', 'pressure-wash'],
+  ['시트지제거', 'window-sheet-removal'],
+  ['필름제거', 'window-film-removal'],
+  ['썬팅제거', 'tint-film-removal'],
+  ['발수코팅', 'glass-water-repellent-coating'],
+  ['특수청소', 'special-window-cleaning'],
+  ['창틀청소', 'window-frame-cleaning'],
+  ['물때제거', 'water-stain-removal'],
+  ['백화제거', 'efflorescence-removal'],
+  ['준공청소', 'post-construction-cleaning'],
+  ['입주청소', 'move-in-window-cleaning'],
+  ['유리창청소', 'window-cleaning'],
+];
+
+const CATEGORY_SLUG_MAP: Record<string, string> = {
+  아파트: 'apartment-window-cleaning',
+  '아파트·주택': 'apartment-window-cleaning',
+  상가: 'store-window-cleaning',
+  '상가·매장': 'store-window-cleaning',
+  '사무실·빌딩': 'building-exterior-window-cleaning',
+  빌딩: 'building-exterior-window-cleaning',
+  '간판·어닝': 'sign-awning-cleaning',
+  '간판,어닝청소': 'sign-awning-cleaning',
+  '간판·어닝청소': 'sign-awning-cleaning',
+  시트지제거: 'window-sheet-film-removal',
+  기타: 'special-window-cleaning',
+  '기타 특수청소': 'special-window-cleaning',
+};
+
+const REGION_SLUG_MAP: Record<string, string> = {
+  서울: 'seoul',
+  서울시: 'seoul',
+  서울특별시: 'seoul',
+  수도권: 'seoul-metro',
+  서울수도권: 'seoul-metro',
+  경기: 'gyeonggi',
+  경기도: 'gyeonggi',
+  인천: 'incheon',
+  인천시: 'incheon',
+  인천광역시: 'incheon',
+  강남: 'gangnam',
+  강남구: 'gangnam',
+  서초: 'seocho',
+  서초구: 'seocho',
+  송파: 'songpa',
+  송파구: 'songpa',
+  강동: 'gangdong',
+  강동구: 'gangdong',
+  용산: 'yongsan',
+  용산구: 'yongsan',
+  성동: 'seongdong',
+  성동구: 'seongdong',
+  광진: 'gwangjin',
+  광진구: 'gwangjin',
+  마포: 'mapo',
+  마포구: 'mapo',
+  영등포: 'yeongdeungpo',
+  영등포구: 'yeongdeungpo',
+  양천: 'yangcheon',
+  양천구: 'yangcheon',
+  강서: 'gangseo',
+  강서구: 'gangseo',
+  구로: 'guro',
+  구로구: 'guro',
+  금천: 'geumcheon',
+  금천구: 'geumcheon',
+  관악: 'gwanak',
+  관악구: 'gwanak',
+  동작: 'dongjak',
+  동작구: 'dongjak',
+  종로: 'jongno',
+  종로구: 'jongno',
+  중구: 'junggu',
+  서대문: 'seodaemun',
+  서대문구: 'seodaemun',
+  은평: 'eunpyeong',
+  은평구: 'eunpyeong',
+  성북: 'seongbuk',
+  성북구: 'seongbuk',
+  강북: 'gangbuk',
+  강북구: 'gangbuk',
+  도봉: 'dobong',
+  도봉구: 'dobong',
+  노원: 'nowon',
+  노원구: 'nowon',
+  중랑: 'jungnang',
+  중랑구: 'jungnang',
+  동대문: 'dongdaemun',
+  동대문구: 'dongdaemun',
+  분당: 'bundang',
+  분당구: 'bundang',
+  성남: 'seongnam',
+  성남시: 'seongnam',
+  판교: 'pangyo',
+  용인: 'yongin',
+  용인시: 'yongin',
+  수지: 'suji',
+  수지구: 'suji',
+  기흥: 'giheung',
+  기흥구: 'giheung',
+  수원: 'suwon',
+  수원시: 'suwon',
+  광교: 'gwanggyo',
+  화성: 'hwaseong',
+  화성시: 'hwaseong',
+  동탄: 'dongtan',
+  안양: 'anyang',
+  안양시: 'anyang',
+  평촌: 'pyeongchon',
+  과천: 'gwacheon',
+  과천시: 'gwacheon',
+  의왕: 'uiwang',
+  군포: 'gunpo',
+  안산: 'ansan',
+  시흥: 'siheung',
+  시흥시: 'siheung',
+  배곧: 'baegot',
+  부천: 'bucheon',
+  광명: 'gwangmyeong',
+  김포: 'gimpo',
+  고양: 'goyang',
+  일산: 'ilsan',
+  파주: 'paju',
+  하남: 'hanam',
+  위례: 'wirye',
+  미사: 'misa',
+  구리: 'guri',
+  남양주: 'namyangju',
+  다산: 'dasan',
+  의정부: 'uijeongbu',
+  송도: 'songdo',
+  청라: 'cheongna',
+  부평: 'bupyeong',
+  부평구: 'bupyeong',
+  연수: 'yeonsu',
+  연수구: 'yeonsu',
+  남동: 'namdong',
+  남동구: 'namdong',
+  문정: 'munjeong',
+  문정동: 'munjeong',
+  잠실: 'jamsil',
+  평택: 'pyeongtaek',
+  오산: 'osan',
+};
+
+const HANGUL_INITIALS = [
+  'g', 'kk', 'n', 'd', 'tt', 'r', 'm', 'b', 'pp', 's', 'ss', '', 'j', 'jj', 'ch', 'k', 't', 'p', 'h',
+];
+const HANGUL_MEDIALS = [
+  'a', 'ae', 'ya', 'yae', 'eo', 'e', 'yeo', 'ye', 'o', 'wa', 'wae', 'oe', 'yo', 'u', 'wo', 'we', 'wi', 'yu', 'eu', 'ui', 'i',
+];
+const HANGUL_FINALS = [
+  '', 'k', 'k', 'k', 'n', 'n', 'n', 't', 'l', 'l', 'l', 'l', 'l', 'l', 'l', 'l', 'm', 'p', 'p', 't', 't', 'ng', 't', 't', 'k', 't', 'p', 't',
+];
+
+function romanizeHangul(text: string): string {
+  let out = '';
+  for (const ch of text) {
+    const code = ch.charCodeAt(0);
+    if (code >= 0xac00 && code <= 0xd7a3) {
+      const idx = code - 0xac00;
+      const initial = Math.floor(idx / 588);
+      const medial = Math.floor((idx % 588) / 28);
+      const final = idx % 28;
+      out += HANGUL_INITIALS[initial] + HANGUL_MEDIALS[medial] + HANGUL_FINALS[final];
+    } else {
+      out += ch;
+    }
+  }
+  return out;
+}
+
+export function isRawCameraFilename(name: string): boolean {
+  const base = name
     .trim()
-    .replace(/[\s·,/\\]+/g, '-')
-    .replace(/[^가-힣a-zA-Z0-9-]/g, '')
+    .replace(/^.*\//, '')
+    .replace(/\?.*$/, '')
+    .replace(/\.[^.]+$/, '')
+    .replace(/-framed$/i, '');
+
+  if (!base) return true;
+  if (/^\d{6,}([_-]\d+)*$/.test(base)) return true;
+  if (/^(img|dsc|pxl|mvimg|photo|pic|image|screenshot|screen[-_ ]?shot|kakaotalk|bandphoto|snow|b612|camera|framed[-_ ]?image)([-_ ]?[0-9a-f]+)*$/i.test(base)) {
+    return true;
+  }
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(base)) return true;
+  return false;
+}
+
+function toAsciiSlug(raw: string, maxLen = 40): string {
+  const romanized = romanizeHangul(raw.toLowerCase());
+  return romanized
+    .replace(/[^a-z0-9]+/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '')
-    .slice(0, 28);
-  return cleaned || fallback;
+    .slice(0, maxLen)
+    .replace(/-$/g, '');
+}
+
+function resolveRegionSlug(region?: string): string {
+  if (!region) return '';
+  const cleaned = region
+    .replace(/현장|지역|일대|전지역/g, ' ')
+    .replace(/[·,/\\()]+/g, ' ')
+    .trim();
+  if (!cleaned) return '';
+
+  const compact = cleaned.replace(/\s+/g, '');
+  if (REGION_SLUG_MAP[compact]) return REGION_SLUG_MAP[compact];
+
+  const tokens = cleaned.split(/\s+/).filter(Boolean);
+  const mapped: string[] = [];
+  for (const token of tokens) {
+    const direct = REGION_SLUG_MAP[token] || REGION_SLUG_MAP[token.replace(/[시군구동읍면]$/, '')];
+    const slug = direct || toAsciiSlug(token, 18);
+    if (slug && !mapped.includes(slug)) {
+      mapped.push(slug);
+    }
+    if (mapped.length >= 2) break;
+  }
+  return mapped.join('-');
+}
+
+function resolveWorkSlug(input: SeoImageFilenameInput): string {
+  if (input.serviceId && SERVICE_ID_SLUG_MAP[input.serviceId.trim()]) {
+    return SERVICE_ID_SLUG_MAP[input.serviceId.trim()];
+  }
+
+  const combined = `${input.title || ''} ${input.tag || ''} ${input.category || ''}`
+    .replace(/\s+/g, '')
+    .replace(/[·,/\\()[\]]+/g, '');
+
+  for (const [term, slug] of WORK_TERM_SLUG_PAIRS) {
+    if (combined.includes(term)) {
+      return slug;
+    }
+  }
+
+  const catKey = (input.category || '').trim();
+  if (catKey && CATEGORY_SLUG_MAP[catKey]) {
+    return CATEGORY_SLUG_MAP[catKey];
+  }
+
+  const tagKey = (input.tag || '').trim();
+  if (tagKey && CATEGORY_SLUG_MAP[tagKey]) {
+    return CATEGORY_SLUG_MAP[tagKey];
+  }
+
+  if (input.title && !isRawCameraFilename(input.title)) {
+    const titleSlug = toAsciiSlug(input.title, 32);
+    if (titleSlug) return titleSlug;
+  }
+
+  return '';
+}
+
+function resolvePageKeySlug(pageKey?: string): string {
+  if (!pageKey || pageKey === 'home' || pageKey === 'main') return 'main';
+  if (pageKey === 'gallery') return 'gallery';
+  if (pageKey.startsWith('service:')) {
+    const srvId = pageKey.slice('service:'.length);
+    return SERVICE_ID_SLUG_MAP[srvId] || toAsciiSlug(srvId, 28) || 'service';
+  }
+  if (pageKey.startsWith('region:')) {
+    const reg = pageKey.slice('region:'.length);
+    return resolveRegionSlug(reg) || 'region';
+  }
+  if (pageKey.startsWith('matrix:')) {
+    const rest = pageKey.slice('matrix:'.length);
+    const lastColon = rest.lastIndexOf(':');
+    if (lastColon > 0) {
+      const regSlug = resolveRegionSlug(rest.slice(0, lastColon));
+      const srvId = rest.slice(lastColon + 1);
+      const srvSlug = SERVICE_ID_SLUG_MAP[srvId] || toAsciiSlug(srvId, 24);
+      return [regSlug, srvSlug].filter(Boolean).join('-') || 'region-service';
+    }
+  }
+  return toAsciiSlug(pageKey, 32) || 'page';
 }
 
 /**
- * Builds a web/SEO-friendly filename in the format `지역명_작업유형.jpg`.
+ * Builds a clean, lowercase, ASCII kebab-case SEO filename for ANY image upload
+ * or replacement across the website (e.g. `clearworks-apartment-window-cleaning.jpg`).
+ */
+export function buildSeoImageFilename(input: SeoImageFilenameInput): {
+  baseName: string;
+  filename: string;
+} {
+  const brandSlug = toAsciiSlug(input.brand || 'clearworks', 16) || 'clearworks';
+  const parts: string[] = [brandSlug];
+
+  const pushUnique = (seg: string) => {
+    const clean = seg
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+    if (!clean) return;
+    const joinedSoFar = parts.join('-');
+    if (joinedSoFar.includes(clean)) return;
+    parts.push(clean);
+  };
+
+  if (input.section === 'hero') {
+    pushUnique('hero');
+    pushUnique('window-cleaning');
+  } else if (input.section === 'og') {
+    pushUnique('og');
+    pushUnique(resolvePageKeySlug(input.pageKey));
+  } else {
+    const regionSlug = resolveRegionSlug(input.region);
+    if (regionSlug) pushUnique(regionSlug);
+
+    const workSlug = resolveWorkSlug(input);
+    if (workSlug) {
+      pushUnique(workSlug);
+    } else if (input.section === 'showcase') {
+      pushUnique('showcase-window-cleaning');
+    } else if (input.section === 'review') {
+      pushUnique('customer-review-window-cleaning');
+    } else if (input.section === 'gallery') {
+      pushUnique('window-cleaning-worklog');
+    } else {
+      pushUnique(toAsciiSlug(input.fallback || 'window-cleaning', 28) || 'window-cleaning');
+    }
+  }
+
+  if (input.role === 'before' || input.role === 'after') {
+    pushUnique(input.role);
+  } else if (input.role === 'cover' && input.section === 'gallery') {
+    pushUnique('cover');
+  }
+
+  const baseName = parts
+    .join('-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 68)
+    .replace(/-$/g, '') || 'clearworks-window-cleaning';
+
+  return {
+    baseName,
+    filename: `${baseName}.jpg`,
+  };
+}
+
+/**
+ * Builds a web/SEO-friendly filename for gallery worklog photos.
  */
 export function buildWorkLogImageFilename(input: WorkLogImageNameInput): {
   baseName: string;
   filename: string;
 } {
-  const safeRegion = sanitizeFileSegment(input.region || '', '서울수도권');
-
-  const normalizedTitle = (input.title || '').replace(/\s+/g, '');
-  const matchedTerm = SPECIFIC_WORK_TERMS.find((term) =>
-    normalizedTitle.includes(term.replace(/\s+/g, ''))
-  );
-  const rawWorkType =
-    matchedTerm ||
-    CATEGORY_WORKTYPE_MAP[(input.category || '').trim()] ||
-    (input.category || '').trim() ||
-    '유리창청소';
-
-  const safeWorkType = sanitizeFileSegment(rawWorkType, '유리창청소');
-  const baseName = `${safeRegion}_${safeWorkType}`;
-  return {
-    baseName,
-    filename: `${baseName}.jpg`,
-  };
+  return buildSeoImageFilename({
+    section: 'gallery',
+    region: input.region || '서울수도권',
+    category: input.category,
+    title: input.title,
+  });
 }
 
 export function formatBytes(bytes: number): string {

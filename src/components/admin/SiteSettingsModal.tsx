@@ -35,6 +35,7 @@ import {
   getGalleryCategories,
   normalizeGalleryCategory,
 } from '@/src/utils/galleryCategories';
+import { buildSeoImageFilename } from '@/src/utils/imageOptimizer';
 import { getDefaultSeoForRoute, getSeoPageKey } from '@/src/utils/seo';
 import {
   analyzePageSeoKeywords,
@@ -587,7 +588,11 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({
       const dataUrl = String(reader.result || '');
       let finalUrl = dataUrl;
       if (onUploadImage) {
-        finalUrl = await onUploadImage(dataUrl, `og-${target}`);
+        const seoName = buildSeoImageFilename({
+          section: 'og',
+          pageKey: target === 'global' ? 'main' : selectedPageKey,
+        }).filename;
+        finalUrl = await onUploadImage(dataUrl, seoName);
       }
       if (target === 'global') {
         setDraftSeo((prev) => ({ ...prev, defaultOgImage: finalUrl }));
