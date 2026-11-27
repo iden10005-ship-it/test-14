@@ -308,6 +308,26 @@ async function startServer() {
     }
   });
 
+  // Serve Google & Naver site verification HTML files directly (bypass SPA fallback)
+  app.get(/^\/(google[a-z0-9]+|naver[a-z0-9]+)\.html$/i, async (req, res, next) => {
+    const filename = path.basename(req.path);
+    const candidates = [
+      path.resolve(PUBLIC_DIR, filename),
+      path.resolve(DIST_DIR, filename),
+    ];
+    for (const filePath of candidates) {
+      try {
+        const content = await fs.readFile(filePath, 'utf-8');
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.send(content);
+        return;
+      } catch {
+        // try next candidate
+      }
+    }
+    next();
+  });
+
   // Admin capabilities check
   app.get('/api/admin/capabilities', (_req, res) => {
     res.json({ canWriteCode: true });
