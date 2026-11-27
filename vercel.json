@@ -7,7 +7,7 @@
   "cleanUrls": true,
   "rewrites": [
     {
-      "source": "/((?!assets/|images/|uploads/|sitemap\\.xml|robots\\.txt|favicon|apple-touch-icon\\.png|naver.*\\.html).*)",
+      "source": "/((?!assets/|images/|uploads/|sitemap\\.xml|robots\\.txt|favicon|apple-touch-icon\\.png|naver.*\\.html|google.*\\.html).*)",
       "destination": "/index.html"
     }
   ]
